@@ -1,0 +1,38 @@
+data:
+  provider: yfinance    # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
+  store: parquet         # parquet or csv
+  root: data/eod
+
+backtest:
+  tickers: [QQQ, TQQQ, SQQQ, SPY]
+  start: "2015-01-01"
+  end: "2024-12-31"
+  cash: 100000
+  report_path: examples/output/ma_crossover_report.html
+  strategies:
+    - strategy: ma_crossover
+      portfolio_id: ma_crossover
+      params:
+        ticker: QQQ
+        # Buy fires when MA(first_window) < MA(second_window). Long window first,
+        # short window second -> buy when the 50-day average rises above the
+        # 250-day average (classic golden cross); sell on the cross back below.
+        first_window: 250
+        second_window: 50
+        buy:
+          qty:
+            pct: 20    # spend 20% of available cash entering a position
+        sell:
+          qty:
+            pct: 100   # sell the entire position on exit
+    - strategy: buy_and_hold
+      portfolio_id: buy_and_hold
+      params:
+        ticker: SPY
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash
+    - strategy: moving_average
+      portfolio_id: moving_average_50
+      params:
+        ticker: QQQ
+        window: 50
+        qty: 10

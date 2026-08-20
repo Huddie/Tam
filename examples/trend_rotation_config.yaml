@@ -1,0 +1,79 @@
+data:
+  provider: yfinance    # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
+  store: parquet         # parquet or csv
+  root: data/eod
+
+backtest:
+  tickers: [QQQ, TQQQ, SQQQ]
+  start: "2015-01-01"
+  end: "2024-12-31"
+  cash: 100000
+  report_path: examples/output/trend_rotation_report.html
+  strategies:
+    # Always holds exactly one of TQQQ (long) or SQQQ (short) -- never both,
+    # never cash. Direction is decided from QQQ (the unleveraged underlying),
+    # not from TQQQ/SQQQ's own price, since daily-reset 3x ETFs decay with
+    # realized volatility regardless of direction -- their own price series
+    # is a noisier signal source than the clean index. Two signals must agree
+    # to flip sides (disagreement holds the current side, avoiding whipsaw):
+    #   - trend: price vs. its own 200-day SMA (Faber-style regime filter)
+    #   - momentum: sign of the trailing 20-day return (time-series momentum)
+    - strategy: trend_rotation
+      portfolio_id: trend_rotation
+      params:
+        signal_ticker: QQQ
+        long_ticker: TQQQ
+        short_ticker: SQQQ
+        tickers: [QQQ, TQQQ, SQQQ]
+        trend_window: 200
+        momentum_window: 20
+        # Risk overlays on top of the trend/momentum signal: throttle exposure when
+        # the underlying gets turbulent, and bail out fast if a position craters
+        # before the (slower) trend/momentum signals catch up.
+        target_vol: 0.18        # size entries to ~18% annualized vol of QQQ, not always 100%
+        vol_window: 20
+        min_exposure_pct: 20    # never fully starve a confirmed signal of exposure
+        max_exposure_pct: 100
+        rebalance_threshold_pct: 10
+        max_position_drawdown: 0.15   # stop out if the held ticker falls 15% from its peak
+        breaker_cooldown_days: 10     # block re-entry on the stopped-out side for this long, unless the signal flips sooner
+        buy:
+          qty:
+            pct: 100
+        sell:
+          qty:
+            pct: 100
+    - strategy: buy_and_hold
+      portfolio_id: buy_and_hold
+      params:
+        ticker: QQQ
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash
+    - strategy: ma_crossover
+      portfolio_id: ma_crossover
+      params:
+        ticker: QQQ
+        first_window: 250
+        second_window: 50
+        buy:
+          qty:
+            pct: 100
+        sell:
+          qty:
+            pct: 100
+    # Online-learning rotation: an incrementally-updated linear classifier
+    # (scikit-learn SGDClassifier) predicts long/short from technical features
+    # of QQQ, retrained one sample at a time as each day's outcome is realized.
+    # See tam/strategy/ml_walk_forward.py for the full walk-forward design.
+    - strategy: ml_walk_forward
+      portfolio_id: ml_walk_forward
+      params:
+        signal_ticker: QQQ
+        long_ticker: TQQQ
+        short_ticker: SQQQ
+        tickers: [QQQ, TQQQ, SQQQ]
+        buy:
+          qty:
+            pct: 100
+        sell:
+          qty:
+            pct: 100

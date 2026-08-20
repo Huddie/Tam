@@ -1,0 +1,31 @@
+[project]
+name = "tam"
+version = "0.1.0"
+description = "Config, data ingestion, and event-driven backtesting for stocks/indices"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "pyarrow>=14.0",
+    "pyyaml>=6.0",
+    "requests>=2.31",
+    "yfinance>=0.2",
+    "plotly>=5.20",
+    "pydantic>=2.6",
+    "tulipy>=0.4.0",
+    "scikit-learn>=1.7.2",
+    "mlx-lm>=0.31.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[[tool.uv.index]]
+url = "https://pypi.apple.com/simple"
+default = true
+
+[tool.setuptools.packages.find]
+include = ["tam*"]

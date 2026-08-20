@@ -1,0 +1,74 @@
+from datetime import date, timedelta
+
+import pandas as pd
+
+from tam.data.providers import YFinanceProvider
+from tam.data.schema import OHLCV_COLUMNS
+
+
+def test_yfinance_flattens_multiindex_columns(monkeypatch):
+    """Regression test: newer yfinance returns (field, ticker) MultiIndex columns even
+    for a single symbol, which used to make history["close"] a 1-column DataFrame
+    instead of a Series and break float(history["close"].iloc[0]) downstream."""
+    dates = pd.to_datetime(["2023-01-03", "2023-01-04"])
+    columns = pd.MultiIndex.from_product(
+        [["Open", "High", "Low", "Close", "Adj Close", "Volume"], ["AAPL"]]
+    )
+    raw = pd.DataFrame(
+        [
+            [100.0, 101.0, 99.0, 100.5, 100.5, 1000],
+            [101.0, 102.0, 100.0, 101.5, 101.5, 1100],
+        ],
+        index=dates,
+        columns=columns,
+    )
+
+    monkeypatch.setattr("yfinance.download", lambda *args, **kwargs: raw)
+
+    df = YFinanceProvider().fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
+
+    assert list(df.columns) == OHLCV_COLUMNS
+    assert isinstance(df["close"].iloc[0], float)
+    assert df["close"].iloc[0] == 100.5
+    assert df["close"].iloc[1] == 101.5
+
+
+def test_yfinance_empty_download_returns_empty_frame(monkeypatch):
+    monkeypatch.setattr("yfinance.download", lambda *args, **kwargs: pd.DataFrame())
+
+    df = YFinanceProvider().fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
+
+    assert df.empty
+    assert list(df.columns) == OHLCV_COLUMNS
+
+
+def test_yfinance_end_date_is_treated_as_inclusive(monkeypatch):
+    """Regression test: yf.download's `end` is exclusive of that calendar day, so
+    without padding, the last day of any requested range would never be fetched --
+    and since DataRepository's gap-fill logic re-detects that exact 1-day gap on
+    every future ingest, it would retry (and fail) forever instead of just once."""
+    captured = {}
+
+    def fake_download(symbol, start, end, **kwargs):
+        captured["end"] = end
+        all_dates = pd.to_datetime(["2023-01-03", "2023-01-04", "2023-01-05"])
+        exclusive = all_dates[all_dates < pd.Timestamp(end)]
+        return pd.DataFrame(
+            {
+                "Open": [1.0] * len(exclusive),
+                "High": [1.0] * len(exclusive),
+                "Low": [1.0] * len(exclusive),
+                "Close": [1.0] * len(exclusive),
+                "Adj Close": [1.0] * len(exclusive),
+                "Volume": [10] * len(exclusive),
+            },
+            index=exclusive,
+        )
+
+    monkeypatch.setattr("yfinance.download", fake_download)
+
+    requested_end = date(2023, 1, 4)
+    df = YFinanceProvider().fetch_eod("AAPL", date(2023, 1, 3), requested_end)
+
+    assert captured["end"] == requested_end + timedelta(days=1)
+    assert list(df.index.date) == [date(2023, 1, 3), date(2023, 1, 4)]

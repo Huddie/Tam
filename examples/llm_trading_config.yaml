@@ -1,0 +1,64 @@
+data:
+  provider: yfinance    # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
+  store: parquet         # parquet or csv
+  root: data/eod
+
+backtest:
+  tickers: [QQQ, TQQQ, SQQQ]
+  start: "2015-01-01"
+  end: "2024-12-31"
+  cash: 100000
+  report_path: examples/output/llm_trading_report.html
+  strategies:
+    # Requires a locally-served, OpenAI-compatible chat completions endpoint --
+    # ignored below since lora: is set (mlx-lm serves and trains the model
+    # directly, no Ollama needed). "Learning over time" is always in-context
+    # (each prompt includes the model's own recent calls and whether they were
+    # right) *plus*, with lora: on, genuine fine-tuning of a small local
+    # model's weights every `fine_tune_every_n_days` days via mlx-lm (Apple
+    # Silicon only; downloads the base model from Hugging Face the first time
+    # it runs, no network afterward). Real gradient-based training, so expect
+    # real wall-clock cost per fine-tune pass -- pick a period that won't
+    # dominate the backtest.
+    - strategy: llm_trading
+      portfolio_id: llm_trading
+      params:
+        signal_ticker: QQQ
+        long_ticker: TQQQ
+        short_ticker: SQQQ
+        tickers: [QQQ, TQQQ, SQQQ]
+        memory_window: 10
+        lookback: 20
+        lora:
+          model: mlx-community/Qwen2.5-0.5B-Instruct-4bit
+          fine_tune_every_n_days: 20
+          iters: 50
+          learning_rate: 1.0e-5
+          # Persistent so a crash/restart resumes from the latest trained
+          # adapter generation instead of silently starting back at the base
+          # model -- MLXLoRAClient defaults to a throwaway tempdir otherwise.
+          adapter_root: data/lora_adapters/llm_trading
+        buy:
+          qty:
+            pct: 100
+        sell:
+          qty:
+            pct: 100
+    - strategy: ml_walk_forward
+      portfolio_id: ml_walk_forward
+      params:
+        signal_ticker: QQQ
+        long_ticker: TQQQ
+        short_ticker: SQQQ
+        tickers: [QQQ, TQQQ, SQQQ]
+        buy:
+          qty:
+            pct: 100
+        sell:
+          qty:
+            pct: 100
+    - strategy: buy_and_hold
+      portfolio_id: buy_and_hold
+      params:
+        ticker: QQQ
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash

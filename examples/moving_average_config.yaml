@@ -1,0 +1,23 @@
+data:
+  provider: yfinance    # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
+  store: parquet         # parquet or csv
+  root: data/eod
+
+backtest:
+  tickers: [AAPL]
+  start: "2022-01-01"
+  end: "2026-04-01"
+  cash: 10000
+  report_path: examples/output/moving_average_report.html
+  strategies:
+    - strategy: moving_average
+      portfolio_id: moving_average
+      params:
+        ticker: AAPL
+        window: 5
+        qty: 10
+    - strategy: buy_and_hold
+      portfolio_id: buy_and_hold
+      params:
+        ticker: AAPL
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash
