@@ -18,14 +18,15 @@ backtest:
   strategies:
     # Requires a locally-served, OpenAI-compatible chat completions endpoint --
     # ignored below since lora: is set (mlx-lm serves and trains the model
-    # directly, no Ollama needed). "Learning over time" is always in-context
-    # (each prompt includes the model's own recent calls and whether they were
-    # right) *plus*, with lora: on, genuine fine-tuning of a small local
-    # model's weights every `fine_tune_every_n_days` days via mlx-lm (Apple
-    # Silicon only; downloads the base model from Hugging Face the first time
-    # it runs, no network afterward). Real gradient-based training, so expect
-    # real wall-clock cost per fine-tune pass -- pick a period that won't
-    # dominate the backtest.
+    # directly, no Ollama needed). The model is shown a broad set of QQQ
+    # technical signals (multi-window trend, mean reversion, momentum,
+    # volatility -- each as its own trailing history, not just today's value)
+    # and outputs a single number in [-100, 100]: a target net exposure, +
+    # meaning TQQQ, - meaning SQQQ, 0 meaning cash. It's never told a rule for
+    # combining these signals -- that's what it's meant to learn, both
+    # in-context (every prompt shows its own recent calls vs. what the
+    # hindsight-optimal exposure turned out to be) and, with lora: set, via
+    # genuine periodic fine-tuning on that same hindsight-optimal target.
     - strategy: llm_trading
       portfolio_id: llm_trading
       params:
@@ -34,19 +35,53 @@ backtest:
         short_ticker: SQQQ
         tickers: [QQQ, TQQQ, SQQQ]
         memory_window: 10
-        lookback: 20
+        # Each entry looks up a Signal by id from the registry (tam/strategy/signals.py)
+        # and constructs one instance per `config` (singular), or one instance per
+        # entry in `configs` (plural) -- sugar for repeating the same id at several
+        # windows/horizons without writing out a separate entry each time. Omit
+        # `signals:` entirely to fall back to llm_trading.py's DEFAULT_SIGNAL_SPECS,
+        # which covers the same ground as below. Every signal also carries its own
+        # plain-language description, shown to the model alongside its values --
+        # see signals.py for what each one means; nothing here is a rule for
+        # combining them, that's left for the model to learn.
+        signals:
+          - id: sma
+            configs:
+              - {window: 10}
+              - {window: 50}
+              - {window: 100}
+              - {window: 200}
+              - {window: 300}
+          - id: zscore
+            configs:
+              - {window: 20}
+              - {window: 50}
+          - id: rsi
+            config: {period: 14}
+          - id: return
+            configs:
+              - {horizon: 1}
+              - {horizon: 5}
+              - {horizon: 20}
+              - {horizon: 60}
+          - id: volatility
+            config: {window: 20}
+          - id: macd
+          - id: bollinger_pct_b
+          - id: distance_from_high
+            config: {window: 252}
+        history_window: 20     # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use
+        rebalance_threshold_pct: 5   # ignore suggested-exposure changes smaller than this, to avoid churn on noise-level output jitter
+        target_daily_vol: 0.01 # scale for the hindsight-optimal-exposure label: a +1% day -> label +100
         lora:
           model: mlx-community/Qwen2.5-0.5B-Instruct-4bit
           fine_tune_every_n_days: 20
-          iters: 50
-          learning_rate: 1.0e-5
+          iters: 100
+          learning_rate: 1.0e-4
           # Persistent so a crash/restart resumes from the latest trained
           # adapter generation instead of silently starting back at the base
           # model -- MLXLoRAClient defaults to a throwaway tempdir otherwise.
           adapter_root: data/lora_adapters/llm_trading
-        buy:
-          qty:
-            pct: 100
         sell:
           qty:
             pct: 100

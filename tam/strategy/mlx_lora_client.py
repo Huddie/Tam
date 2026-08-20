@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -73,8 +74,11 @@ class MLXLoRAClient:
             return
         from mlx_lm.utils import load
 
+        print(f"[mlx_lora] loading {self._model_path}...", file=sys.stderr, flush=True)
+        start = time.time()
         adapter_path = str(self._current_adapter) if self._current_adapter is not None else None
         self._model, self._tokenizer = load(self._model_path, adapter_path=adapter_path)
+        print(f"[mlx_lora] loaded in {time.time() - start:.1f}s", file=sys.stderr, flush=True)
 
     def _messages_for(self, prompt: str, completion: Optional[str] = None) -> list:
         messages = []
@@ -92,7 +96,7 @@ class MLXLoRAClient:
         templated = self._tokenizer.apply_chat_template(
             self._messages_for(prompt), tokenize=False, add_generation_prompt=True
         )
-        return generate(self._model, self._tokenizer, prompt=templated, verbose=False, max_tokens=8)
+        return generate(self._model, self._tokenizer, prompt=templated, verbose=False, max_tokens=16)
 
     def record_outcome(self, prompt: str, realized_side: str) -> None:
         self._buffer.append((prompt, realized_side.upper()))
@@ -141,7 +145,14 @@ class MLXLoRAClient:
         if resume_from is not None and resume_from.exists():
             args += ["--resume-adapter-file", str(resume_from)]
 
+        print(
+            f"[mlx_lora] fine-tuning generation {self._generation} on {len(self._buffer)} examples "
+            f"({self._iters} iters)...",
+            file=sys.stderr, flush=True,
+        )
+        start = time.time()
         self._run_training(args)
+        print(f"[mlx_lora] generation {self._generation} done in {time.time() - start:.1f}s", file=sys.stderr, flush=True)
 
         self._current_adapter = new_adapter
         self._buffer.clear()
@@ -150,7 +161,10 @@ class MLXLoRAClient:
     def _run_training(self, args: List[str]) -> None:
         import subprocess
 
-        subprocess.run(args, check=True, capture_output=True)
+        # Not captured -- let mlx_lm's own training progress/loss stream straight
+        # to the terminal, so a fine-tune pass (which can take real wall-clock
+        # time) doesn't look identical to a hang.
+        subprocess.run(args, check=True)
 
     def get_state(self) -> dict:
         """Everything not already durable on disk under adapter_root -- the

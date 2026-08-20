@@ -1,6 +1,10 @@
-"""LLM-driven rotation: each day, asks a locally-served language model for a
-LONG/SHORT call on the underlying, based on a compact technical summary --
-same long/short rotation mechanic as trend_rotation.py and ml_walk_forward.py.
+"""LLM-driven rotation: each night, asks a locally-served language model to learn
+how the Nasdaq (tracked via QQQ) tends to trade from a broad set of technical
+signals, and to express its view as a target net exposure percentage -- not a
+binary call. TQQQ/SQQQ are purely the vehicle for expressing that view (3x
+long / 3x short), the same way trend_rotation.py and ml_walk_forward.py signal
+off the clean underlying and trade the leveraged pair; the model never sees
+TQQQ/SQQQ's own price action, only QQQ's.
 
 Talks to whatever's actually serving the model over HTTP using the OpenAI-
 compatible /chat/completions shape, since that's the closest thing to a
@@ -9,42 +13,82 @@ LM Studio, and others all speak it) -- this avoids hard-coding to one specific
 SDK. Swap `base_url`/`model`, or inject a different `llm_client` callable
 entirely, to point at whichever server is actually running.
 
-On "learning over time": genuinely fine-tuning a multi-billion-parameter
-model's weights once per simulated day is impractical -- each pass would cost
-real wall-clock minutes, against microseconds for the classical model in
-ml_walk_forward.py. This strategy always does honest in-context adaptation:
-each prompt includes the model's own recent calls and whether they were
-right, so it can condition on its own track record ("reflection" prompting)
-without any weight update. If `llm_client` also exposes a `record_outcome`
-method, this strategy calls it once per realized outcome, so a client that
-DOES perform real (periodic, not per-day) weight updates -- see
-mlx_lora_client.py -- learns from it, on top of the in-context memory, which
-stays active either way. If a call fails (server down, timeout, unparseable
-response) the strategy falls back to holding whatever side it already holds
-rather than crashing the run.
+Signal design, deliberately *not* pre-digested into a buy/sell rule -- the
+model is meant to learn the relationship between these raw signals and
+forward returns itself, the same way trend_rotation.py's SMA/momentum filters
+encode a relationship a human quant chose by hand. Signals are pluggable: see
+signals.py -- each is registered as @Registry.register(Signal, "id") and
+exposes a name, a plain-language description (handed to the model alongside
+its values, so it knows what the number means), and compute(close). This
+strategy just assembles whichever signals its `signals` config lists (or a
+broad built-in default set spanning trend/mean-reversion/momentum/volatility)
+-- it has no special knowledge of any one signal's meaning. Each signal is
+shown as its own trailing history (last `history_window` days, configurable),
+not just today's value, so the model can see whether it's rising, falling, or
+oscillating -- not just where it happens to sit today.
+
+Output/sizing: the model responds with a single number in [-100, 100] --
+positive = that percentage of the portfolio in TQQQ (bullish), negative =
+that percentage (absolute value) in SQQQ (bearish), 0 = cash. A percentage
+output (vs. a forced LONG/SHORT word) lets the model express low conviction
+by staying near 0 instead of being forced to fully commit to a side every
+day, which is what makes small day-to-day changes in view cheap (a small
+resize) instead of always a full liquidate-and-reverse.
+
+On "learning over time": always does honest in-context adaptation (each
+prompt includes the model's own recent calls, the hindsight-optimal exposure
+each one turned out to be, and its recent calibration error) regardless of
+whether real weight updates are happening. If `llm_client` also exposes a
+`record_outcome` method, this strategy calls it once per realized outcome
+with the hindsight-optimal percentage formatted exactly like the number the
+model is asked to produce -- so a client that DOES perform real (periodic,
+not per-day) weight updates -- see mlx_lora_client.py -- trains on the same
+task format it's asked to perform at inference, not a proxy for it. If a
+call fails (server down, timeout, unparseable response) the strategy falls
+back to holding whatever exposure it already holds rather than crashing the
+run, or to cash if nothing has ever been held yet.
 """
 from __future__ import annotations
 
+import re
 from collections import deque
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
+import pandas as pd
 import requests
 
 from ..data.repository import DataRepository
 from ..events.clock import EOD_TOPIC
 from ..events.types import Event, State
-from ..portfolio.orders import Order, Qty, Side
+from ..portfolio.orders import Order, Qty, QtyBasis, Side
 from ..registry import Registry
 from .base import Strategy
-from .indicators import rsi, sma
+from .signals import Signal, build_signals
 
 LLMClient = Callable[[str], str]
 
+_NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+# A broad default spanning trend, mean reversion, momentum, and volatility --
+# used when a config doesn't specify its own `signals:` list. See signals.py
+# for what each one means; nothing here is specific to this strategy.
+DEFAULT_SIGNAL_SPECS = [
+    {"id": "sma", "configs": [{"window": w} for w in (10, 50, 100, 200, 300)]},
+    {"id": "zscore", "configs": [{"window": w} for w in (20, 50)]},
+    {"id": "rsi", "config": {"period": 14}},
+    {"id": "return", "configs": [{"horizon": h} for h in (1, 5, 20, 60)]},
+    {"id": "volatility", "config": {"window": 20}},
+    {"id": "macd"},
+    {"id": "bollinger_pct_b"},
+    {"id": "distance_from_high", "config": {"window": 252}},
+]
+
 _SYSTEM_PROMPT = (
-    "You are a disciplined systematic trading assistant. Given a technical "
-    "summary of an index and your own recent track record, decide whether to "
-    "be net LONG or net SHORT for the next trading period. "
-    "Respond with exactly one word: LONG or SHORT."
+    "You learn how the Nasdaq (QQQ) trades from technical signals. You trade via "
+    "TQQQ (3x long) and SQQQ (3x short), not QQQ directly. Output a target net "
+    "exposure: + means % of portfolio in TQQQ, - means % in SQQQ, 0 means cash. "
+    "Low conviction should look like a number near 0. Respond with ONLY a number "
+    "in [-100, 100]."
 )
 
 
@@ -76,28 +120,39 @@ class LLMTradingStrategy(Strategy):
         signal_ticker: str,
         long_ticker: str,
         short_ticker: str,
-        buy_qty,
         sell_qty,
         portfolio_id: str,
         llm_client: Optional[LLMClient] = None,
         base_url: str = "http://localhost:11434/v1/chat/completions",
         model: str = "qwen2.5:7b",
         memory_window: int = 10,
-        lookback: int = 20,
+        signals: Optional[List[Signal]] = None,
+        history_window: int = 20,
+        rebalance_threshold_pct: float = 5.0,
+        target_daily_vol: float = 0.01,
     ):
         super().__init__()
         self._repository = repository
         self._signal_ticker = signal_ticker
         self._long_ticker = long_ticker
         self._short_ticker = short_ticker
-        self._buy_qty = Qty.of(buy_qty)
         self._sell_qty = Qty.of(sell_qty)
         self._portfolio_id = portfolio_id
         self._llm_client = llm_client or _http_llm_client(base_url, model)
-        self._lookback = lookback
         self._memory = deque(maxlen=memory_window)
-        self._held = None  # None | "long" | "short"
-        self._pending = None  # (prompt, predicted_side, price_as_of_pending) awaiting tomorrow's outcome
+        self._signals = signals if signals is not None else build_signals(DEFAULT_SIGNAL_SPECS)
+        self._history_window = history_window
+        self._rebalance_threshold_pct = rebalance_threshold_pct
+        self._target_daily_vol = target_daily_vol
+        # Query enough history for every signal to be able to fully populate once
+        # it's warmed up (max), but only *require* the fastest-warming signal (min)
+        # before starting to call the model and accumulate training outcomes --
+        # slower signals show a placeholder in the prompt until their own window
+        # fills, rather than blocking the whole strategy on the slowest one.
+        self._max_required_history = max(s.required_history() for s in self._signals) + self._history_window
+        self._min_required_history = min(s.required_history() for s in self._signals)
+        self._current_pct = 0.0  # signed net exposure: + long TQQQ, - short SQQQ, 0 cash
+        self._pending = None  # (prompt, predicted_pct, price_as_of_pending) awaiting tomorrow's outcome
 
     def state_change(self, state: State) -> None:
         if state is State.RUNNING:
@@ -105,97 +160,105 @@ class LLMTradingStrategy(Strategy):
 
     def on_event(self, event: Event) -> None:
         as_of = event.payload
-        history = self._repository.query(self._signal_ticker, end=as_of).tail(self._lookback + 1)
-        if len(history) < self._lookback + 1:
+        history = self._repository.query(self._signal_ticker, end=as_of).tail(self._max_required_history)
+        if len(history) < self._min_required_history:
             return
 
         close = history["close"]
         current_price = close.iloc[-1]
 
         if self._pending is not None:
-            pending_prompt, predicted_side, prior_price = self._pending
-            actual_side = "long" if current_price > prior_price else "short"
-            self._memory.append(
-                {"predicted": predicted_side, "actual": actual_side, "correct": predicted_side == actual_side}
-            )
-            record_outcome = getattr(self._llm_client, "record_outcome", None)
-            if record_outcome is not None:
-                record_outcome(pending_prompt, actual_side)
+            self._resolve_pending(current_price)
 
         prompt = self._build_prompt(close)
-        target = self._ask_llm(prompt) or self._held or "long"
-        self._pending = (prompt, target, current_price)
+        target_pct = self._ask_llm(prompt)
+        if target_pct is None:
+            target_pct = self._current_pct  # fall back to holding current exposure
+        self._pending = (prompt, target_pct, current_price)
 
-        if target != self._held:
-            self._flip_to(target)
+        self._rebalance_to(target_pct)
 
-    def _summarize(self, close) -> dict:
-        price = close.iloc[-1]
-        ret_5 = close.iloc[-1] / close.iloc[-6] - 1
-        ret_full = close.iloc[-1] / close.iloc[0] - 1
-        volatility = close.pct_change().std()
-        rsi_period = min(14, len(close) - 1)
-        rsi_value = float(rsi(close, rsi_period).iloc[-1]) if rsi_period >= 2 else None
-        sma_value = float(sma(close, len(close)).iloc[-1])
-        return {
-            "price": float(price),
-            "return_5d": float(ret_5),
-            "return_window": float(ret_full),
-            "volatility": float(volatility),
-            "rsi": rsi_value,
-            "price_vs_sma": float(price / sma_value - 1),
-        }
+    def _resolve_pending(self, current_price: float) -> None:
+        pending_prompt, predicted_pct, prior_price = self._pending
+        realized_return = current_price / prior_price - 1
+        ideal_pct = self._clip(realized_return / self._target_daily_vol * 100)
+        self._memory.append({"predicted": predicted_pct, "ideal": ideal_pct, "error": abs(predicted_pct - ideal_pct)})
 
-    def _build_prompt(self, close) -> str:
-        summary = self._summarize(close)
-        summary_lines = "\n".join(f"- {key}: {value:.4f}" for key, value in summary.items() if value is not None)
+        record_outcome = getattr(self._llm_client, "record_outcome", None)
+        if record_outcome is not None:
+            record_outcome(pending_prompt, f"{ideal_pct:+.0f}")
+
+    @staticmethod
+    def _clip(pct: float) -> float:
+        return max(-100.0, min(100.0, pct))
+
+    def _build_prompt(self, close: pd.Series) -> str:
+        signal_lines = []
+        for signal in self._signals:
+            values = signal.compute(close).tail(self._history_window)
+            if values.empty:
+                body = f"n/a (needs {signal.required_history()}d)"
+            else:
+                body = f"last {len(values)}d: " + ", ".join(f"{v:.4f}" for v in values)
+            signal_lines.append(f"- {signal.name}: {signal.description}\n  {body}")
+        signal_block = "\n".join(signal_lines)
 
         if self._memory:
             track_record = "\n".join(
-                f"- predicted {m['predicted'].upper()}, actual was {m['actual'].upper()} "
-                f"({'correct' if m['correct'] else 'wrong'})"
+                f"- {m['predicted']:+.0f}% vs ideal {m['ideal']:+.0f}% (err {m['error']:.0f})"
                 for m in self._memory
             )
-            hit_rate = sum(m["correct"] for m in self._memory) / len(self._memory)
-            track_record += f"\nRecent hit rate: {hit_rate:.0%} over the last {len(self._memory)} calls."
+            mae = sum(m["error"] for m in self._memory) / len(self._memory)
+            track_record += f"\nMAE: {mae:.0f} over last {len(self._memory)}."
         else:
-            track_record = "(no track record yet)"
+            track_record = "(none yet)"
 
         return (
-            f"Technical summary for {self._signal_ticker}:\n{summary_lines}\n\n"
-            f"Your recent track record:\n{track_record}\n\n"
-            "Respond with exactly one word: LONG or SHORT."
+            f"Nasdaq (QQQ) signals:\n{signal_block}\n\n"
+            f"Calibration:\n{track_record}\n\n"
+            "Respond with ONLY a number in [-100, 100] -- your suggested net exposure."
         )
 
-    def _ask_llm(self, prompt: str) -> Optional[str]:
+    def _ask_llm(self, prompt: str) -> Optional[float]:
         try:
             raw = self._llm_client(prompt)
         except Exception:
             return None
 
-        text = raw.strip().upper()
-        has_long, has_short = "LONG" in text, "SHORT" in text
-        if has_long and not has_short:
-            return "long"
-        if has_short and not has_long:
-            return "short"
-        return None
+        match = _NUMBER_RE.search(raw)
+        if match is None:
+            return None
+        return self._clip(float(match.group()))
 
-    def _flip_to(self, target: str) -> None:
-        exit_ticker = {"long": self._long_ticker, "short": self._short_ticker}.get(self._held)
-        if exit_ticker is not None:
+    def _rebalance_to(self, target_pct: float) -> None:
+        target_pct = self._clip(target_pct)
+        if abs(target_pct - self._current_pct) < self._rebalance_threshold_pct:
+            return
+
+        current_ticker = self._ticker_for(self._current_pct)
+        if current_ticker is not None:
             self.trade.stocks(
-                [Order(ticker=exit_ticker, side=Side.SELL, qty=self._sell_qty, portfolio=self._portfolio_id)]
+                [Order(ticker=current_ticker, side=Side.SELL, qty=self._sell_qty, portfolio=self._portfolio_id)]
             )
-        entry_ticker = self._long_ticker if target == "long" else self._short_ticker
-        self.trade.stocks(
-            [Order(ticker=entry_ticker, side=Side.BUY, qty=self._buy_qty, portfolio=self._portfolio_id)]
-        )
-        self._held = target
+
+        target_ticker = self._ticker_for(target_pct)
+        if target_ticker is not None:
+            buy_qty = Qty(pct=abs(target_pct), basis=QtyBasis.CASH)
+            self.trade.stocks(
+                [Order(ticker=target_ticker, side=Side.BUY, qty=buy_qty, portfolio=self._portfolio_id)]
+            )
+        self._current_pct = target_pct
+
+    def _ticker_for(self, pct: float) -> Optional[str]:
+        if pct > 0:
+            return self._long_ticker
+        if pct < 0:
+            return self._short_ticker
+        return None
 
     def get_state(self) -> dict:
         state = {
-            "held": self._held,
+            "current_pct": self._current_pct,
             "pending": self._pending,
             "memory": list(self._memory),
         }
@@ -205,7 +268,7 @@ class LLMTradingStrategy(Strategy):
         return state
 
     def load_state(self, state: dict) -> None:
-        self._held = state["held"]
+        self._current_pct = state["current_pct"]
         self._pending = state["pending"]
         self._memory = deque(state["memory"], maxlen=self._memory.maxlen)
         client_load_state = getattr(self._llm_client, "load_state", None)
@@ -215,8 +278,7 @@ class LLMTradingStrategy(Strategy):
 
 @Registry.register(Strategy, "llm_trading")
 def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cash: float) -> LLMTradingStrategy:
-    buy_qty = params["buy"]["qty"] if "buy" in params else params["qty"]
-    sell_qty = params["sell"]["qty"] if "sell" in params else params["qty"]
+    sell_qty = params["sell"]["qty"] if "sell" in params else params.get("qty", {"pct": 100})
 
     llm_client = None
     lora_params = params.get("lora")
@@ -237,12 +299,14 @@ def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cas
         params["signal_ticker"],
         params["long_ticker"],
         params["short_ticker"],
-        buy_qty,
         sell_qty,
         portfolio_id,
         llm_client=llm_client,
         base_url=params.get("base_url", "http://localhost:11434/v1/chat/completions"),
         model=params.get("model", "qwen2.5:7b"),
         memory_window=params.get("memory_window", 10),
-        lookback=params.get("lookback", 20),
+        signals=build_signals(params.get("signals") or DEFAULT_SIGNAL_SPECS),
+        history_window=params.get("history_window", 20),
+        rebalance_threshold_pct=params.get("rebalance_threshold_pct", 5.0),
+        target_daily_vol=params.get("target_daily_vol", 0.01),
     )
