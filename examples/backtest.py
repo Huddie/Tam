@@ -40,6 +40,8 @@ class BacktestSettings:
     cash: float
     report_path: str
     strategies: list
+    checkpoint_path: str = None
+    checkpoint_every: int = 1
 
 
 def _build_repository(data_settings: DataSettings) -> DataRepository:
@@ -106,7 +108,11 @@ def run(config_path: Path) -> None:
     )
 
     harness = BacktestHarness(repository, strategies, portfolios, dates)
-    report = harness.run(on_progress=_print_progress)
+    report = harness.run(
+        on_progress=_print_progress,
+        checkpoint_path=backtest_settings.checkpoint_path,
+        checkpoint_every=backtest_settings.checkpoint_every,
+    )
 
     print(report.summary_all())
 

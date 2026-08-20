@@ -40,3 +40,20 @@ class Strategy(ABC):
 
     @abstractmethod
     def on_event(self, event: Event) -> None: ...
+
+    def get_state(self) -> dict:
+        """Mutable state to persist across a checkpoint/resume, beyond what the
+        constructor args already capture (those get rebuilt fresh from the same
+        config on resume). Override for any field that changes during a run and
+        isn't rederivable from a freshly constructed instance -- e.g. which side
+        is currently held, an online model's learned weights, in-context memory.
+
+        Must be pickle-safe with self-contained values, not live handles (a
+        DataRepository, an HTTP client, a loaded model runtime) -- those get
+        reinjected via the constructor when the strategy is rebuilt for resume.
+        """
+        return {}
+
+    def load_state(self, state: dict) -> None:
+        """Restore state previously returned by get_state(), applied on top of a
+        freshly constructed instance built from the same config."""

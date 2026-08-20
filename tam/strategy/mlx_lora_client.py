@@ -151,3 +151,22 @@ class MLXLoRAClient:
         import subprocess
 
         subprocess.run(args, check=True, capture_output=True)
+
+    def get_state(self) -> dict:
+        """Everything not already durable on disk under adapter_root -- the
+        unflushed outcome buffer and where we are in the fine-tune cadence --
+        so a crash between fine-tune passes doesn't lose partial progress."""
+        return {
+            "buffer": list(self._buffer),
+            "days_since_fine_tune": self._days_since_fine_tune,
+            "generation": self._generation,
+            "current_adapter": str(self._current_adapter) if self._current_adapter else None,
+        }
+
+    def load_state(self, state: dict) -> None:
+        self._buffer = list(state["buffer"])
+        self._days_since_fine_tune = state["days_since_fine_tune"]
+        self._generation = state["generation"]
+        current_adapter = state["current_adapter"]
+        self._current_adapter = Path(current_adapter) if current_adapter else None
+        self._model = None  # force a reload so the next call picks up the restored adapter

@@ -217,6 +217,22 @@ class TrendRotationStrategy(Strategy):
         self._entry_peak = self._current_price(entry_ticker, as_of)
         self._last_exposure_pct = exposure_pct
 
+    def get_state(self) -> dict:
+        return {
+            "held": self._held,
+            "blocked_side": self._blocked_side,
+            "cooldown_remaining": self._cooldown_remaining,
+            "entry_peak": self._entry_peak,
+            "last_exposure_pct": self._last_exposure_pct,
+        }
+
+    def load_state(self, state: dict) -> None:
+        self._held = state["held"]
+        self._blocked_side = state["blocked_side"]
+        self._cooldown_remaining = state["cooldown_remaining"]
+        self._entry_peak = state["entry_peak"]
+        self._last_exposure_pct = state["last_exposure_pct"]
+
 
 @Registry.register(Strategy, "trend_rotation")
 def build_trend_rotation(repository: DataRepository, portfolio_id: str, params, cash: float) -> TrendRotationStrategy:

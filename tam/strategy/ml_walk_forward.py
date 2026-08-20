@@ -133,6 +133,22 @@ class MLWalkForwardStrategy(Strategy):
         )
         self._held = target
 
+    def get_state(self) -> dict:
+        return {
+            "held": self._held,
+            "scaler": self._scaler,
+            "model": self._model,
+            "fitted": self._fitted,
+            "pending": self._pending,
+        }
+
+    def load_state(self, state: dict) -> None:
+        self._held = state["held"]
+        self._scaler = state["scaler"]
+        self._model = state["model"]
+        self._fitted = state["fitted"]
+        self._pending = state["pending"]
+
 
 @Registry.register(Strategy, "ml_walk_forward")
 def build_ml_walk_forward(

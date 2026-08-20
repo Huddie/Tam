@@ -105,3 +105,35 @@ def test_trend_rotation_requires_full_lookback_before_trading(tmp_path):
     harness.run()
 
     assert portfolio.trades == []
+
+
+def test_get_state_and_load_state_round_trip_preserves_all_overlay_fields(tmp_path):
+    # A choppy-then-crashing series exercises the vol-target sizing and the
+    # circuit breaker together, so held/blocked_side/cooldown/peak/exposure are
+    # all non-default by the time we snapshot state.
+    closes = [10, 10, 10, 10, 10, 15, 8, 16, 9, 17, 5, 5, 5, 5, 5]
+    dates = [date(2024, 1, 2) + timedelta(days=i) for i in range(len(closes))]
+    repo = _setup(tmp_path, [float(c) for c in closes], dates)
+
+    def _build():
+        return TrendRotationStrategy(
+            repo, "QQQ", "TQQQ", "SQQQ", trend_window=5, momentum_window=2, buy_qty=10, sell_qty=10,
+            portfolio_id="main", target_vol=0.15, vol_window=5, max_position_drawdown=0.2,
+        )
+
+    strategy = _build()
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    # Sanity check the scenario actually exercised the overlays, not just defaults.
+    assert (strategy._blocked_side, strategy._last_exposure_pct) != (None, None)
+
+    restored = _build()
+    restored.load_state(strategy.get_state())
+
+    assert restored._held == strategy._held
+    assert restored._blocked_side == strategy._blocked_side
+    assert restored._cooldown_remaining == strategy._cooldown_remaining
+    assert restored._entry_peak == strategy._entry_peak
+    assert restored._last_exposure_pct == strategy._last_exposure_pct

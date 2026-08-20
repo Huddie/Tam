@@ -1,8 +1,12 @@
 """Wires strategies, portfolios, and market data into a day-by-day event loop."""
 from __future__ import annotations
 
+import os
+import pickle
+import tempfile
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence
 
 from ..data.repository import DataRepository
@@ -57,25 +61,75 @@ class BacktestHarness:
             raise LookupError(f"no price data for {ticker} on or before {as_of}")
         return float(history.iloc[-1][CLOSE])
 
-    def run(self, on_progress: Optional[OnProgress] = None) -> Report:
+    def run(
+        self,
+        on_progress: Optional[OnProgress] = None,
+        checkpoint_path: Optional[str] = None,
+        checkpoint_every: int = 1,
+    ) -> Report:
+        """Run the full date range. If checkpoint_path is given: resume from it if
+        it already exists (skipping every day already completed), and write a
+        fresh checkpoint every `checkpoint_every` completed days -- so a crash
+        (bad data, a flaky external model server, anything) loses at most that
+        many days of work, not the whole run. The checkpoint is removed on a
+        clean finish, since it exists purely to resume an interrupted run of
+        THIS exact strategies/portfolios/dates configuration -- rerunning the
+        same config from scratch after success should start fresh, not replay
+        a stale checkpoint from a previous, unrelated run.
+        """
+        snapshots: List[dict] = []
+        completed_days = 0
+        if checkpoint_path is not None and Path(checkpoint_path).exists():
+            completed_days, snapshots = self._load_checkpoint(checkpoint_path)
+
         for strategy in self._strategies:
             strategy.state_change(State.START)
         for strategy in self._strategies:
             strategy.state_change(State.RUNNING)
 
-        snapshots: List[dict] = []
         total_days = len(self._clock.dates)
         for day_index, current_date in enumerate(self._clock.dates, start=1):
+            if day_index <= completed_days:
+                continue
             self._trader.current_date = current_date
             self._clock.tick(current_date)
             snapshots.extend(self._snapshot(current_date))
             if on_progress is not None:
                 on_progress(Progress(day_index, total_days, current_date))
+            if checkpoint_path is not None and day_index % checkpoint_every == 0:
+                self._write_checkpoint(checkpoint_path, day_index, snapshots)
 
         for strategy in self._strategies:
             strategy.state_change(State.END)
 
+        if checkpoint_path is not None:
+            Path(checkpoint_path).unlink(missing_ok=True)
+
         return Report(snapshots, self._trades())
+
+    def _write_checkpoint(self, checkpoint_path: str, day_index: int, snapshots: List[dict]) -> None:
+        state = {
+            "day_index": day_index,
+            "snapshots": snapshots,
+            "portfolios": {portfolio_id: p.get_state() for portfolio_id, p in self._portfolios.items()},
+            "strategies": [s.get_state() for s in self._strategies],
+        }
+        path = Path(checkpoint_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Write-then-rename so a crash mid-write can't corrupt the last good checkpoint.
+        fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+        with os.fdopen(fd, "wb") as handle:
+            pickle.dump(state, handle)
+        os.replace(tmp_name, path)
+
+    def _load_checkpoint(self, checkpoint_path: str) -> tuple[int, List[dict]]:
+        with open(checkpoint_path, "rb") as handle:
+            state = pickle.load(handle)
+        for portfolio_id, portfolio_state in state["portfolios"].items():
+            self._portfolios[portfolio_id].load_state(portfolio_state)
+        for strategy, strategy_state in zip(self._strategies, state["strategies"]):
+            strategy.load_state(strategy_state)
+        return state["day_index"], state["snapshots"]
 
     def _trades(self) -> List[dict]:
         return [

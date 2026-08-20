@@ -9,6 +9,12 @@ backtest:
   end: "2024-12-31"
   cash: 100000
   report_path: examples/output/llm_trading_report.html
+  # Checkpointed every day (cheap: a small pickle of portfolio + strategy state).
+  # If this run crashes -- a bad data day, a flaky local model server, anything --
+  # rerunning this same config resumes from the last completed day instead of
+  # restarting the whole (LLM-inference- and fine-tune-heavy) backtest from day one.
+  checkpoint_path: examples/output/.llm_trading_checkpoint.pkl
+  checkpoint_every: 1
   strategies:
     # Requires a locally-served, OpenAI-compatible chat completions endpoint --
     # ignored below since lora: is set (mlx-lm serves and trains the model

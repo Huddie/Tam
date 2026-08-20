@@ -62,6 +62,12 @@ class MACrossoverStrategy(Strategy):
             )
             self._held = False
 
+    def get_state(self) -> dict:
+        return {"held": self._held}
+
+    def load_state(self, state: dict) -> None:
+        self._held = state["held"]
+
 
 @Registry.register(Strategy, "ma_crossover")
 def build_ma_crossover(repository: DataRepository, portfolio_id: str, params, cash: float) -> MACrossoverStrategy:

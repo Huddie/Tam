@@ -28,6 +28,12 @@ class BuyAndHoldStrategy(Strategy):
         )
         self._bought = True
 
+    def get_state(self) -> dict:
+        return {"bought": self._bought}
+
+    def load_state(self, state: dict) -> None:
+        self._bought = state["bought"]
+
 
 @Registry.register(Strategy, "buy_and_hold")
 def build_buy_and_hold(repository, portfolio_id: str, params, cash: float) -> BuyAndHoldStrategy:

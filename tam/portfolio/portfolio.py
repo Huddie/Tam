@@ -67,3 +67,18 @@ class Portfolio:
     def market_value(self, prices: Dict[str, float]) -> float:
         holdings = sum(p.qty * prices.get(t, 0.0) for t, p in self._positions.items())
         return self.cash + holdings
+
+    def get_state(self) -> dict:
+        return {
+            "cash": self.cash,
+            "positions": {t: (p.qty, p.avg_price) for t, p in self._positions.items()},
+            "trades": [trade.model_dump() for trade in self._trades],
+        }
+
+    def load_state(self, state: dict) -> None:
+        self.cash = state["cash"]
+        self._positions = {
+            ticker: Position(ticker=ticker, qty=qty, avg_price=avg_price)
+            for ticker, (qty, avg_price) in state["positions"].items()
+        }
+        self._trades = [Trade(**row) for row in state["trades"]]

@@ -193,6 +193,25 @@ class LLMTradingStrategy(Strategy):
         )
         self._held = target
 
+    def get_state(self) -> dict:
+        state = {
+            "held": self._held,
+            "pending": self._pending,
+            "memory": list(self._memory),
+        }
+        client_get_state = getattr(self._llm_client, "get_state", None)
+        if client_get_state is not None:
+            state["llm_client"] = client_get_state()
+        return state
+
+    def load_state(self, state: dict) -> None:
+        self._held = state["held"]
+        self._pending = state["pending"]
+        self._memory = deque(state["memory"], maxlen=self._memory.maxlen)
+        client_load_state = getattr(self._llm_client, "load_state", None)
+        if client_load_state is not None and "llm_client" in state:
+            client_load_state(state["llm_client"])
+
 
 @Registry.register(Strategy, "llm_trading")
 def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cash: float) -> LLMTradingStrategy:

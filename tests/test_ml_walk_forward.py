@@ -129,3 +129,27 @@ def test_features_have_expected_shape_and_no_nans(tmp_path):
 
     assert features.shape == (1, 6)
     assert not np.isnan(features).any()
+
+
+def test_get_state_and_load_state_round_trip_preserves_the_fitted_model(tmp_path):
+    closes = _trending_closes(60)
+    dates = [date(2024, 1, 2) + timedelta(days=i) for i in range(len(closes))]
+    repo = _setup(tmp_path, closes, dates)
+
+    strategy, _ = _run(repo, dates, seed=42)
+    assert strategy._fitted is True
+
+    restored = MLWalkForwardStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main", seed=42
+    )
+    restored.load_state(strategy.get_state())
+
+    assert restored._held == strategy._held
+    assert restored._fitted == strategy._fitted
+    assert restored._pending[1] == strategy._pending[1]  # price half of the pending pair
+
+    history = repo.query("QQQ").tail(25)
+    features = strategy._compute_features(history["close"])
+    # The restored classifier/scaler must predict identically to the original --
+    # not just "some" state, but the actual learned weights.
+    assert restored._predict(features) == strategy._predict(features)

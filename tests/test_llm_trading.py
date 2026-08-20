@@ -218,3 +218,70 @@ def test_plain_callable_client_without_record_outcome_still_works(tmp_path):
     harness.run()  # must not raise despite the plain callable having no record_outcome
 
     assert strategy._held == "long"
+
+
+def test_get_state_and_load_state_round_trip_preserves_memory_and_pending(tmp_path):
+    closes = [100.0 + i for i in range(30)]
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "LONG", lookback=5, memory_window=3,
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    assert len(strategy._memory) > 0
+
+    restored = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "LONG", lookback=5, memory_window=3,
+    )
+    restored.load_state(strategy.get_state())
+
+    assert restored._held == strategy._held
+    assert restored._pending == strategy._pending
+    assert list(restored._memory) == list(strategy._memory)
+    assert restored._memory.maxlen == 3
+
+
+def test_get_state_delegates_to_a_client_that_supports_it(tmp_path):
+    closes = [100.0 + i for i in range(30)]
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+
+    class StatefulClient:
+        def __init__(self):
+            self.loaded_with = None
+
+        def __call__(self, prompt):
+            return "LONG"
+
+        def get_state(self):
+            return {"trained_on": 7}
+
+        def load_state(self, state):
+            self.loaded_with = state
+
+    client = StatefulClient()
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main",
+        llm_client=client, lookback=5,
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    state = strategy.get_state()
+    assert state["llm_client"] == {"trained_on": 7}
+
+    restored_client = StatefulClient()
+    restored = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main",
+        llm_client=restored_client, lookback=5,
+    )
+    restored.load_state(state)
+
+    assert restored_client.loaded_with == {"trained_on": 7}
