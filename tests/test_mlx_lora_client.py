@@ -64,6 +64,37 @@ def test_record_outcome_triggers_fine_tune_after_period(tmp_path, monkeypatch):
     assert client._current_adapter is not None
 
 
+def test_fine_tune_never_passes_mask_prompt_and_defaults_to_grad_checkpoint(tmp_path, monkeypatch):
+    # --mask-prompt is deliberately never passed: mlx_lm computes its mask
+    # offset by re-templating everything but the assistant turn, and for our
+    # very short completions ("+42") that can consume the whole sequence,
+    # producing 0 trained tokens and NaN loss (confirmed against mlx_lm's own
+    # ChatDataset.process). --grad-checkpoint is on by default since fine-tuning
+    # this model was observed using 25GB+ without it.
+    client = MLXLoRAClient(adapter_root=str(tmp_path), fine_tune_every_n_days=1)
+    _stub_ensure_loaded(monkeypatch)
+
+    calls = []
+    monkeypatch.setattr(MLXLoRAClient, "_run_training", lambda self, args: calls.append(args))
+
+    client.record_outcome("prompt", "long")
+
+    assert "--mask-prompt" not in calls[0]
+    assert "--grad-checkpoint" in calls[0]
+
+
+def test_grad_checkpoint_can_be_disabled(tmp_path, monkeypatch):
+    client = MLXLoRAClient(adapter_root=str(tmp_path), fine_tune_every_n_days=1, grad_checkpoint=False)
+    _stub_ensure_loaded(monkeypatch)
+
+    calls = []
+    monkeypatch.setattr(MLXLoRAClient, "_run_training", lambda self, args: calls.append(args))
+
+    client.record_outcome("prompt", "long")
+
+    assert "--grad-checkpoint" not in calls[0]
+
+
 def test_fine_tune_writes_realized_outcome_as_the_training_target(tmp_path, monkeypatch):
     client = MLXLoRAClient(adapter_root=str(tmp_path), fine_tune_every_n_days=1, system_prompt="be disciplined")
     _stub_ensure_loaded(monkeypatch)
@@ -147,8 +178,8 @@ def test_run_training_reports_parsed_iter_progress(tmp_path):
 
     iter_calls = [c for c in calls if c[1] is not None]
     assert iter_calls == [
-        ("fine-tuning gen 0: Train loss 2.500", 1, 100),
-        ("fine-tuning gen 0: Train loss 2.100", 2, 100),
+        ("fine-tuning gen 0: loss 2.500", 1, 100),
+        ("fine-tuning gen 0: loss 2.100", 2, 100),
     ]
 
 

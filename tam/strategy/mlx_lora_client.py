@@ -31,6 +31,7 @@ from typing import List, Optional, Tuple
 from ..status import report
 
 _ITER_RE = re.compile(r"Iter (\d+): (.*)")
+_LOSS_RE = re.compile(r"Train loss ([\w.+-]+)")
 
 
 class MLXLoRAClient:
@@ -44,6 +45,7 @@ class MLXLoRAClient:
         adapter_root: Optional[str] = None,
         iters: int = 50,
         learning_rate: float = 1e-5,
+        grad_checkpoint: bool = True,
     ):
         self._model_path = model
         self._system_prompt = system_prompt
@@ -52,6 +54,7 @@ class MLXLoRAClient:
         self._adapter_root.mkdir(parents=True, exist_ok=True)
         self._iters = iters
         self._learning_rate = learning_rate
+        self._grad_checkpoint = grad_checkpoint
 
         self._model = None
         self._tokenizer = None
@@ -146,8 +149,15 @@ class MLXLoRAClient:
             "0",
             "--steps-per-eval",
             str(self._iters + 1),
-            "--mask-prompt",
         ]
+        # No --mask-prompt: mlx_lm computes the mask offset by re-templating
+        # everything except the assistant turn and diffing token counts --
+        # for our very short completions ("+42"), that offset calculation can
+        # end up >= the full sequence length, masking 100% of tokens and
+        # producing "Trained Tokens 0" / NaN loss. Training on the full
+        # sequence guarantees a real, non-zero loss every pass.
+        if self._grad_checkpoint:
+            args.append("--grad-checkpoint")  # trades speed for memory -- fine-tuning a 0.5B model has been seen using 25GB+ without it
         resume_from = self._current_adapter / "adapters.safetensors" if self._current_adapter else None
         if resume_from is not None and resume_from.exists():
             args += ["--resume-adapter-file", str(resume_from)]
@@ -178,7 +188,9 @@ class MLXLoRAClient:
             match = _ITER_RE.match(line.strip())
             if match:
                 iteration, detail = int(match.group(1)), match.group(2)
-                report(f"fine-tuning gen {self._generation}: {detail}", iteration, self._iters)
+                loss_match = _LOSS_RE.search(detail)
+                loss_text = f"loss {loss_match.group(1)}" if loss_match else "training"
+                report(f"fine-tuning gen {self._generation}: {loss_text}", iteration, self._iters)
         process.wait()
 
         if process.returncode != 0:

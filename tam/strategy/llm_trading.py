@@ -292,6 +292,7 @@ def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cas
             iters=lora_params.get("iters", 50),
             learning_rate=lora_params.get("learning_rate", 1e-5),
             adapter_root=lora_params.get("adapter_root"),
+            grad_checkpoint=lora_params.get("grad_checkpoint", True),
         )
 
     return LLMTradingStrategy(
