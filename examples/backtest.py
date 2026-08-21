@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import sys
+import tempfile
 import threading
 from datetime import date
 from pathlib import Path
@@ -75,6 +76,16 @@ def _artifacts_dir(config_path: Path) -> Path:
     config living anywhere else (e.g. a test's tmp_path) would write real files
     into this repo's examples/output/ instead of staying self-contained."""
     return config_path.parent / "output" / config_path.stem / _config_hash(config_path)
+
+
+def _ephemeral_checkpoint_path() -> str:
+    """--no-save + --mode live still needs *some* checkpoint file -- it's the
+    only channel the live dashboard has to poll the background run's progress
+    -- but it belongs in a throwaway tempdir, not the config's persistent
+    artifacts dir, and isn't meant to survive a crash for resuming: a fresh
+    path every run, cleaned up by the OS eventually, not something anyone
+    would know to point --checkpoint-path at afterward."""
+    return str(Path(tempfile.mkdtemp(prefix="tam_live_")) / "checkpoint.pkl")
 
 
 def _apply_artifact_defaults(backtest_settings: "BacktestSettings", artifacts_dir: Path) -> None:
@@ -165,7 +176,7 @@ def _print_banner(config_path: Path, config_hash: str, artifacts_dir: Path) -> N
     Console().print(Panel(grid, title="[bold]Backtest[/bold]", border_style="cyan", expand=False))
 
 
-def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int = 8050) -> None:
+def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int = 8050, no_save: bool = False) -> None:
     config_hash = _config_hash(config_path)
     artifacts_dir = _artifacts_dir(config_path)
     _print_banner(config_path, config_hash, artifacts_dir)
@@ -175,6 +186,8 @@ def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int
     backtest_settings = cfg.backtest(BacktestSettings)
     _validate_tickers_declared(backtest_settings)
     _apply_artifact_defaults(backtest_settings, artifacts_dir)
+    if no_save:
+        backtest_settings.checkpoint_path = _ephemeral_checkpoint_path() if mode == "live" else None
 
     repository = _build_repository(data_settings)
     start = date.fromisoformat(backtest_settings.start)
@@ -321,8 +334,21 @@ def main() -> None:
         default=8050,
         help="Port for the --mode live dashboard (default 8050). Change this if that port's already in use.",
     )
+    parser.add_argument(
+        "--no-save",
+        action="store_true",
+        help=(
+            "Skip writing a resumable checkpoint -- a crash mid-run loses all progress "
+            "with no way to resume, instead of picking back up from the last checkpointed "
+            "day. The final HTML report (and --mode live's dashboard) are unaffected; "
+            "live mode still needs a checkpoint file to drive the dashboard, so it uses a "
+            "throwaway temp one instead of the config's persistent artifacts dir. Only "
+            "useful for short/disposable runs -- for anything long or unattended, leaving "
+            "checkpointing on costs almost nothing and saves you from starting over."
+        ),
+    )
     args = parser.parse_args()
-    run(args.config, mode=args.mode, verbose=args.log_level == "verbose", port=args.port)
+    run(args.config, mode=args.mode, verbose=args.log_level == "verbose", port=args.port, no_save=args.no_save)
 
 
 if __name__ == "__main__":

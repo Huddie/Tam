@@ -384,6 +384,8 @@ def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cas
             learning_rate=lora_params.get("learning_rate", 1e-5),
             adapter_root=lora_params.get("adapter_root"),
             grad_checkpoint=lora_params.get("grad_checkpoint", True),
+            max_seq_length=lora_params.get("max_seq_length", 4096),
+            batch_size=lora_params.get("batch_size"),
         )
 
     return LLMTradingStrategy(

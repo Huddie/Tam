@@ -3,7 +3,13 @@ vars:
   long_ticker: TQQQ
   short_ticker: SQQQ
   benchmark_ticker: SPY
+  llm_tickers: [QQQ, TQQQ, SQQQ]
   all_tickers: [QQQ, TQQQ, SQQQ, SPY]
+  model: mlx-community/Qwen2.5-1.5B-Instruct-4bit
+  report_path: examples/output/llm_trading_report.html
+  start: "2010-03-01"
+  end: "2025-12-31"
+  cash: 100000000
 
 data:
   provider: yfinance     # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
@@ -12,10 +18,10 @@ data:
 
 backtest:
   tickers: "{{vars.all_tickers}}"
-  start: "2010-03-01"
-  end: "2025-12-31"
-  cash: 100000000
-  report_path: examples/output/llm_trading_report.html
+  start: "{{vars.start}}"
+  end: "{{vars.end}}"
+  cash: "{{vars.cash}}"
+  report_path: "{{vars.report_path}}"
   checkpoint_every: 1
   price_chart:
     tickers: "{{vars.all_tickers}}"
@@ -26,28 +32,30 @@ backtest:
         signal_ticker: "{{vars.signal_ticker}}"
         long_ticker: "{{vars.long_ticker}}"
         short_ticker: "{{vars.short_ticker}}"
-        tickers: [QQQ, TQQQ, SQQQ]
+        tickers: "{{vars.llm_tickers}}"
         memory_window: 90
         signals: << shared/llm_signals.yaml#signals
-        history_window: 90           # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use
+        history_window: 60           # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use; keep in mind lora.max_seq_length must cover the resulting prompt length (see below)
         rebalance_threshold_pct: 0   # ignore suggested-exposure changes at/below this (noise-level jitter); 0 disables it entirely -- any actual change trades
         vol_window: 20               # trailing days used to estimate a "typical" daily move, to scale the hindsight-optimal-exposure label to the current vol regime instead of a fixed %
-        warmup_days: 160             # still predicts/logs/trains for the first N calls, but doesn't place real trades until warmup is over -- lets it calibrate before it controls real money
+        warmup_days: 101             # still predicts/logs/trains for the first N calls, but doesn't place real trades until warmup is over -- lets it calibrate before it controls real money
         lora:
-          model: mlx-community/Qwen2.5-1.5B-Instruct-4bit
-          fine_tune_every_n_days: 80
+          model: "{{vars.model}}"
+          fine_tune_every_n_days: 50
           iters: 50
           learning_rate: 1.0e-4
+          max_seq_length: 12288      # must cover the full prompt (history_window x every signal) + completion -- measured ~10.1k tokens at history_window=60/memory_window=90; too low silently trains on 0 completion tokens (NaN loss) instead of erroring
+          batch_size: 1              # mlx_lm's own default (4) OOM'd at this max_seq_length even with grad-checkpoint on a 36GB Mac; drop this back toward the mlx_lm default (unset -> 4) if you shrink max_seq_length a lot
         sell:
           qty:
             pct: 100
     - strategy: buy_and_hold
-      portfolio_id: buy_and_hold_signal_ticker
+      portfolio_id: "buy_and_hold_{{vars.signal_ticker}}"
       params:
         ticker: "{{vars.signal_ticker}}"
         # qty omitted -> defaults to {pct: 100}: fully invest available cash
     - strategy: buy_and_hold
-      portfolio_id: buy_and_hold_benchmark_ticker
+      portfolio_id: "buy_and_hold_{{vars.benchmark_ticker}}"
       params:
         ticker: "{{vars.benchmark_ticker}}"
         # qty omitted -> defaults to {pct: 100}: fully invest available cash

@@ -46,6 +46,8 @@ class MLXLoRAClient:
         iters: int = 50,
         learning_rate: float = 1e-5,
         grad_checkpoint: bool = True,
+        max_seq_length: int = 4096,
+        batch_size: Optional[int] = None,
     ):
         self._model_path = model
         self._system_prompt = system_prompt
@@ -55,6 +57,8 @@ class MLXLoRAClient:
         self._iters = iters
         self._learning_rate = learning_rate
         self._grad_checkpoint = grad_checkpoint
+        self._max_seq_length = max_seq_length
+        self._batch_size = batch_size
 
         self._model = None
         self._tokenizer = None
@@ -149,13 +153,29 @@ class MLXLoRAClient:
             "0",
             "--steps-per-eval",
             str(self._iters + 1),
+            "--mask-prompt",
+            "--max-seq-length",
+            str(self._max_seq_length),
         ]
-        # No --mask-prompt: mlx_lm computes the mask offset by re-templating
-        # everything except the assistant turn and diffing token counts --
-        # for our very short completions ("+42"), that offset calculation can
-        # end up >= the full sequence length, masking 100% of tokens and
-        # producing "Trained Tokens 0" / NaN loss. Training on the full
-        # sequence guarantees a real, non-zero loss every pass.
+        if self._batch_size is not None:
+            args += ["--batch-size", str(self._batch_size)]
+        # --mask-prompt restricts the loss to the assistant's completion tokens,
+        # not the (much longer) prompt -- without it, the model just learns to
+        # keep predicting more prompt-shaped content (a dense block of
+        # small-decimal signal values) after its actual answer, which is
+        # exactly the "extra numbers/words in the response" symptom this was
+        # fixing. --max-seq-length matters just as much: mlx_lm truncates
+        # every training sequence to it (default 2048), and if that cuts off
+        # before the assistant's turn -- easy to do with this strategy's long
+        # signal-history prompts -- every example trains on zero completion
+        # tokens (silent "Trained Tokens 0" / NaN loss), regardless of
+        # mask_prompt. Set high enough to cover prompt + completion in full;
+        # too low is a silent no-op fine-tune, not a crash. --batch-size
+        # (mlx_lm's own default is 4) trades off against max_seq_length for
+        # memory -- a long max_seq_length at the default batch size can OOM
+        # (confirmed: 12288 + batch 4 OOM'd on a 36GB Mac; batch 1 didn't),
+        # so it's worth lowering explicitly once max_seq_length grows past a
+        # couple thousand tokens rather than only reaching for grad-checkpoint.
         if self._grad_checkpoint:
             args.append("--grad-checkpoint")  # trades speed for memory -- fine-tuning a 0.5B model has been seen using 25GB+ without it
         resume_from = self._current_adapter / "adapters.safetensors" if self._current_adapter else None

@@ -64,13 +64,10 @@ def test_record_outcome_triggers_fine_tune_after_period(tmp_path, monkeypatch):
     assert client._current_adapter is not None
 
 
-def test_fine_tune_never_passes_mask_prompt_and_defaults_to_grad_checkpoint(tmp_path, monkeypatch):
-    # --mask-prompt is deliberately never passed: mlx_lm computes its mask
-    # offset by re-templating everything but the assistant turn, and for our
-    # very short completions ("+42") that can consume the whole sequence,
-    # producing 0 trained tokens and NaN loss (confirmed against mlx_lm's own
-    # ChatDataset.process). --grad-checkpoint is on by default since fine-tuning
-    # this model was observed using 25GB+ without it.
+def test_fine_tune_passes_mask_prompt_and_defaults_to_grad_checkpoint(tmp_path, monkeypatch):
+    # --mask-prompt restricts the loss to the assistant's completion tokens,
+    # not the much longer prompt. --grad-checkpoint is on by default since
+    # fine-tuning this model was observed using 25GB+ without it.
     client = MLXLoRAClient(adapter_root=str(tmp_path), fine_tune_every_n_days=1)
     _stub_ensure_loaded(monkeypatch)
 
@@ -79,8 +76,45 @@ def test_fine_tune_never_passes_mask_prompt_and_defaults_to_grad_checkpoint(tmp_
 
     client.record_outcome("prompt", "long")
 
-    assert "--mask-prompt" not in calls[0]
+    assert "--mask-prompt" in calls[0]
     assert "--grad-checkpoint" in calls[0]
+    assert "--max-seq-length" in calls[0]
+    assert calls[0][calls[0].index("--max-seq-length") + 1] == "4096"
+
+
+def test_max_seq_length_is_configurable(tmp_path, monkeypatch):
+    # mlx_lm silently truncates every training sequence to --max-seq-length
+    # (default 2048) -- too low for this strategy's long signal-history
+    # prompts, which truncates away the assistant's completion entirely and
+    # trains on 0 real tokens every pass. Must be overridable per config.
+    client = MLXLoRAClient(adapter_root=str(tmp_path), fine_tune_every_n_days=1, max_seq_length=12288)
+    _stub_ensure_loaded(monkeypatch)
+
+    calls = []
+    monkeypatch.setattr(MLXLoRAClient, "_run_training", lambda self, args: calls.append(args))
+
+    client.record_outcome("prompt", "long")
+
+    assert calls[0][calls[0].index("--max-seq-length") + 1] == "12288"
+
+
+def test_batch_size_is_unset_by_default_but_configurable(tmp_path, monkeypatch):
+    # A long --max-seq-length can OOM at mlx_lm's own default batch size (4)
+    # even with grad-checkpoint on -- confirmed empirically, not just in
+    # theory. Left unset by default so callers with short prompts keep
+    # mlx_lm's own default, but must be lowerable per config.
+    client = MLXLoRAClient(adapter_root=str(tmp_path), fine_tune_every_n_days=1)
+    _stub_ensure_loaded(monkeypatch)
+    calls = []
+    monkeypatch.setattr(MLXLoRAClient, "_run_training", lambda self, args: calls.append(args))
+    client.record_outcome("prompt", "long")
+    assert "--batch-size" not in calls[0]
+
+    client2 = MLXLoRAClient(adapter_root=str(tmp_path / "b"), fine_tune_every_n_days=1, batch_size=1)
+    calls2 = []
+    monkeypatch.setattr(MLXLoRAClient, "_run_training", lambda self, args: calls2.append(args))
+    client2.record_outcome("prompt", "long")
+    assert calls2[0][calls2[0].index("--batch-size") + 1] == "1"
 
 
 def test_grad_checkpoint_can_be_disabled(tmp_path, monkeypatch):

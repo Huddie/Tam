@@ -94,8 +94,10 @@ def serve(
             return {}, "waiting for the first completed day..."
 
         fig = render(report, title=title, ticker_colors=ticker_colors, prices=prices)
-        last_date = report.to_frame()["date"].max()
-        status = f"through {last_date}"
+        frame = report.to_frame()
+        last_date = frame["date"].max()
+        day_count = frame["date"].nunique()
+        status = f"through {last_date} — day {day_count}"
         if not Path(checkpoint_path).exists():
             status += " -- backtest finished, showing final state"
         return fig, status
