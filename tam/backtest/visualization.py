@@ -5,6 +5,8 @@ only call into this module when you actually want a chart.
 """
 from __future__ import annotations
 
+from typing import Dict, Optional
+
 import pandas as pd
 import plotly.colors
 import plotly.graph_objects as go
@@ -29,8 +31,15 @@ _METRIC_LABELS = {
     "num_trades": "# Trades",
 }
 
-_BUY_COLOR = "#2ca02c"
-_SELL_COLOR = "#d62728"
+# Public: callers that know a portfolio's long/short ticker pair (e.g. the CLI,
+# reading it straight out of strategy config) can build a {ticker: color} map
+# with these and pass it into render()/write_html() as `ticker_colors`, so
+# trade markers are colored by *which vehicle*, not by that day's buy/sell
+# direction. This module deliberately has no hardcoded ticker knowledge of its
+# own -- "TQQQ is bullish" is a fact about a specific strategy's config, not
+# something a generic report renderer should assume.
+BUY_COLOR = "#2ca02c"
+SELL_COLOR = "#d62728"
 _NEUTRAL_COLOR = "#7f7f7f"
 
 
@@ -42,14 +51,36 @@ def _fill_rgba(hex_color: str, alpha: float = 0.2) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
+def _format_qty(qty: float) -> str:
+    """Large share counts (leveraged ETFs at penny prices can mean hundreds of
+    millions of shares) abbreviated for a readable hover tooltip: 271372367 ->
+    "271.4M". Small counts are shown exactly, unrounded."""
+    abs_qty = abs(qty)
+    for threshold, suffix in ((1_000_000_000, "B"), (1_000_000, "M"), (1_000, "K")):
+        if abs_qty >= threshold:
+            return f"{qty / threshold:.1f}{suffix}"
+    return f"{qty:g}"
+
+
 def _side_label(side) -> str:
     return side.value if hasattr(side, "value") else str(side)
 
 
-def _trade_marker_trace(report: Report, portfolio_id: str, normalized_curve: pd.Series):
+def _trade_marker_trace(
+    report: Report, portfolio_id: str, normalized_curve: pd.Series, ticker_colors: Dict[str, str], fallback_color: str
+):
     """One marker per trading day this portfolio traded, positioned on its own
     (indexed) equity line. Multiple trades on the same day are grouped into a
-    single marker whose hover text lists every one of them."""
+    single marker whose hover text lists every one of them.
+
+    Color = the ticker being ended up in that day (`ticker_colors[ticker]` if
+    given, else `fallback_color`) -- not that day's net buy/sell direction,
+    since a same-side resize (sell 100%, rebuy at a new %) is a real SELL
+    order but isn't "bearish" the way a flip to the other ticker is. Arrow
+    direction = whether that position got bigger or smaller: up for a fresh
+    entry (from cash, or a flip into a ticker held at 0) or a resize where the
+    rebuy is larger than what was just sold; down for an exit to cash or a
+    resize into something smaller."""
     trades_df = report.trades_for(portfolio_id)
     if trades_df.empty:
         return None
@@ -62,15 +93,36 @@ def _trade_marker_trace(report: Report, portfolio_id: str, normalized_curve: pd.
         if trade_date not in normalized_curve.index:
             continue
 
-        net = 0
         lines = []
+        buy_row = None
+        sell_row = None
         for _, row in group.iterrows():
             side_label = _side_label(row["side"])
-            net += row["qty"] if side_label == "BUY" else -row["qty"]
-            lines.append(f"{side_label} {row['qty']} {row['ticker']} @ ${row['price']:,.2f}")
+            lines.append(f"{side_label} {_format_qty(row['qty'])} {row['ticker']} @ ${row['price']:,.2f}")
+            if side_label == "BUY":
+                buy_row = row
+            elif side_label == "SELL":
+                sell_row = row
 
-        symbol = "triangle-up" if net > 0 else "triangle-down" if net < 0 else "diamond"
-        color = _BUY_COLOR if net > 0 else _SELL_COLOR if net < 0 else _NEUTRAL_COLOR
+        if buy_row is not None:
+            target_ticker = buy_row["ticker"]
+            if sell_row is not None and sell_row["ticker"] == target_ticker:
+                buy_notional = buy_row["qty"] * buy_row["price"]
+                sell_notional = sell_row["qty"] * sell_row["price"]
+                symbol = (
+                    "triangle-up" if buy_notional > sell_notional
+                    else "triangle-down" if buy_notional < sell_notional
+                    else "diamond"
+                )
+            else:
+                symbol = "triangle-up"  # fresh entry from cash, or a flip into a ticker held at 0 -- an increase
+        elif sell_row is not None:
+            target_ticker = sell_row["ticker"]
+            symbol = "triangle-down"  # exiting to cash -- nothing bought
+        else:
+            continue  # a trade group with neither a buy nor a sell shouldn't happen, but don't plot garbage if it does
+
+        color = ticker_colors.get(target_ticker, fallback_color)
         plural = "" if len(lines) == 1 else "s"
         header = f"{portfolio_id} — {trade_date} — {len(lines)} trade{plural}"
 
@@ -87,7 +139,7 @@ def _trade_marker_trace(report: Report, portfolio_id: str, normalized_curve: pd.
         x=xs,
         y=ys,
         mode="markers",
-        marker=dict(symbol=symbols, size=13, color=colors, line=dict(width=1, color="black")),
+        marker=dict(symbol=symbols, size=13, color=colors, line=dict(width=1, color=fallback_color)),
         name=f"{portfolio_id} trades",
         hovertext=texts,
         hoverinfo="text",
@@ -95,20 +147,62 @@ def _trade_marker_trace(report: Report, portfolio_id: str, normalized_curve: pd.
     )
 
 
-def render(report: Report, title: str = "Backtest Report") -> go.Figure:
-    """Build a 3-panel figure: normalized equity curves, drawdown, and a metrics table."""
+def render(
+    report: Report,
+    title: str = "Backtest Report",
+    ticker_colors: Optional[Dict[str, str]] = None,
+    prices: Optional[Dict[str, pd.Series]] = None,
+) -> go.Figure:
+    """Build the dashboard figure: normalized equity curves, drawdown, and a
+    metrics table -- plus an optional raw ticker-price panel above the equity
+    chart when `prices` is given (a mapping of ticker -> close-price Series).
+    Each ticker gets its own legend entry there, so which ones are shown is a
+    click away, same as the existing trade-marker toggle.
+
+    `ticker_colors`: optional {ticker: color} map for trade markers (e.g.
+    {"TQQQ": BUY_COLOR, "SQQQ": SELL_COLOR} for a long/short-pair strategy).
+    A ticker not in the map falls back to that portfolio's own line color."""
+    ticker_colors = ticker_colors or {}
     portfolio_ids = report.portfolio_ids()
     colors = {pid: _PALETTE[i % len(_PALETTE)] for i, pid in enumerate(portfolio_ids)}
 
+    has_prices = bool(prices)
+    titles = (["Ticker Prices"] if has_prices else []) + [
+        "Relative Performance (Indexed to 100)",
+        "Drawdown",
+        "Summary Metrics",
+    ]
+    row_heights = [0.22, 0.33, 0.20, 0.25] if has_prices else [0.45, 0.25, 0.30]
+    specs = [[{"type": "xy"}]] * (len(titles) - 1) + [[{"type": "table"}]]
+
     fig = make_subplots(
-        rows=3,
+        rows=len(titles),
         cols=1,
-        row_heights=[0.45, 0.25, 0.30],
+        row_heights=row_heights,
         vertical_spacing=0.08,
-        specs=[[{"type": "xy"}], [{"type": "xy"}], [{"type": "table"}]],
-        subplot_titles=("Relative Performance (Indexed to 100)", "Drawdown", "Summary Metrics"),
+        specs=specs,
+        subplot_titles=tuple(titles),
     )
 
+    row = 1
+    if has_prices:
+        price_colors = {ticker: _PALETTE[i % len(_PALETTE)] for i, ticker in enumerate(prices)}
+        for ticker, series in prices.items():
+            fig.add_trace(
+                go.Scatter(
+                    x=series.index,
+                    y=series.values,
+                    mode="lines",
+                    name=ticker,
+                    line=dict(color=price_colors[ticker]),
+                ),
+                row=row,
+                col=1,
+            )
+        fig.update_yaxes(title_text="Price ($, log scale)", type="log", row=row, col=1)
+        row += 1
+
+    equity_row = row
     normalized_curves = {}
     for portfolio_id in portfolio_ids:
         curve = report.equity_curve(portfolio_id)
@@ -122,10 +216,12 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
                 name=portfolio_id,
                 line=dict(color=colors[portfolio_id]),
             ),
-            row=1,
+            row=equity_row,
             col=1,
         )
+    row += 1
 
+    drawdown_row = row
     for portfolio_id in portfolio_ids:
         drawdown = report.drawdown_curve(portfolio_id) * 100
         fig.add_trace(
@@ -139,15 +235,20 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
                 fill="tozeroy",
                 fillcolor=_fill_rgba(colors[portfolio_id]),
             ),
-            row=2,
+            row=drawdown_row,
             col=1,
         )
+    row += 1
+
+    table_row = row
 
     trade_trace_indices = []
     for portfolio_id in portfolio_ids:
-        marker_trace = _trade_marker_trace(report, portfolio_id, normalized_curves[portfolio_id])
+        marker_trace = _trade_marker_trace(
+            report, portfolio_id, normalized_curves[portfolio_id], ticker_colors, colors[portfolio_id]
+        )
         if marker_trace is not None:
-            fig.add_trace(marker_trace, row=1, col=1)
+            fig.add_trace(marker_trace, row=equity_row, col=1)
             trade_trace_indices.append(len(fig.data) - 1)
 
     summary = report.summary_all()
@@ -170,12 +271,12 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
             header=dict(values=header, fill_color="#1f2a44", font=dict(color="white"), align="left"),
             cells=dict(values=cells, align="left"),
         ),
-        row=3,
+        row=table_row,
         col=1,
     )
 
-    fig.update_yaxes(title_text="Indexed value (start = 100)", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown %", row=2, col=1)
+    fig.update_yaxes(title_text="Indexed value (start = 100)", row=equity_row, col=1)
+    fig.update_yaxes(title_text="Drawdown %", row=drawdown_row, col=1)
 
     updatemenus = []
     if trade_trace_indices:
@@ -198,7 +299,7 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
     fig.update_layout(
         title=title,
         template="plotly_white",
-        height=1000,
+        height=1250 if has_prices else 1000,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         margin=dict(t=120),
         updatemenus=updatemenus,
@@ -206,5 +307,11 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
     return fig
 
 
-def write_html(report: Report, path: str, title: str = "Backtest Report") -> None:
-    render(report, title=title).write_html(path)
+def write_html(
+    report: Report,
+    path: str,
+    title: str = "Backtest Report",
+    ticker_colors: Optional[Dict[str, str]] = None,
+    prices: Optional[Dict[str, pd.Series]] = None,
+) -> None:
+    render(report, title=title, ticker_colors=ticker_colors, prices=prices).write_html(path)

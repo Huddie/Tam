@@ -136,6 +136,7 @@ class LLMTradingStrategy(Strategy):
         rebalance_threshold_pct: float = 5.0,
         vol_window: int = 20,
         log_path: Optional[str] = None,
+        warmup_days: int = 0,
     ):
         super().__init__()
         self._repository = repository
@@ -151,6 +152,7 @@ class LLMTradingStrategy(Strategy):
         self._rebalance_threshold_pct = rebalance_threshold_pct
         self._vol_window = vol_window
         self._log_path = Path(log_path) if log_path else None
+        self._warmup_days = warmup_days
         self._iteration = 0
         # Query enough history for every signal to be able to fully populate once
         # it's warmed up (max), but only *require* the fastest-warming signal (min)
@@ -181,21 +183,29 @@ class LLMTradingStrategy(Strategy):
             self._resolve_pending(close, current_price)
 
         prompt = self._build_prompt(close)
-        target_pct, raw_response = self._ask_llm(prompt)
+        target_pct, raw_response, retried = self._ask_llm(prompt)
         self._iteration += 1
-        self._log_call(as_of, prompt, raw_response)
+        warming_up = self._iteration <= self._warmup_days
+        self._log_call(as_of, prompt, raw_response, warming_up, retried)
         if target_pct is None:
             target_pct = self._current_pct  # fall back to holding current exposure
         self._pending = (prompt, target_pct, current_price)
 
-        self._rebalance_to(target_pct)
+        # During warmup: still predict, still log, still feed the calibration/
+        # fine-tuning loop below (self._pending/_resolve_pending don't care) --
+        # just don't let the model's calls actually move real money until it's
+        # had `warmup_days` calls' worth of practice.
+        if not warming_up:
+            self._rebalance_to(target_pct)
 
-    def _log_call(self, as_of, prompt: str, response: str) -> None:
+    def _log_call(self, as_of, prompt: str, response: str, warming_up: bool, retried: bool) -> None:
         """Every LLM call, unconditionally -- iteration, datetime, prompt,
-        response -- so "is it even being called, and what does it say" is a
-        file to read, not a guess from trade activity alone. response is
-        "ERROR: ..." for a failed call, so a silent-failure streak is
-        distinguishable from the model genuinely saying ~0 repeatedly."""
+        response, warmup, retried -- so "is it even being called, and what
+        does it say" is a file to read, not a guess from trade activity
+        alone. response is "ERROR: ..." for a failed call, so a silent-
+        failure streak is distinguishable from the model genuinely saying ~0
+        repeatedly. retried marks a response that needed the one-shot
+        "give me exactly one number" retry (see _ask_llm)."""
         if self._log_path is None:
             return
         is_new = not self._log_path.exists()
@@ -203,8 +213,8 @@ class LLMTradingStrategy(Strategy):
         with self._log_path.open("a", newline="") as handle:
             writer = csv.writer(handle)
             if is_new:
-                writer.writerow(["iteration", "datetime", "prompt", "response"])
-            writer.writerow([self._iteration, as_of, prompt, response])
+                writer.writerow(["iteration", "datetime", "prompt", "response", "warmup", "retried"])
+            writer.writerow([self._iteration, as_of, prompt, response, warming_up, retried])
 
     def _trailing_daily_vol(self, close: pd.Series) -> Optional[float]:
         """Typical size of a 1-day move, estimated from the trailing window --
@@ -263,21 +273,46 @@ class LLMTradingStrategy(Strategy):
             track_record = "(none yet)"
 
         return (
+            "Task: based on the Nasdaq (QQQ) technical signals below, suggest a net "
+            "exposure to trade via TQQQ (3x long) / SQQQ (3x short): a whole number "
+            "from -100 to 100, where + is % of the portfolio in TQQQ, - is % in "
+            "SQQQ (as a positive magnitude), and 0 is cash. This is NOT the same "
+            "scale as the signal values below (those are returns/ratios, small "
+            "decimals) -- your answer is a percentage, e.g. 65 or -30.\n\n"
             f"Nasdaq (QQQ) signals:\n{signal_block}\n\n"
-            f"Calibration:\n{track_record}\n\n"
-            "Respond with ONLY a number in [-100, 100] -- your suggested net exposure."
+            f"Your past calls vs. what was ideal in hindsight:\n{track_record}\n\n"
+            "Respond with ONLY the number, nothing else."
         )
 
-    def _ask_llm(self, prompt: str) -> Tuple[Optional[float], str]:
+    def _ask_llm(self, prompt: str) -> Tuple[Optional[float], str, bool]:
+        """Returns (target_pct, raw_response, retried). A response isn't valid
+        unless it's *exactly* one number -- zero (unparseable) or more than
+        one (the model rambled/hedged) both get exactly one retry, showing the
+        model its own bad response and asking for just one number. If the
+        retry also fails to produce exactly one number, give up rather than
+        loop indefinitely -- callers fall back to holding current exposure."""
+        target_pct, raw = self._call_llm(prompt)
+        if target_pct is not None or raw.startswith("ERROR:"):
+            return target_pct, raw, False  # a clean parse, or a hard failure -- don't retry hard failures
+
+        retry_prompt = (
+            f"{prompt}\n\nYour previous response was: {raw!r}\n"
+            "That is not valid -- we need exactly one number and nothing else. "
+            "Respond with ONLY one number in [-100, 100]."
+        )
+        retried_pct, retried_raw = self._call_llm(retry_prompt)
+        return retried_pct, retried_raw, True
+
+    def _call_llm(self, prompt: str) -> Tuple[Optional[float], str]:
         try:
             raw = self._llm_client(prompt)
         except Exception as exc:
             return None, f"ERROR: {exc}"
 
-        match = _NUMBER_RE.search(raw)
-        if match is None:
+        matches = _NUMBER_RE.findall(raw)
+        if len(matches) != 1:
             return None, raw
-        return self._clip(float(match.group())), raw
+        return self._clip(float(matches[0])), raw
 
     def _rebalance_to(self, target_pct: float) -> None:
         """rebalance_threshold_pct: float, in percentage points -- suggested-
@@ -367,4 +402,5 @@ def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cas
         rebalance_threshold_pct=params.get("rebalance_threshold_pct", 5.0),
         vol_window=params.get("vol_window", 20),
         log_path=params.get("log_path"),
+        warmup_days=params.get("warmup_days", 0),
     )

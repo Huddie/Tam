@@ -520,10 +520,94 @@ def test_log_path_writes_a_header_and_one_row_per_call(tmp_path):
     with log_path.open(newline="") as handle:
         rows = list(csv.reader(handle))
 
-    assert rows[0] == ["iteration", "datetime", "prompt", "response"]
+    assert rows[0] == ["iteration", "datetime", "prompt", "response", "warmup", "retried"]
     assert len(rows) > 1
     assert [r[0] for r in rows[1:]] == [str(i) for i in range(1, len(rows))]  # 1, 2, 3, ...
     assert all(r[3] == "42" for r in rows[1:])
+    assert all(r[4] == "False" for r in rows[1:])  # no warmup_days set -> never warming up
+    assert all(r[5] == "False" for r in rows[1:])  # clean single-number responses -> never retried
+
+
+def test_multiple_numbers_in_response_triggers_one_retry_and_uses_its_answer():
+    prompts_seen = []
+
+    def rambling_then_clean_client(prompt):
+        prompts_seen.append(prompt)
+        return "63.60 66.10 68.8" if len(prompts_seen) == 1 else "42"
+
+    strategy = LLMTradingStrategy(
+        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=rambling_then_clean_client, **_small_windows(),
+    )
+
+    target_pct, raw, retried = strategy._ask_llm("original prompt")
+
+    assert target_pct == 42.0  # used the retry's clean answer, not the first number it rambled
+    assert raw == "42"
+    assert retried is True
+    assert len(prompts_seen) == 2
+    assert prompts_seen[1].startswith("original prompt")
+    assert "63.60 66.10 68.8" in prompts_seen[1]  # retry shows the model its own bad response
+    assert "exactly one number" in prompts_seen[1]
+
+
+def test_unparseable_response_also_triggers_a_retry():
+    calls = {"n": 0}
+
+    def confused_then_clean_client(prompt):
+        calls["n"] += 1
+        return "I'm not sure" if calls["n"] == 1 else "-55"
+
+    strategy = LLMTradingStrategy(
+        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=confused_then_clean_client, **_small_windows(),
+    )
+
+    target_pct, raw, retried = strategy._ask_llm("prompt")
+
+    assert calls["n"] == 2  # exactly one retry, not a loop
+    assert target_pct == -55.0
+    assert retried is True
+
+
+def test_retry_that_also_fails_gives_up_without_looping():
+    calls = {"n": 0}
+
+    def always_rambling_client(prompt):
+        calls["n"] += 1
+        return "1 2 3"
+
+    strategy = LLMTradingStrategy(
+        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=always_rambling_client, **_small_windows(),
+    )
+
+    target_pct, raw, retried = strategy._ask_llm("prompt")
+
+    assert calls["n"] == 2  # 1 call + 1 retry, never more -- confirms no retry loop
+    assert target_pct is None  # caller falls back to holding current exposure
+    assert raw == "1 2 3"      # the retry's (still bad) response, for the log
+    assert retried is True
+
+
+def test_hard_failure_does_not_trigger_a_retry():
+    calls = {"n": 0}
+
+    def flaky_client(prompt):
+        calls["n"] += 1
+        raise ConnectionError("model server not running")
+
+    strategy = LLMTradingStrategy(
+        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=flaky_client, **_small_windows(),
+    )
+
+    target_pct, raw, retried = strategy._ask_llm("prompt")
+
+    assert calls["n"] == 1  # no retry on a hard failure
+    assert target_pct is None
+    assert raw.startswith("ERROR:")
+    assert retried is False
 
 
 def test_log_path_records_error_for_a_failing_call(tmp_path):
@@ -564,6 +648,74 @@ def test_no_log_path_means_no_log_file(tmp_path):
     harness.run()  # must not raise despite log_path being unset
 
     assert not (tmp_path / "llm_log.csv").exists()
+
+
+def test_warmup_days_predicts_and_logs_but_never_trades_during_warmup(tmp_path):
+    closes = _trending_closes(10)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+    log_path = tmp_path / "llm_log.csv"
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "80", log_path=str(log_path), warmup_days=3, **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    # Every call during warmup still predicts +80 and gets logged, but the
+    # portfolio never actually moves off cash until warmup_days have passed.
+    with log_path.open(newline="") as handle:
+        rows = list(csv.reader(handle))
+    assert [r[4] for r in rows[1:4]] == ["True", "True", "True"]
+    assert [r[4] for r in rows[4:]] == ["False"] * len(rows[4:])
+
+    assert portfolio.trades  # trades once warmup is over
+    first_post_warmup_datetime = rows[4][1]  # row 4 is the first with warmup == "False"
+    assert str(portfolio.trades[0].date) == first_post_warmup_datetime
+    assert strategy._current_pct == 80.0
+
+
+def test_zero_warmup_days_is_the_default_and_trades_immediately(tmp_path):
+    closes = _trending_closes(10)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "80", **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    assert portfolio.trades  # no warmup configured -> trades on the very first call
+
+
+def test_prompt_states_the_task_and_output_scale_explicitly(tmp_path):
+    closes = _trending_closes(10)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+
+    prompts = []
+
+    def recording_client(prompt):
+        prompts.append(prompt)
+        return "10"
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=recording_client, **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    assert prompts
+    assert prompts[0].startswith("Task:")
+    assert "TQQQ" in prompts[0] and "SQQQ" in prompts[0]
+    assert "NOT the same scale" in prompts[0]
 
 
 def test_iteration_counter_round_trips_through_get_state_and_load_state(tmp_path):

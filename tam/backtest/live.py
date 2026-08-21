@@ -12,7 +12,9 @@ from __future__ import annotations
 import logging
 import pickle
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
+
+import pandas as pd
 
 from .report import Report
 from .visualization import render
@@ -41,12 +43,18 @@ def serve(
     poll_seconds: float = 3.0,
     port: int = 8050,
     verbose: bool = False,
+    ticker_colors: Optional[Dict[str, str]] = None,
+    prices: Optional[Dict[str, "pd.Series"]] = None,
 ) -> None:
     """Blocking: serves a dashboard at http://127.0.0.1:<port> that re-reads
     the checkpoint every `poll_seconds` and redraws the same figure
     visualization.render() would produce for the final report -- just from
     whatever's completed so far. Keeps showing the last good read after the
     checkpoint is removed on a clean finish, rather than reverting to blank.
+
+    `prices`, if given, is drawn once (it doesn't change as the backtest
+    progresses -- it's already-known historical price data, unlike the
+    portfolio curves) as the same optional top panel write_html() supports.
 
     Flask/Werkzeug's per-request access log (one line per poll, forever) is
     silenced by default -- it drowns out the rich progress display the
@@ -85,34 +93,7 @@ def serve(
         if report is None or not report.snapshots:
             return {}, "waiting for the first completed day..."
 
-        fig = render(report, title=title)
-        last_date = report.to_frame()["date"].max()
-        status = f"through {last_date}"
-        if not Path(checkpoint_path).exists():
-            status += " -- backtest finished, showing final state"
-        return fig, status
-
-    app.run(port=port, debug=False, threaded=True)
-    app.layout = html.Div(
-        [
-            html.Div(id="status", style={"fontFamily": "monospace", "padding": "8px"}),
-            dcc.Graph(id="figure", style={"height": "95vh"}),
-            dcc.Interval(id="tick", interval=int(poll_seconds * 1000)),
-        ]
-    )
-    last_report: dict = {"value": None}
-
-    @app.callback(Output("figure", "figure"), Output("status", "children"), Input("tick", "n_intervals"))
-    def _refresh(_):
-        fresh = report_from_checkpoint(checkpoint_path)
-        if fresh is not None:
-            last_report["value"] = fresh
-        report = last_report["value"]
-
-        if report is None or not report.snapshots:
-            return {}, "waiting for the first completed day..."
-
-        fig = render(report, title=title)
+        fig = render(report, title=title, ticker_colors=ticker_colors, prices=prices)
         last_date = report.to_frame()["date"].max()
         status = f"through {last_date}"
         if not Path(checkpoint_path).exists():

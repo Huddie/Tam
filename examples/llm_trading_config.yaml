@@ -1,53 +1,38 @@
+vars:
+  signal_ticker: QQQ
+  long_ticker: TQQQ
+  short_ticker: SQQQ
+  benchmark_ticker: SPY
+  all_tickers: [QQQ, TQQQ, SQQQ, SPY]
+
 data:
   provider: yfinance     # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
   store: parquet         # parquet or csv
   root: data/eod
 
 backtest:
-  tickers: [QQQ, TQQQ, SQQQ]
+  tickers: "{{vars.all_tickers}}"
   start: "2010-03-01"
-  end: "2024-12-31"
-  cash: 100000
+  end: "2025-12-31"
+  cash: 100000000
   report_path: examples/output/llm_trading_report.html
   checkpoint_every: 1
+  price_chart:
+    tickers: "{{vars.all_tickers}}"
   strategies:
     - strategy: llm_trading
       portfolio_id: llm_trading
       params:
-        signal_ticker: QQQ
-        long_ticker: TQQQ
-        short_ticker: SQQQ
+        signal_ticker: "{{vars.signal_ticker}}"
+        long_ticker: "{{vars.long_ticker}}"
+        short_ticker: "{{vars.short_ticker}}"
         tickers: [QQQ, TQQQ, SQQQ]
         memory_window: 90
-        signals:
-          - id: sma
-            configs:
-              - {window: 10}
-              - {window: 50}
-              - {window: 100}
-              - {window: 200}
-              - {window: 300}
-          - id: zscore
-            configs:
-              - {window: 20}
-              - {window: 50}
-          - id: rsi
-            config: {period: 14}
-          - id: return
-            configs:
-              - {horizon: 1}
-              - {horizon: 5}
-              - {horizon: 20}
-              - {horizon: 60}
-          - id: volatility
-            config: {window: 20}
-          - id: macd
-          - id: bollinger_pct_b
-          - id: distance_from_high
-            config: {window: 252}
+        signals: << shared/llm_signals.yaml#signals
         history_window: 90           # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use
         rebalance_threshold_pct: 0   # ignore suggested-exposure changes at/below this (noise-level jitter); 0 disables it entirely -- any actual change trades
         vol_window: 20               # trailing days used to estimate a "typical" daily move, to scale the hindsight-optimal-exposure label to the current vol regime instead of a fixed %
+        warmup_days: 160             # still predicts/logs/trains for the first N calls, but doesn't place real trades until warmup is over -- lets it calibrate before it controls real money
         lora:
           model: mlx-community/Qwen2.5-1.5B-Instruct-4bit
           fine_tune_every_n_days: 80
@@ -57,7 +42,12 @@ backtest:
           qty:
             pct: 100
     - strategy: buy_and_hold
-      portfolio_id: buy_and_hold
+      portfolio_id: buy_and_hold_signal_ticker
       params:
-        ticker: QQQ
+        ticker: "{{vars.signal_ticker}}"
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash
+    - strategy: buy_and_hold
+      portfolio_id: buy_and_hold_benchmark_ticker
+      params:
+        ticker: "{{vars.benchmark_ticker}}"
         # qty omitted -> defaults to {pct: 100}: fully invest available cash

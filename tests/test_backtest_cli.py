@@ -180,7 +180,7 @@ backtest:
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, port=8050, verbose=False):
+    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False):
         serve_calls.append((checkpoint_path, title, port, verbose))
         deadline = time.time() + 5
         while not report_path.exists() and time.time() < deadline:

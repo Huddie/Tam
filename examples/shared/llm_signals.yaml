@@ -1,0 +1,26 @@
+signals:
+  - id: sma
+    configs:
+      - {window: 10}
+      - {window: 50}
+      - {window: 100}
+      - {window: 200}
+      - {window: 300}
+  - id: zscore
+    configs:
+      - {window: 20}
+      - {window: 50}
+  - id: rsi
+    config: {period: 14}
+  - id: return
+    configs:
+      - {horizon: 1}
+      - {horizon: 5}
+      - {horizon: 20}
+      - {horizon: 60}
+  - id: volatility
+    config: {window: 20}
+  - id: macd
+  - id: bollinger_pct_b
+  - id: distance_from_high
+    config: {window: 252}

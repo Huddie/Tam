@@ -27,7 +27,7 @@ from rich.table import Table as RichTable
 
 from tam.backtest.config import build_strategies
 from tam.backtest.harness import BacktestHarness, Progress as RunProgress
-from tam.backtest.visualization import write_html
+from tam.backtest.visualization import BUY_COLOR, SELL_COLOR, write_html
 from tam.config import Config
 from tam.data.providers import DataProvider
 from tam.data.repository import DataRepository
@@ -51,6 +51,7 @@ class BacktestSettings:
     strategies: list
     checkpoint_path: str = None
     checkpoint_every: int = 1
+    price_chart: dict = None
 
 
 def _build_repository(data_settings: DataSettings) -> DataRepository:
@@ -92,13 +93,51 @@ def _apply_artifact_defaults(backtest_settings: "BacktestSettings", artifacts_di
             lora.setdefault("adapter_root", str(artifacts_dir / "lora_adapters" / spec.portfolio_id))
 
 
+def _ticker_colors(backtest_settings: "BacktestSettings") -> dict:
+    """{ticker: color} for trade-marker coloring, derived from each strategy's
+    own long_ticker/short_ticker config -- not hardcoded ticker names. A
+    strategy without that concept (e.g. buy_and_hold) just contributes
+    nothing, and its markers fall back to the portfolio's own line color."""
+    colors = {}
+    for spec in backtest_settings.strategies:
+        long_ticker = spec.params.get("long_ticker")
+        short_ticker = spec.params.get("short_ticker")
+        if long_ticker:
+            colors[long_ticker] = BUY_COLOR
+        if short_ticker:
+            colors[short_ticker] = SELL_COLOR
+    return colors
+
+
+def _collect_price_series(
+    repository: DataRepository, backtest_settings: "BacktestSettings", start: date, end: date
+) -> dict:
+    """{ticker: close-price Series} for the optional price panel above the
+    equity chart, if `backtest.price_chart.tickers` is set -- {} (chart
+    omitted entirely) otherwise, since this is opt-in, not automatic."""
+    if not backtest_settings.price_chart:
+        return {}
+    tickers = list(backtest_settings.price_chart.get("tickers", []))
+    return {ticker: repository.query(ticker, start, end)["close"] for ticker in tickers}
+
+
 def _validate_tickers_declared(backtest_settings: BacktestSettings) -> None:
     """Fail loudly at config-load time if a strategy trades a ticker that isn't in
     `backtest.tickers` — catches config drift before it becomes a cryptic crash
     deep inside whichever strategy factory happens to need price data first.
     Checks both a flat `params.ticker` and a `params.tickers` list, since some
-    strategies (e.g. trend_rotation) trade more than one ticker at once."""
+    strategies (e.g. trend_rotation) trade more than one ticker at once. Also
+    checks `backtest.price_chart.tickers`, the optional price panel's own list."""
     declared = set(backtest_settings.tickers)
+
+    if backtest_settings.price_chart:
+        missing = set(backtest_settings.price_chart.get("tickers", [])) - declared
+        if missing:
+            raise ValueError(
+                f"backtest.price_chart uses ticker(s) {sorted(missing)}, which are missing from "
+                f"backtest.tickers {sorted(declared)}"
+            )
+
     for spec in backtest_settings.strategies:
         used = set()
         single = spec.params.get("ticker")
@@ -145,6 +184,7 @@ def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int
     repository.ingest(tickers, start, end)
     history = repository.query(tickers[0], start, end)
     dates = [ts.date() for ts in history.index]
+    price_series = _collect_price_series(repository, backtest_settings, start, end)
 
     strategies, portfolios = build_strategies(
         repository, backtest_settings.strategies, float(backtest_settings.cash)
@@ -152,12 +192,18 @@ def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int
     harness = BacktestHarness(repository, strategies, portfolios, dates)
 
     if mode == "live":
-        _run_live(harness, len(dates), backtest_settings, config_path, verbose, port)
+        _run_live(harness, len(dates), backtest_settings, config_path, price_series, verbose, port)
     else:
-        _run_batch(harness, len(dates), backtest_settings, config_path)
+        _run_batch(harness, len(dates), backtest_settings, config_path, price_series)
 
 
-def _run_batch(harness: BacktestHarness, total_days: int, backtest_settings: BacktestSettings, config_path: Path) -> None:
+def _run_batch(
+    harness: BacktestHarness,
+    total_days: int,
+    backtest_settings: BacktestSettings,
+    config_path: Path,
+    price_series: dict = None,
+) -> None:
     """Runs to completion with a two-row live display: the overall day-count
     bar, and a second row underneath showing whatever's happening right now
     (loading a model, fine-tuning gen N with its own iter progress, etc.) --
@@ -196,7 +242,7 @@ def _run_batch(harness: BacktestHarness, total_days: int, backtest_settings: Bac
             set_reporter(None)
 
     print(report.summary_all())
-    _write_report(report, backtest_settings, config_path)
+    _write_report(report, backtest_settings, config_path, price_series)
 
 
 def _run_live(
@@ -204,6 +250,7 @@ def _run_live(
     total_days: int,
     backtest_settings: BacktestSettings,
     config_path: Path,
+    price_series: dict = None,
     verbose: bool = False,
     port: int = 8050,
 ) -> None:
@@ -216,19 +263,32 @@ def _run_live(
     from tam.backtest.live import serve
 
     def _run_backtest() -> None:
-        _run_batch(harness, total_days, backtest_settings, config_path)
+        _run_batch(harness, total_days, backtest_settings, config_path, price_series)
 
     thread = threading.Thread(target=_run_backtest, daemon=True)
     thread.start()
 
     print(f"Live view: http://127.0.0.1:{port}  (backtest running in the background)", file=sys.stderr)
-    serve(backtest_settings.checkpoint_path, title=f"Backtest (live): {config_path.stem}", port=port, verbose=verbose)
+    serve(
+        backtest_settings.checkpoint_path,
+        title=f"Backtest (live): {config_path.stem}",
+        ticker_colors=_ticker_colors(backtest_settings),
+        prices=price_series,
+        port=port,
+        verbose=verbose,
+    )
 
 
-def _write_report(report, backtest_settings: BacktestSettings, config_path: Path) -> None:
+def _write_report(report, backtest_settings: BacktestSettings, config_path: Path, price_series: dict = None) -> None:
     report_path = Path(backtest_settings.report_path)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    write_html(report, str(report_path), title=f"Backtest: {config_path.stem}")
+    write_html(
+        report,
+        str(report_path),
+        title=f"Backtest: {config_path.stem}",
+        ticker_colors=_ticker_colors(backtest_settings),
+        prices=price_series,
+    )
     print(f"Report written to {report_path}")
 
 

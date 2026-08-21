@@ -193,3 +193,62 @@ def test_render_uses_the_same_line_color_for_a_portfolio_s_equity_and_drawdown()
     assert equity_color["main"] == drawdown_color["main"]
     assert equity_color["alt"] == drawdown_color["alt"]
     assert equity_color["main"] != equity_color["alt"]  # still distinct between portfolios
+
+
+def _price_series(values, start=date(2024, 1, 1)):
+    index = pd.to_datetime([start + timedelta(days=i) for i in range(len(values))])
+    return pd.Series(values, index=index)
+
+
+def test_render_omits_price_panel_when_not_given():
+    report = _two_portfolio_report()
+
+    fig = render(report)
+
+    assert "Ticker Prices" not in [a.text for a in fig.layout.annotations]
+    assert len(fig.layout.annotations) == 3  # equity, drawdown, table titles only
+
+
+def test_render_adds_price_panel_above_the_equity_chart_when_given():
+    report = _two_portfolio_report()
+    prices = {
+        "AAPL": _price_series([190.0, 195.0, 193.0, 200.0]),
+        "MSFT": _price_series([300.0, 305.0, 298.0, 310.0]),
+    }
+
+    fig = render(report, prices=prices)
+
+    titles = [a.text for a in fig.layout.annotations]
+    assert titles[0] == "Ticker Prices"
+    assert titles == ["Ticker Prices", "Relative Performance (Indexed to 100)", "Drawdown", "Summary Metrics"]
+
+    price_traces = {t.name: t for t in fig.data if isinstance(t, go.Scatter) and t.name in prices}
+    assert set(price_traces) == {"AAPL", "MSFT"}
+    assert list(price_traces["AAPL"].y) == [190.0, 195.0, 193.0, 200.0]
+
+    # The price panel is row 1 -- its y-axis is the figure's first ("yaxis"), log scale.
+    assert fig.layout.yaxis.type == "log"
+    assert fig.layout.yaxis.title.text == "Price ($, log scale)"
+
+
+def test_render_price_panel_coexists_with_trade_markers_and_toggle():
+    report = _report_with_trades()
+    prices = {"AAPL": _price_series([100.0, 102.0, 98.0, 105.0, 110.0])}
+
+    fig = render(report, prices=prices)
+
+    assert any(t.name == "AAPL" for t in fig.data if isinstance(t, go.Scatter))
+    marker_traces = [t for t in fig.data if isinstance(t, go.Scatter) and t.mode == "markers"]
+    assert len(marker_traces) == 1
+    assert len(fig.layout.updatemenus) == 1
+
+
+def test_write_html_with_prices_creates_nonempty_file(tmp_path):
+    report = _two_portfolio_report()
+    prices = {"AAPL": _price_series([190.0, 195.0, 193.0, 200.0])}
+    out_path = tmp_path / "report.html"
+
+    write_html(report, str(out_path), prices=prices)
+
+    assert out_path.exists()
+    assert out_path.stat().st_size > 0
