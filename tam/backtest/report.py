@@ -27,6 +27,7 @@ _EMPTY_SUMMARY_KEYS = (
 class Report:
     snapshots: List[dict] = field(default_factory=list)
     trades: List[dict] = field(default_factory=list)
+    annotations: List[dict] = field(default_factory=list)
 
     def to_frame(self) -> pd.DataFrame:
         return pd.DataFrame(self.snapshots)

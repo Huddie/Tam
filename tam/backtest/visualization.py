@@ -157,11 +157,21 @@ def render(
     metrics table -- plus an optional raw ticker-price panel above the equity
     chart when `prices` is given (a mapping of ticker -> close-price Series).
     Each ticker gets its own legend entry there, so which ones are shown is a
-    click away, same as the existing trade-marker toggle.
+    click away, same as the existing trade-marker toggle. Each series is
+    truncated to `report`'s last completed snapshot date, so in --mode live
+    the price panel builds up day-by-day alongside the equity/drawdown panels
+    instead of showing its full (already-fetched) history immediately; a
+    finished batch report's last snapshot date is the full range, so this is
+    a no-op there. All panels share one x-axis, so zooming/panning any one of
+    them (price, equity, drawdown) moves the others with it.
 
     `ticker_colors`: optional {ticker: color} map for trade markers (e.g.
     {"TQQQ": BUY_COLOR, "SQQQ": SELL_COLOR} for a long/short-pair strategy).
-    A ticker not in the map falls back to that portfolio's own line color."""
+    A ticker not in the map falls back to that portfolio's own line color.
+
+    `report.annotations` (populated by strategies calling Strategy.annotate(),
+    e.g. LLMTradingStrategy marking a LoRA fine-tune) are drawn as dotted
+    vertical lines on the equity chart, labeled with each one's text."""
     ticker_colors = ticker_colors or {}
     portfolio_ids = report.portfolio_ids()
     colors = {pid: _PALETTE[i % len(_PALETTE)] for i, pid in enumerate(portfolio_ids)}
@@ -182,16 +192,29 @@ def render(
         vertical_spacing=0.08,
         specs=specs,
         subplot_titles=tuple(titles),
+        shared_xaxes=True,
     )
 
     row = 1
     if has_prices:
+        # Truncated to whatever the equity/drawdown panels below are already
+        # limited to (the last completed snapshot date) -- in --mode live this
+        # is mid-run, so the price panel builds up day-by-day in lockstep with
+        # them instead of spoiling the ending by showing the full, already-
+        # fetched history immediately. A finished batch report's last snapshot
+        # date IS the full range, so this is a no-op there.
+        cutoff = None
+        frame = report.to_frame()
+        if not frame.empty:
+            cutoff = pd.Timestamp(frame["date"].max())
+
         price_colors = {ticker: _PALETTE[i % len(_PALETTE)] for i, ticker in enumerate(prices)}
         for ticker, series in prices.items():
+            visible = series[series.index <= cutoff] if cutoff is not None else series
             fig.add_trace(
                 go.Scatter(
-                    x=series.index,
-                    y=series.values,
+                    x=visible.index,
+                    y=visible.values,
                     mode="lines",
                     name=ticker,
                     line=dict(color=price_colors[ticker]),
@@ -220,6 +243,37 @@ def render(
             col=1,
         )
     row += 1
+
+    for annotation in report.annotations:
+        ann_date = annotation.get("date")
+        if ann_date is None:
+            continue
+        x = pd.Timestamp(ann_date)
+        fig.add_vline(
+            x=x,
+            line_dash="dot",
+            line_color=_NEUTRAL_COLOR,
+            line_width=1,
+            opacity=0.6,
+            row=equity_row,
+            col=1,
+        )
+        # Anchored to the top of the *plot's own* y-domain (not "paper"), so the
+        # label hangs down into the plot -- the subplot title above it lives in
+        # paper space at that same y=1 boundary and would otherwise sit right on
+        # top of an add_vline(annotation_text=...) default placement.
+        fig.add_annotation(
+            x=x,
+            y=1,
+            yref="y domain",
+            yanchor="top",
+            xanchor="left",
+            text=annotation.get("label", ""),
+            showarrow=False,
+            font=dict(size=10, color=_NEUTRAL_COLOR),
+            row=equity_row,
+            col=1,
+        )
 
     drawdown_row = row
     for portfolio_id in portfolio_ids:

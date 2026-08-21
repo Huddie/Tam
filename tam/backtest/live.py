@@ -34,7 +34,7 @@ def report_from_checkpoint(checkpoint_path: str) -> Optional[Report]:
         for portfolio_id, portfolio_state in state["portfolios"].items()
         for trade in portfolio_state["trades"]
     ]
-    return Report(state["snapshots"], trades)
+    return Report(state["snapshots"], trades, state.get("annotations", []))
 
 
 def serve(
@@ -52,9 +52,11 @@ def serve(
     whatever's completed so far. Keeps showing the last good read after the
     checkpoint is removed on a clean finish, rather than reverting to blank.
 
-    `prices`, if given, is drawn once (it doesn't change as the backtest
-    progresses -- it's already-known historical price data, unlike the
-    portfolio curves) as the same optional top panel write_html() supports.
+    `prices`, if given, is the same already-fetched historical price data
+    write_html()'s optional top panel supports -- passed in whole, but
+    render() itself truncates each series to whatever date the equity/
+    drawdown panels have reached so far, so the price panel builds up in
+    lockstep with them instead of spoiling the ending upfront.
 
     Flask/Werkzeug's per-request access log (one line per poll, forever) is
     silenced by default -- it drowns out the rich progress display the

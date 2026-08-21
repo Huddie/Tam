@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import date
 from typing import Optional
 
 from ..events.bus import EventBus
-from ..events.types import Event, State
+from ..events.types import ANNOTATION_TOPIC, Event, State
 from ..portfolio.registry import PortfolioRegistry
 from ..trading.gateway import TradeGateway
 
@@ -26,6 +27,17 @@ class Strategy(ABC):
 
     def publish(self, topic: str, event: Event) -> None:
         self._bus.publish(topic, event)
+
+    def annotate(self, label: str, date: Optional[date] = None) -> None:
+        """Mark a moment for the final report/live dashboard -- e.g. "fine-tuned
+        to gen 3" -- rendered as a dotted vertical line on the equity chart.
+        `date` defaults to the harness's current simulation date (from the
+        bound TradeGateway) if not given. No-op before bind(), same as
+        subscribe_to/publish -- there's no bus yet to emit onto."""
+        if self._bus is None:
+            return
+        as_of = date if date is not None else (self._trader.current_date if self._trader else None)
+        self.publish(ANNOTATION_TOPIC, Event(type=ANNOTATION_TOPIC, payload={"date": as_of, "label": label}))
 
     @property
     def trade(self) -> TradeGateway:

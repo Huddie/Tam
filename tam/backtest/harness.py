@@ -13,7 +13,7 @@ from ..data.repository import DataRepository
 from ..data.schema import CLOSE
 from ..events.bus import EventBus
 from ..events.clock import Clock
-from ..events.types import State
+from ..events.types import ANNOTATION_TOPIC, State
 from ..portfolio.portfolio import Portfolio
 from ..portfolio.registry import PortfolioRegistry
 from ..strategy.base import Strategy
@@ -48,12 +48,17 @@ class BacktestHarness:
     ):
         self._repository = repository
         self._bus = EventBus()
+        self._annotations: List[dict] = []
+        self._bus.subscribe(ANNOTATION_TOPIC, self._on_annotation)
         self._portfolios = PortfolioRegistry(portfolios)
         self._trader = TradeGateway(self._portfolios, self._price_on)
         self._strategies = list(strategies)
         for strategy in self._strategies:
             strategy.bind(self._bus, self._trader, self._portfolios)
         self._clock = Clock(dates, self._bus)
+
+    def _on_annotation(self, event) -> None:
+        self._annotations.append(dict(event.payload))
 
     def _price_on(self, ticker: str, as_of: date) -> float:
         history = self._repository.query(ticker, end=as_of)
@@ -80,7 +85,7 @@ class BacktestHarness:
         snapshots: List[dict] = []
         completed_days = 0
         if checkpoint_path is not None and Path(checkpoint_path).exists():
-            completed_days, snapshots = self._load_checkpoint(checkpoint_path)
+            completed_days, snapshots, self._annotations = self._load_checkpoint(checkpoint_path)
 
         for strategy in self._strategies:
             strategy.state_change(State.START)
@@ -105,12 +110,13 @@ class BacktestHarness:
         if checkpoint_path is not None:
             Path(checkpoint_path).unlink(missing_ok=True)
 
-        return Report(snapshots, self._trades())
+        return Report(snapshots, self._trades(), self._annotations)
 
     def _write_checkpoint(self, checkpoint_path: str, day_index: int, snapshots: List[dict]) -> None:
         state = {
             "day_index": day_index,
             "snapshots": snapshots,
+            "annotations": list(self._annotations),
             "portfolios": {portfolio_id: p.get_state() for portfolio_id, p in self._portfolios.items()},
             "strategies": [s.get_state() for s in self._strategies],
         }
@@ -122,14 +128,14 @@ class BacktestHarness:
             pickle.dump(state, handle)
         os.replace(tmp_name, path)
 
-    def _load_checkpoint(self, checkpoint_path: str) -> tuple[int, List[dict]]:
+    def _load_checkpoint(self, checkpoint_path: str) -> tuple[int, List[dict], List[dict]]:
         with open(checkpoint_path, "rb") as handle:
             state = pickle.load(handle)
         for portfolio_id, portfolio_state in state["portfolios"].items():
             self._portfolios[portfolio_id].load_state(portfolio_state)
         for strategy, strategy_state in zip(self._strategies, state["strategies"]):
             strategy.load_state(strategy_state)
-        return state["day_index"], state["snapshots"]
+        return state["day_index"], state["snapshots"], state.get("annotations", [])
 
     def _trades(self) -> List[dict]:
         return [

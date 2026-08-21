@@ -33,19 +33,14 @@ backtest:
         long_ticker: "{{vars.long_ticker}}"
         short_ticker: "{{vars.short_ticker}}"
         tickers: "{{vars.llm_tickers}}"
-        memory_window: 90
+        memory_window: 60
         signals: << shared/llm_signals.yaml#signals
-        history_window: 60           # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use; keep in mind lora.max_seq_length must cover the resulting prompt length (see below)
+        history_window: 30           # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use; keep in mind lora.max_seq_length must cover the resulting prompt length (see below)
         rebalance_threshold_pct: 0   # ignore suggested-exposure changes at/below this (noise-level jitter); 0 disables it entirely -- any actual change trades
         vol_window: 20               # trailing days used to estimate a "typical" daily move, to scale the hindsight-optimal-exposure label to the current vol regime instead of a fixed %
-        warmup_days: 101             # still predicts/logs/trains for the first N calls, but doesn't place real trades until warmup is over -- lets it calibrate before it controls real money
-        lora:
-          model: "{{vars.model}}"
-          fine_tune_every_n_days: 50
-          iters: 50
-          learning_rate: 1.0e-4
-          max_seq_length: 12288      # must cover the full prompt (history_window x every signal) + completion -- measured ~10.1k tokens at history_window=60/memory_window=90; too low silently trains on 0 completion tokens (NaN loss) instead of erroring
-          batch_size: 1              # mlx_lm's own default (4) OOM'd at this max_seq_length even with grad-checkpoint on a 36GB Mac; drop this back toward the mlx_lm default (unset -> 4) if you shrink max_seq_length a lot
+        warmup_days: 201             # still predicts/logs/trains for the first N calls, but doesn't place real trades until warmup is over -- lets it calibrate before it controls real money
+        fine_tune_every_n_days: 100  # buffer this many realized outcomes before spending wall-clock time on an actual LoRA fine-tune run -- a strategy/client scheduling knob, not an mlx_lm training setting
+        lora: << shared/llm_lora.yaml#lora
         sell:
           qty:
             pct: 100

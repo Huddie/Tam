@@ -196,3 +196,81 @@ backtest:
     assert port == 8050
     assert verbose is False
     assert report_path.exists()
+
+
+def test_no_save_skips_checkpointing_in_batch_mode(tmp_path):
+    report_path = tmp_path / "out.html"
+    config_path = tmp_path / "cfg.yaml"
+    config_path.write_text(
+        f"""
+data:
+  provider: fake_backtest_cli_provider
+  store: parquet
+  root: {tmp_path / "eod"}
+backtest:
+  tickers: [TQQQ]
+  start: "2024-01-02"
+  end: "2024-01-06"
+  cash: 1000
+  report_path: {report_path}
+  strategies:
+    - strategy: moving_average
+      portfolio_id: m
+      params:
+        ticker: TQQQ
+        window: 3
+        qty: 1
+"""
+    )
+
+    run(config_path, no_save=True)
+
+    assert report_path.exists()
+    assert not list(tmp_path.glob("output/**/checkpoint.pkl"))  # nothing resumable was ever written
+
+
+def test_no_save_uses_an_ephemeral_checkpoint_for_live_mode(tmp_path, monkeypatch):
+    # --mode live still needs *a* checkpoint file to drive the dashboard poll --
+    # --no-save must give it a throwaway one outside the config's own
+    # (persistent, resumable-by-design) artifacts dir, not skip it outright.
+    report_path = tmp_path / "out.html"
+    config_path = tmp_path / "cfg.yaml"
+    config_path.write_text(
+        f"""
+data:
+  provider: fake_backtest_cli_provider
+  store: parquet
+  root: {tmp_path / "eod"}
+backtest:
+  tickers: [TQQQ]
+  start: "2024-01-02"
+  end: "2024-01-06"
+  cash: 1000
+  report_path: {report_path}
+  strategies:
+    - strategy: moving_average
+      portfolio_id: m
+      params:
+        ticker: TQQQ
+        window: 3
+        qty: 1
+"""
+    )
+
+    serve_calls = []
+
+    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False):
+        serve_calls.append(checkpoint_path)
+        deadline = time.time() + 5
+        while not report_path.exists() and time.time() < deadline:
+            time.sleep(0.02)
+
+    monkeypatch.setattr("tam.backtest.live.serve", fake_serve)
+
+    run(config_path, mode="live", no_save=True)
+
+    assert len(serve_calls) == 1
+    checkpoint_path = serve_calls[0]
+    assert checkpoint_path
+    assert not str(Path(checkpoint_path)).startswith(str(tmp_path))
+    assert report_path.exists()

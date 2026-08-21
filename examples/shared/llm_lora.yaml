@@ -1,0 +1,36 @@
+# Shared LoRA self-fine-tuning defaults for llm_trading's local model client
+# (tam/strategy/mlx_lora_client.py) -- pulled in via
+# `lora: << shared/llm_lora.yaml#lora`, the same way llm_signals.yaml is, so
+# tuned defaults live in one place instead of being copy-pasted across
+# configs. A config that wants a genuinely different set (e.g. a different
+# model needing a different max_seq_length) should just write its own inline
+# `lora:` block instead of including this one, exactly as with signals.
+#
+# Every key here is a named parameter on MLXLoRAClient.__init__ -- see that
+# class's module docstring ("Configuration guide" section) for the full
+# why behind each one. This file only carries short per-key notes.
+#
+# fine_tune_every_n_days is NOT here -- it's a strategy-level scheduling knob
+# (how many realized outcomes to buffer before spending wall-clock time on an
+# actual mlx_lm.lora run), not an mlx_lm training setting, so it lives
+# directly under the llm_trading strategy's own params in
+# llm_trading_config.yaml, not in this LoRA-training-specific block.
+lora:
+  model: "{{vars.model}}"       # HF/mlx-community repo id -- must be an mlx-lm-compatible model
+
+  # mlx_lm training-run knobs -- these get serialized into the config mlx_lm.lora -c reads.
+  iters: 200                    # gradient steps per round -- raised from mlx_lm's small default; 50 was enough to nudge coarse direction but not enough to teach real magnitude calibration (measured: 98% of live calls landed at exactly +-100 vs only ~30% of the true hindsight-optimal labels)
+  learning_rate: 2.0e-5         # each round now trains fresh from base on the full accumulated history (no resuming), so this no longer compounds across rounds -- room to raise once confirmed stable
+  max_seq_length: 12288         # must cover prompt+completion tokens -- enforced at fine-tune time by _check_completion_token_budget, not just measured once by hand
+  batch_size: 1                 # mlx_lm default (4) OOMs at this max_seq_length even with grad_checkpoint; unset -> mlx_lm default
+  grad_checkpoint: true         # trade training speed for memory (default true; set false if memory isn't tight)
+  num_layers: 16                # how many of the model's final layers get LoRA-wrapped ("-1" -> all layers)
+  fine_tune_type: lora          # lora | dora | full -- "full" unfreezes real weights, more collapse-prone
+  lora_rank: 8                  # adapter capacity -- higher = more expressive, more prone to overfitting a small round
+  lora_scale: 20.0              # adapter update magnitude
+  lora_dropout: 0.05            # nonzero unlike mlx_lm's own default (0.0) -- regularizer against mode collapse
+  optimizer: adamw              # adamw | adam | sgd | adafactor | muon -- weight_decay below only applies to adamw
+  weight_decay: 0.01            # nonzero unlike mlx_lm's own default -- the other regularizer against mode collapse
+  val_split: 0.2                # fraction of the full accumulated history held out (most recent slice) for a real Val loss (0 disables validation)
+  max_val_examples: 100         # hard cap on the held-out set's size -- without this, val_split's share of an ever-growing history makes every round slower than the last for the rest of the backtest
+  # extra: {}                   # escape hatch for any mlx_lm.lora YAML key without its own line above (e.g. seed)

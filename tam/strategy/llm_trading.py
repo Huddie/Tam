@@ -36,10 +36,16 @@ day, which is what makes small day-to-day changes in view cheap (a small
 resize) instead of always a full liquidate-and-reverse.
 
 On "learning over time": always does honest in-context adaptation (each
-prompt includes the model's own recent calls, the hindsight-optimal exposure
-each one turned out to be, and its recent calibration error) regardless of
-whether real weight updates are happening. If `llm_client` also exposes a
-`record_outcome` method, this strategy calls it once per realized outcome
+prompt includes the hindsight-optimal exposure on recent days and the
+model's recent calibration error, MAE) regardless of whether real weight
+updates are happening. Deliberately does NOT show the model's own past
+predicted values day-by-day -- that was tried and reliably drove a small
+model into imitating its own recent output stream (a self-reinforcing
+in-context echo chamber: 60 rows of "predicted +100%" in a row is a strong
+next-token pattern to continue, regardless of what the actual signals below
+say that day) rather than reacting to each day's real signals, producing
+month-long "stuck" streaks. If `llm_client` also exposes a `record_outcome`
+method, this strategy calls it once per realized outcome
 with the hindsight-optimal percentage formatted exactly like the number the
 model is asked to produce -- so a client that DOES perform real (periodic,
 not per-day) weight updates -- see mlx_lora_client.py -- trains on the same
@@ -180,7 +186,7 @@ class LLMTradingStrategy(Strategy):
         current_price = close.iloc[-1]
 
         if self._pending is not None:
-            self._resolve_pending(close, current_price)
+            self._resolve_pending(close, current_price, as_of)
 
         prompt = self._build_prompt(close)
         target_pct, raw_response, retried = self._ask_llm(prompt)
@@ -196,6 +202,8 @@ class LLMTradingStrategy(Strategy):
         # just don't let the model's calls actually move real money until it's
         # had `warmup_days` calls' worth of practice.
         if not warming_up:
+            if self._warmup_days > 0 and self._iteration == self._warmup_days + 1:
+                self.annotate(f"{self._portfolio_id}: warmup ended", date=as_of)
             self._rebalance_to(target_pct)
 
     def _log_call(self, as_of, prompt: str, response: str, warming_up: bool, retried: bool) -> None:
@@ -233,7 +241,7 @@ class LLMTradingStrategy(Strategy):
             return None
         return float(vol)
 
-    def _resolve_pending(self, close: pd.Series, current_price: float) -> None:
+    def _resolve_pending(self, close: pd.Series, current_price: float, as_of) -> None:
         pending_prompt, predicted_pct, prior_price = self._pending
         daily_vol = self._trailing_daily_vol(close)
         if daily_vol is None:
@@ -244,8 +252,14 @@ class LLMTradingStrategy(Strategy):
         self._memory.append({"predicted": predicted_pct, "ideal": ideal_pct, "error": abs(predicted_pct - ideal_pct)})
 
         record_outcome = getattr(self._llm_client, "record_outcome", None)
-        if record_outcome is not None:
-            record_outcome(pending_prompt, f"{ideal_pct:+.0f}")
+        if record_outcome is None:
+            return
+
+        generation_before = getattr(self._llm_client, "generation", None)
+        record_outcome(pending_prompt, f"{ideal_pct:+.0f}")
+        generation_after = getattr(self._llm_client, "generation", None)
+        if generation_after is not None and generation_after != generation_before:
+            self.annotate(f"{self._portfolio_id}: FT gen {generation_after}", date=as_of)
 
     @staticmethod
     def _clip(pct: float) -> float:
@@ -263,12 +277,19 @@ class LLMTradingStrategy(Strategy):
         signal_block = "\n".join(signal_lines)
 
         if self._memory:
-            track_record = "\n".join(
-                f"- {m['predicted']:+.0f}% vs ideal {m['ideal']:+.0f}% (err {m['error']:.0f})"
-                for m in self._memory
-            )
+            # Deliberately does NOT show the model's own past `predicted` values --
+            # only shows the target and the aggregate error is fine, but a
+            # per-day wall of "predicted +100% -- predicted +100% -- ..." earlier
+            # here reliably drove a small model into imitating its own recent
+            # output stream (a self-reinforcing echo chamber) rather than
+            # reacting to each day's actual signals, producing month-long
+            # "stuck" streaks at a single value regardless of what the
+            # signals below say. `ideal` is the real hindsight-optimal
+            # exposure (not the model's own guess), so it's calibration
+            # signal without anything self-referential to latch onto.
+            track_record = "\n".join(f"- ideal {m['ideal']:+.0f}%" for m in self._memory)
             mae = sum(m["error"] for m in self._memory) / len(self._memory)
-            track_record += f"\nMAE: {mae:.0f} over last {len(self._memory)}."
+            track_record += f"\nYour recent calibration error (MAE): {mae:.0f} over last {len(self._memory)} calls."
         else:
             track_record = "(none yet)"
 
@@ -280,7 +301,7 @@ class LLMTradingStrategy(Strategy):
             "scale as the signal values below (those are returns/ratios, small "
             "decimals) -- your answer is a percentage, e.g. 65 or -30.\n\n"
             f"Nasdaq (QQQ) signals:\n{signal_block}\n\n"
-            f"Your past calls vs. what was ideal in hindsight:\n{track_record}\n\n"
+            f"What was actually ideal in hindsight on recent days (not your own past guesses):\n{track_record}\n\n"
             "Respond with ONLY the number, nothing else."
         )
 
@@ -376,16 +397,30 @@ def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cas
     if lora_params:
         from .mlx_lora_client import MLXLoRAClient
 
+        extra_mlx_config = lora_params.get("extra")
+        if hasattr(extra_mlx_config, "to_dict"):
+            extra_mlx_config = extra_mlx_config.to_dict()
+
         llm_client = MLXLoRAClient(
             model=lora_params.get("model", MLXLoRAClient.DEFAULT_MODEL),
             system_prompt=_SYSTEM_PROMPT,
-            fine_tune_every_n_days=lora_params.get("fine_tune_every_n_days", 20),
+            fine_tune_every_n_days=params.get("fine_tune_every_n_days", 20),
             iters=lora_params.get("iters", 50),
             learning_rate=lora_params.get("learning_rate", 1e-5),
             adapter_root=lora_params.get("adapter_root"),
             grad_checkpoint=lora_params.get("grad_checkpoint", True),
             max_seq_length=lora_params.get("max_seq_length", 4096),
             batch_size=lora_params.get("batch_size"),
+            num_layers=lora_params.get("num_layers", 16),
+            fine_tune_type=lora_params.get("fine_tune_type", "lora"),
+            lora_rank=lora_params.get("lora_rank", 8),
+            lora_dropout=lora_params.get("lora_dropout", 0.05),
+            lora_scale=lora_params.get("lora_scale", 20.0),
+            optimizer=lora_params.get("optimizer", "adamw"),
+            weight_decay=lora_params.get("weight_decay", 0.01),
+            val_split=lora_params.get("val_split", 0.2),
+            max_val_examples=lora_params.get("max_val_examples", 100),
+            extra_mlx_config=extra_mlx_config,
         )
 
     return LLMTradingStrategy(

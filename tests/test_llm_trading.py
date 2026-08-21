@@ -12,7 +12,7 @@ from tam.data.schema import OHLCV_COLUMNS
 from tam.data.storage import CsvStore
 from tam.portfolio.orders import Side
 from tam.portfolio.portfolio import Portfolio
-from tam.strategy.llm_trading import LLMTradingStrategy
+from tam.strategy.llm_trading import LLMTradingStrategy, build_llm_trading
 from tam.strategy.signals import build_signals
 
 
@@ -345,8 +345,8 @@ def test_prompt_includes_signal_history_and_calibration_track_record(tmp_path):
     assert "return_1d" in prompts[0]
     assert "volatility_20d" in prompts[0]
     assert "(none yet)" in prompts[0]
-    assert "vs ideal" in prompts[-1]
-    assert "MAE:" in prompts[-1]
+    assert "ideal" in prompts[-1]
+    assert "MAE" in prompts[-1]
 
 
 def test_calls_record_outcome_with_the_hindsight_optimal_percentage(tmp_path):
@@ -740,3 +740,44 @@ def test_iteration_counter_round_trips_through_get_state_and_load_state(tmp_path
     restored.load_state(strategy.get_state())
 
     assert restored._iteration == strategy._iteration
+
+
+def test_build_llm_trading_passes_lora_knobs_through_to_the_client(tmp_path, monkeypatch):
+    captured = {}
+
+    class _FakeMLXLoRAClient:
+        DEFAULT_MODEL = "fake-default"
+
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr("tam.strategy.mlx_lora_client.MLXLoRAClient", _FakeMLXLoRAClient)
+
+    repo = _setup(tmp_path, _trending_closes(5), _dates(5))
+    build_llm_trading(
+        repo,
+        "main",
+        {
+            "signal_ticker": "QQQ",
+            "long_ticker": "TQQQ",
+            "short_ticker": "SQQQ",
+            "fine_tune_every_n_days": 10,
+            "lora": {
+                "lora_rank": 16,
+                "lora_dropout": 0.1,
+                "optimizer": "adamw",
+                "weight_decay": 0.02,
+                "val_split": 0.3,
+                "extra": {"seed": 7},
+            },
+        },
+        cash=10_000.0,
+    )
+
+    assert captured["fine_tune_every_n_days"] == 10
+    assert captured["lora_rank"] == 16
+    assert captured["lora_dropout"] == 0.1
+    assert captured["optimizer"] == "adamw"
+    assert captured["weight_decay"] == 0.02
+    assert captured["val_split"] == 0.3
+    assert captured["extra_mlx_config"] == {"seed": 7}
