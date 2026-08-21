@@ -84,6 +84,7 @@ def test_backtest_runs_full_lifecycle_and_produces_report(tmp_path):
     summary = report.summary("main")
     assert summary["start_value"] == 10_000.0
     assert summary["end_value"] == 9_900.0
+    assert summary["num_trades"] == 1
 
     assert report.trades == [
         {"date": date(2024, 1, 2), "portfolio": "main", "ticker": "AAPL", "side": Side.BUY, "qty": 10, "price": 100.0}

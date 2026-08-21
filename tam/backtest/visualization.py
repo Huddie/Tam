@@ -6,13 +6,17 @@ only call into this module when you actually want a chart.
 from __future__ import annotations
 
 import pandas as pd
+import plotly.colors
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from .report import Report
 
+_PALETTE = plotly.colors.qualitative.Plotly
+
 _PERCENT_METRICS = {"total_return", "cagr", "volatility", "max_drawdown"}
 _CURRENCY_METRICS = {"start_value", "end_value"}
+_INT_METRICS = {"num_trades"}
 _METRIC_LABELS = {
     "start_value": "Start Value",
     "end_value": "End Value",
@@ -22,6 +26,7 @@ _METRIC_LABELS = {
     "sharpe": "Sharpe",
     "max_drawdown": "Max Drawdown",
     "calmar": "Calmar",
+    "num_trades": "# Trades",
 }
 
 _BUY_COLOR = "#2ca02c"
@@ -78,13 +83,14 @@ def _trade_marker_trace(report: Report, portfolio_id: str, normalized_curve: pd.
         name=f"{portfolio_id} trades",
         hovertext=texts,
         hoverinfo="text",
-        visible=False,
+        visible=True,
     )
 
 
 def render(report: Report, title: str = "Backtest Report") -> go.Figure:
     """Build a 3-panel figure: normalized equity curves, drawdown, and a metrics table."""
     portfolio_ids = report.portfolio_ids()
+    colors = {pid: _PALETTE[i % len(_PALETTE)] for i, pid in enumerate(portfolio_ids)}
 
     fig = make_subplots(
         rows=3,
@@ -101,7 +107,13 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
         normalized = curve / curve.iloc[0] * 100
         normalized_curves[portfolio_id] = normalized
         fig.add_trace(
-            go.Scatter(x=normalized.index, y=normalized.values, mode="lines", name=portfolio_id),
+            go.Scatter(
+                x=normalized.index,
+                y=normalized.values,
+                mode="lines",
+                name=portfolio_id,
+                line=dict(color=colors[portfolio_id]),
+            ),
             row=1,
             col=1,
         )
@@ -115,6 +127,7 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
                 mode="lines",
                 name=f"{portfolio_id} drawdown",
                 showlegend=False,
+                line=dict(color=colors[portfolio_id]),
             ),
             row=2,
             col=1,
@@ -136,6 +149,8 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
             fmt = lambda v: f"${v:,.2f}"
         elif col in _PERCENT_METRICS:
             fmt = lambda v: f"{v:.2%}"
+        elif col in _INT_METRICS:
+            fmt = lambda v: f"{v:.0f}"
         else:
             fmt = lambda v: f"{v:.2f}"
         cells.append([fmt(v) for v in summary[col]])

@@ -102,7 +102,7 @@ def _report_with_trades():
     return Report(snapshots, trades)
 
 
-def test_render_adds_hidden_trade_marker_trace_when_trades_exist():
+def test_render_adds_visible_by_default_trade_marker_trace_when_trades_exist():
     report = _report_with_trades()
 
     fig = render(report)
@@ -110,7 +110,7 @@ def test_render_adds_hidden_trade_marker_trace_when_trades_exist():
     marker_traces = [t for t in fig.data if isinstance(t, go.Scatter) and t.mode == "markers"]
     assert len(marker_traces) == 1
     trace = marker_traces[0]
-    assert trace.visible is False
+    assert trace.visible is True
     assert trace.name == "main trades"
     assert len(trace.x) == 2  # two distinct trade dates: Jan 2 and Jan 4
 
@@ -150,3 +150,29 @@ def test_render_omits_toggle_buttons_when_no_trades():
     fig = render(report)
 
     assert len(fig.layout.updatemenus) == 0
+
+
+def test_render_table_includes_a_trade_count_column():
+    report = _report_with_trades()
+
+    fig = render(report)
+
+    table = next(t for t in fig.data if isinstance(t, go.Table))
+    header = list(table.header.values)
+    assert "# Trades" in header
+    assert list(table.cells.values[header.index("# Trades")]) == ["3"]
+
+
+def test_render_uses_the_same_line_color_for_a_portfolio_s_equity_and_drawdown():
+    report = _two_portfolio_report()
+
+    fig = render(report)
+
+    equity_color = {t.name: t.line.color for t in fig.data if isinstance(t, go.Scatter) and t.mode == "lines"
+                     and t.name in ("main", "alt")}
+    drawdown_color = {t.name.removesuffix(" drawdown"): t.line.color for t in fig.data
+                       if isinstance(t, go.Scatter) and t.mode == "lines" and t.name.endswith(" drawdown")}
+
+    assert equity_color["main"] == drawdown_color["main"]
+    assert equity_color["alt"] == drawdown_color["alt"]
+    assert equity_color["main"] != equity_color["alt"]  # still distinct between portfolios

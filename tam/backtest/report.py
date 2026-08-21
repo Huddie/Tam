@@ -19,6 +19,7 @@ _EMPTY_SUMMARY_KEYS = (
     "sharpe",
     "max_drawdown",
     "calmar",
+    "num_trades",
 )
 
 
@@ -84,6 +85,7 @@ class Report:
             "sharpe": sharpe,
             "max_drawdown": max_drawdown,
             "calmar": float(calmar),
+            "num_trades": len(self.trades_for(portfolio_id)),
         }
 
     def summary_all(self, trading_days_per_year: int = 252) -> pd.DataFrame:
