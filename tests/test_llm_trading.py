@@ -1,3 +1,4 @@
+import csv
 from datetime import date, timedelta
 
 import numpy as np
@@ -72,7 +73,7 @@ _SMALL_SIGNAL_SPECS = [
 
 
 def _small_windows():
-    return dict(signals=build_signals(_SMALL_SIGNAL_SPECS), history_window=3)
+    return dict(signals=build_signals(_SMALL_SIGNAL_SPECS), history_window=3, vol_window=5)
 
 
 def test_no_trade_before_the_fastest_signal_has_any_history(tmp_path):
@@ -211,6 +212,32 @@ def test_small_change_below_threshold_does_not_rebalance(tmp_path):
     assert len(portfolio.trades) == 1  # only the initial entry
 
 
+def test_zero_threshold_disables_it_trading_on_any_nonzero_change(tmp_path):
+    closes = _trending_closes(40)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+
+    calls = {"n": 0}
+
+    def drifting_client(prompt):
+        calls["n"] += 1
+        return {1: "50", 2: "50", 3: "50.5"}.get(calls["n"], "50.5")
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=drifting_client, rebalance_threshold_pct=0, **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    assert strategy._current_pct == 50.5
+    # Entry (call 1), no-op on the unchanged repeat (call 2), then a real
+    # rebalance on the +0.5pp change (call 3) -- even that tiny a move trades
+    # once the threshold is off.
+    assert len(portfolio.trades) == 3  # BUY entry, SELL+BUY to resize
+
+
 def test_large_change_crossing_zero_flips_from_long_to_short(tmp_path):
     closes = _trending_closes(40)
     dates = _dates(len(closes))
@@ -323,7 +350,16 @@ def test_prompt_includes_signal_history_and_calibration_track_record(tmp_path):
 
 
 def test_calls_record_outcome_with_the_hindsight_optimal_percentage(tmp_path):
-    closes = [100.0 * (1.01 ** i) for i in range(40)]  # steady +1%/day
+    # A strong uptrend with a little day-to-day noise -- realistic enough that
+    # trailing vol is computable (a perfectly constant series has zero
+    # variance, which can't scale a label at all -- see
+    # test_resolve_pending_skips_a_degenerate_zero_variance_window below) --
+    # and the noise is tiny next to the drift, so every day's move clips to
+    # the max label either way.
+    rng = np.random.default_rng(1)
+    closes = [100.0]
+    for _ in range(39):
+        closes.append(closes[-1] * (1.01 + rng.normal(0, 0.0005)))
     dates = _dates(len(closes))
     repo = _setup(tmp_path, closes, dates)
 
@@ -338,16 +374,49 @@ def test_calls_record_outcome_with_the_hindsight_optimal_percentage(tmp_path):
 
     strategy = LLMTradingStrategy(
         repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=LearningClient(), target_daily_vol=0.01, **_small_windows(),
+        llm_client=LearningClient(), **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
     harness.run()
 
-    # A steady +1%/day series with target_daily_vol=0.01 -> hindsight-optimal
-    # exposure clips to +100 every time.
     assert recorded
     assert all(value == "+100" for value in recorded)
+
+
+def test_hindsight_label_adapts_to_the_current_volatility_regime(tmp_path):
+    # Same-sized 1% move, shown twice: once after a calm trailing window,
+    # once after a turbulent one. An adaptive label should treat the calm-
+    # window move as much higher conviction (closer to the +/-100 clip) than
+    # the identical move seen right after a turbulent window.
+    strategy = LLMTradingStrategy.__new__(LLMTradingStrategy)
+
+    calm = pd.Series([100.0, 100.01, 99.99, 100.02, 99.98, 100.0, 101.0])
+    turbulent = pd.Series([100.0, 108.0, 93.0, 109.0, 91.0, 106.0, 107.0])
+    strategy._vol_window = 5
+
+    calm_vol = strategy._trailing_daily_vol(calm)
+    turbulent_vol = strategy._trailing_daily_vol(turbulent)
+
+    assert calm_vol < turbulent_vol
+    # Same realized_return (+1%) divided by a smaller vol -> a bigger |ideal_pct|.
+    assert (0.01 / calm_vol) > (0.01 / turbulent_vol)
+
+
+def test_trailing_daily_vol_is_none_for_a_degenerate_zero_variance_window(tmp_path):
+    strategy = LLMTradingStrategy.__new__(LLMTradingStrategy)
+    strategy._vol_window = 5
+
+    flat = pd.Series([100.0 * (1.01 ** i) for i in range(7)])  # identical return every day -> zero variance
+
+    assert strategy._trailing_daily_vol(flat) is None
+
+
+def test_trailing_daily_vol_is_none_before_enough_history(tmp_path):
+    strategy = LLMTradingStrategy.__new__(LLMTradingStrategy)
+    strategy._vol_window = 5
+
+    assert strategy._trailing_daily_vol(pd.Series([100.0, 101.0, 99.0])) is None
 
 
 def test_plain_callable_client_without_record_outcome_still_works(tmp_path):
@@ -431,3 +500,91 @@ def test_get_state_delegates_to_a_client_that_supports_it(tmp_path):
     restored.load_state(state)
 
     assert restored_client.loaded_with == {"trained_on": 7}
+
+
+def test_log_path_writes_a_header_and_one_row_per_call(tmp_path):
+    closes = _trending_closes(10)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+    log_path = tmp_path / "llm_log.csv"
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "42", log_path=str(log_path), **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    assert log_path.exists()
+    with log_path.open(newline="") as handle:
+        rows = list(csv.reader(handle))
+
+    assert rows[0] == ["iteration", "datetime", "prompt", "response"]
+    assert len(rows) > 1
+    assert [r[0] for r in rows[1:]] == [str(i) for i in range(1, len(rows))]  # 1, 2, 3, ...
+    assert all(r[3] == "42" for r in rows[1:])
+
+
+def test_log_path_records_error_for_a_failing_call(tmp_path):
+    closes = _trending_closes(10)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+    log_path = tmp_path / "llm_log.csv"
+
+    def flaky_client(prompt):
+        raise ConnectionError("model server not running")
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=flaky_client, log_path=str(log_path), **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    with log_path.open(newline="") as handle:
+        rows = list(csv.reader(handle))
+
+    assert len(rows) > 1
+    assert all(r[3].startswith("ERROR:") for r in rows[1:])
+
+
+def test_no_log_path_means_no_log_file(tmp_path):
+    closes = _trending_closes(10)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "42", **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()  # must not raise despite log_path being unset
+
+    assert not (tmp_path / "llm_log.csv").exists()
+
+
+def test_iteration_counter_round_trips_through_get_state_and_load_state(tmp_path):
+    closes = _trending_closes(10)
+    dates = _dates(len(closes))
+    repo = _setup(tmp_path, closes, dates)
+
+    strategy = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "42", **_small_windows(),
+    )
+    portfolio = Portfolio("main", cash=10_000.0)
+    harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
+    harness.run()
+
+    assert strategy._iteration > 0
+
+    restored = LLMTradingStrategy(
+        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        llm_client=lambda prompt: "42", **_small_windows(),
+    )
+    restored.load_state(strategy.get_state())
+
+    assert restored._iteration == strategy._iteration

@@ -163,6 +163,23 @@ def test_render_table_includes_a_trade_count_column():
     assert list(table.cells.values[header.index("# Trades")]) == ["3"]
 
 
+def test_drawdown_traces_are_filled_to_zero_with_a_transparent_version_of_their_own_color():
+    report = _two_portfolio_report()
+
+    fig = render(report)
+
+    drawdown_traces = [t for t in fig.data if isinstance(t, go.Scatter) and t.name.endswith(" drawdown")]
+    assert drawdown_traces
+    for trace in drawdown_traces:
+        assert trace.fill == "tozeroy"
+        assert trace.fillcolor.startswith("rgba(")
+        assert trace.fillcolor.endswith(",0.2)")
+        # Fill color's RGB channels match the line's own color, just with alpha added.
+        line_rgb = tuple(int(trace.line.color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+        fill_rgb = tuple(int(c) for c in trace.fillcolor[len("rgba(") : -len(",0.2)")].split(","))
+        assert line_rgb == fill_rgb
+
+
 def test_render_uses_the_same_line_color_for_a_portfolio_s_equity_and_drawdown():
     report = _two_portfolio_report()
 

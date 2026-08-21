@@ -1,5 +1,5 @@
 data:
-  provider: yfinance    # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
+  provider: yfinance     # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
   store: parquet         # parquet or csv
   root: data/eod
 
@@ -9,27 +9,8 @@ backtest:
   end: "2024-12-31"
   cash: 100000
   report_path: examples/output/llm_trading_report.html
-  # checkpoint_path omitted -> defaults to examples/output/<config filename>/<hash
-  # of this exact file>/checkpoint.pkl (see examples/backtest.py:_artifacts_dir).
-  # Namespaced by the config's own content hash so editing this file (a date
-  # range, a signal, anything) gets its own fresh checkpoint instead of
-  # colliding with -- or wrongly resuming -- a different run's saved state.
-  # If this run crashes, rerunning this exact file resumes from the last
-  # completed day instead of restarting the whole (LLM-inference- and
-  # fine-tune-heavy) backtest from day one.
   checkpoint_every: 1
   strategies:
-    # Requires a locally-served, OpenAI-compatible chat completions endpoint --
-    # ignored below since lora: is set (mlx-lm serves and trains the model
-    # directly, no Ollama needed). The model is shown a broad set of QQQ
-    # technical signals (multi-window trend, mean reversion, momentum,
-    # volatility -- each as its own trailing history, not just today's value)
-    # and outputs a single number in [-100, 100]: a target net exposure, +
-    # meaning TQQQ, - meaning SQQQ, 0 meaning cash. It's never told a rule for
-    # combining these signals -- that's what it's meant to learn, both
-    # in-context (every prompt shows its own recent calls vs. what the
-    # hindsight-optimal exposure turned out to be) and, with lora: set, via
-    # genuine periodic fine-tuning on that same hindsight-optimal target.
     - strategy: llm_trading
       portfolio_id: llm_trading
       params:
@@ -37,16 +18,7 @@ backtest:
         long_ticker: TQQQ
         short_ticker: SQQQ
         tickers: [QQQ, TQQQ, SQQQ]
-        memory_window: 10
-        # Each entry looks up a Signal by id from the registry (tam/strategy/signals.py)
-        # and constructs one instance per `config` (singular), or one instance per
-        # entry in `configs` (plural) -- sugar for repeating the same id at several
-        # windows/horizons without writing out a separate entry each time. Omit
-        # `signals:` entirely to fall back to llm_trading.py's DEFAULT_SIGNAL_SPECS,
-        # which covers the same ground as below. Every signal also carries its own
-        # plain-language description, shown to the model alongside its values --
-        # see signals.py for what each one means; nothing here is a rule for
-        # combining them, that's left for the model to learn.
+        memory_window: 90
         signals:
           - id: sma
             configs:
@@ -73,31 +45,14 @@ backtest:
           - id: bollinger_pct_b
           - id: distance_from_high
             config: {window: 252}
-        history_window: 20     # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use
-        rebalance_threshold_pct: 5   # ignore suggested-exposure changes smaller than this, to avoid churn on noise-level output jitter
-        target_daily_vol: 0.01 # scale for the hindsight-optimal-exposure label: a +1% day -> label +100
+        history_window: 90           # trailing days shown per signal -- raise to test whether more history helps or just adds noise the model can't use
+        rebalance_threshold_pct: 0   # ignore suggested-exposure changes at/below this (noise-level jitter); 0 disables it entirely -- any actual change trades
+        vol_window: 20               # trailing days used to estimate a "typical" daily move, to scale the hindsight-optimal-exposure label to the current vol regime instead of a fixed %
         lora:
-          model: mlx-community/Qwen2.5-0.5B-Instruct-4bit
-          fine_tune_every_n_days: 20
-          iters: 100
+          model: mlx-community/Qwen2.5-1.5B-Instruct-4bit
+          fine_tune_every_n_days: 80
+          iters: 50
           learning_rate: 1.0e-4
-          # adapter_root omitted -> defaults to <the same config-hash artifacts
-          # dir as checkpoint_path>/lora_adapters/llm_trading -- persistent
-          # across a crash/restart, and namespaced per-config for the same
-          # reason as checkpoint_path above.
-        sell:
-          qty:
-            pct: 100
-    - strategy: ml_walk_forward
-      portfolio_id: ml_walk_forward
-      params:
-        signal_ticker: QQQ
-        long_ticker: TQQQ
-        short_ticker: SQQQ
-        tickers: [QQQ, TQQQ, SQQQ]
-        buy:
-          qty:
-            pct: 100
         sell:
           qty:
             pct: 100

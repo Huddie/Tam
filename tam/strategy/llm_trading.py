@@ -50,9 +50,11 @@ run, or to cash if nothing has ever been held yet.
 """
 from __future__ import annotations
 
+import csv
 import re
 from collections import deque
-from typing import Callable, List, Optional
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -87,8 +89,11 @@ _SYSTEM_PROMPT = (
     "You learn how the Nasdaq (QQQ) trades from technical signals. You trade via "
     "TQQQ (3x long) and SQQQ (3x short), not QQQ directly. Output a target net "
     "exposure: + means % of portfolio in TQQQ, - means % in SQQQ, 0 means cash. "
-    "Low conviction should look like a number near 0. Respond with ONLY a number "
-    "in [-100, 100]."
+    "Your answer is a whole number on a -100 to 100 scale -- NOT a small decimal "
+    "like the signal values you're shown (those are returns/ratios; your answer "
+    "uses a completely different scale). Valid examples: 65, -30, 0, 100, -100, 5. "
+    "Low conviction should look like a small whole number near 0, such as 5 or -5 "
+    "-- never a decimal like 0.05. Respond with ONLY the number, nothing else."
 )
 
 
@@ -129,7 +134,8 @@ class LLMTradingStrategy(Strategy):
         signals: Optional[List[Signal]] = None,
         history_window: int = 20,
         rebalance_threshold_pct: float = 5.0,
-        target_daily_vol: float = 0.01,
+        vol_window: int = 20,
+        log_path: Optional[str] = None,
     ):
         super().__init__()
         self._repository = repository
@@ -143,13 +149,17 @@ class LLMTradingStrategy(Strategy):
         self._signals = signals if signals is not None else build_signals(DEFAULT_SIGNAL_SPECS)
         self._history_window = history_window
         self._rebalance_threshold_pct = rebalance_threshold_pct
-        self._target_daily_vol = target_daily_vol
+        self._vol_window = vol_window
+        self._log_path = Path(log_path) if log_path else None
+        self._iteration = 0
         # Query enough history for every signal to be able to fully populate once
         # it's warmed up (max), but only *require* the fastest-warming signal (min)
         # before starting to call the model and accumulate training outcomes --
         # slower signals show a placeholder in the prompt until their own window
         # fills, rather than blocking the whole strategy on the slowest one.
-        self._max_required_history = max(s.required_history() for s in self._signals) + self._history_window
+        self._max_required_history = max(
+            [s.required_history() for s in self._signals] + [self._vol_window + 1]
+        ) + self._history_window
         self._min_required_history = min(s.required_history() for s in self._signals)
         self._current_pct = 0.0  # signed net exposure: + long TQQQ, - short SQQQ, 0 cash
         self._pending = None  # (prompt, predicted_pct, price_as_of_pending) awaiting tomorrow's outcome
@@ -168,20 +178,59 @@ class LLMTradingStrategy(Strategy):
         current_price = close.iloc[-1]
 
         if self._pending is not None:
-            self._resolve_pending(current_price)
+            self._resolve_pending(close, current_price)
 
         prompt = self._build_prompt(close)
-        target_pct = self._ask_llm(prompt)
+        target_pct, raw_response = self._ask_llm(prompt)
+        self._iteration += 1
+        self._log_call(as_of, prompt, raw_response)
         if target_pct is None:
             target_pct = self._current_pct  # fall back to holding current exposure
         self._pending = (prompt, target_pct, current_price)
 
         self._rebalance_to(target_pct)
 
-    def _resolve_pending(self, current_price: float) -> None:
+    def _log_call(self, as_of, prompt: str, response: str) -> None:
+        """Every LLM call, unconditionally -- iteration, datetime, prompt,
+        response -- so "is it even being called, and what does it say" is a
+        file to read, not a guess from trade activity alone. response is
+        "ERROR: ..." for a failed call, so a silent-failure streak is
+        distinguishable from the model genuinely saying ~0 repeatedly."""
+        if self._log_path is None:
+            return
+        is_new = not self._log_path.exists()
+        self._log_path.parent.mkdir(parents=True, exist_ok=True)
+        with self._log_path.open("a", newline="") as handle:
+            writer = csv.writer(handle)
+            if is_new:
+                writer.writerow(["iteration", "datetime", "prompt", "response"])
+            writer.writerow([self._iteration, as_of, prompt, response])
+
+    def _trailing_daily_vol(self, close: pd.Series) -> Optional[float]:
+        """Typical size of a 1-day move, estimated from the trailing window --
+        used to scale the hindsight-optimal-exposure label to the *current*
+        volatility regime, rather than a fixed % that's too tight in calm
+        markets and too loose in turbulent ones. None if there isn't
+        `vol_window` worth of returns yet, or the window is degenerately flat."""
+        returns = close.pct_change().dropna().tail(self._vol_window)
+        if len(returns) < self._vol_window:
+            return None
+        vol = returns.std()
+        # A near-zero (not necessarily bitwise-zero, thanks to float rounding
+        # in compounding) window is degenerate -- dividing by it would blow the
+        # label up to an enormous, meaningless number before clipping saves it.
+        if pd.isna(vol) or vol < 1e-8:
+            return None
+        return float(vol)
+
+    def _resolve_pending(self, close: pd.Series, current_price: float) -> None:
         pending_prompt, predicted_pct, prior_price = self._pending
+        daily_vol = self._trailing_daily_vol(close)
+        if daily_vol is None:
+            return  # can't sensibly scale a label yet -- skip this outcome rather than guess
+
         realized_return = current_price / prior_price - 1
-        ideal_pct = self._clip(realized_return / self._target_daily_vol * 100)
+        ideal_pct = self._clip(realized_return / daily_vol * 100)
         self._memory.append({"predicted": predicted_pct, "ideal": ideal_pct, "error": abs(predicted_pct - ideal_pct)})
 
         record_outcome = getattr(self._llm_client, "record_outcome", None)
@@ -219,20 +268,25 @@ class LLMTradingStrategy(Strategy):
             "Respond with ONLY a number in [-100, 100] -- your suggested net exposure."
         )
 
-    def _ask_llm(self, prompt: str) -> Optional[float]:
+    def _ask_llm(self, prompt: str) -> Tuple[Optional[float], str]:
         try:
             raw = self._llm_client(prompt)
-        except Exception:
-            return None
+        except Exception as exc:
+            return None, f"ERROR: {exc}"
 
         match = _NUMBER_RE.search(raw)
         if match is None:
-            return None
-        return self._clip(float(match.group()))
+            return None, raw
+        return self._clip(float(match.group())), raw
 
     def _rebalance_to(self, target_pct: float) -> None:
+        """rebalance_threshold_pct: float, in percentage points -- suggested-
+        exposure changes at or below this are treated as noise-level jitter
+        and ignored. Set to 0 to disable entirely: any actual change (however
+        small) then triggers a trade, and only a perfectly unchanged
+        suggestion is a no-op."""
         target_pct = self._clip(target_pct)
-        if abs(target_pct - self._current_pct) < self._rebalance_threshold_pct:
+        if abs(target_pct - self._current_pct) <= self._rebalance_threshold_pct:
             return
 
         current_ticker = self._ticker_for(self._current_pct)
@@ -261,6 +315,7 @@ class LLMTradingStrategy(Strategy):
             "current_pct": self._current_pct,
             "pending": self._pending,
             "memory": list(self._memory),
+            "iteration": self._iteration,
         }
         client_get_state = getattr(self._llm_client, "get_state", None)
         if client_get_state is not None:
@@ -271,6 +326,7 @@ class LLMTradingStrategy(Strategy):
         self._current_pct = state["current_pct"]
         self._pending = state["pending"]
         self._memory = deque(state["memory"], maxlen=self._memory.maxlen)
+        self._iteration = state.get("iteration", 0)
         client_load_state = getattr(self._llm_client, "load_state", None)
         if client_load_state is not None and "llm_client" in state:
             client_load_state(state["llm_client"])
@@ -309,5 +365,6 @@ def build_llm_trading(repository: DataRepository, portfolio_id: str, params, cas
         signals=build_signals(params.get("signals") or DEFAULT_SIGNAL_SPECS),
         history_window=params.get("history_window", 20),
         rebalance_threshold_pct=params.get("rebalance_threshold_pct", 5.0),
-        target_daily_vol=params.get("target_daily_vol", 0.01),
+        vol_window=params.get("vol_window", 20),
+        log_path=params.get("log_path"),
     )

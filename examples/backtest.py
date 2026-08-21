@@ -20,7 +20,10 @@ import threading
 from datetime import date
 from pathlib import Path
 
+from rich.console import Console
+from rich.panel import Panel
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
+from rich.table import Table as RichTable
 
 from tam.backtest.config import build_strategies
 from tam.backtest.harness import BacktestHarness, Progress as RunProgress
@@ -56,25 +59,34 @@ def _build_repository(data_settings: DataSettings) -> DataRepository:
     return DataRepository(provider, store)
 
 
+def _config_hash(config_path: Path) -> str:
+    return hashlib.sha256(config_path.read_bytes()).hexdigest()[:12]
+
+
 def _artifacts_dir(config_path: Path) -> Path:
     """Every config gets its own artifacts folder, keyed by a hash of its exact
     contents -- so two configs (or two edited versions of the same config) never
-    collide on the same checkpoint/adapter files just because they happen to
+    collide on the same checkpoint/adapter/log files just because they happen to
     share a filename. A byte-for-byte change (even a date range, even a
     comment) gets a fresh folder rather than silently resuming/reusing another
-    run's state."""
-    digest = hashlib.sha256(config_path.read_bytes()).hexdigest()[:12]
-    return Path("examples/output") / config_path.stem / digest
+    run's state. Rooted next to the config file itself (config_path.parent /
+    "output"), not a hardcoded "examples/output" relative to cwd -- otherwise a
+    config living anywhere else (e.g. a test's tmp_path) would write real files
+    into this repo's examples/output/ instead of staying self-contained."""
+    return config_path.parent / "output" / config_path.stem / _config_hash(config_path)
 
 
 def _apply_artifact_defaults(backtest_settings: "BacktestSettings", artifacts_dir: Path) -> None:
-    """Fill in checkpoint_path / each strategy's lora.adapter_root from the
-    config-hash-namespaced artifacts dir, but only where the config didn't
-    already say explicitly -- an explicit value in the YAML always wins."""
+    """Fill in checkpoint_path / each llm_trading strategy's log_path and
+    lora.adapter_root from the config-hash-namespaced artifacts dir, but only
+    where the config didn't already say explicitly -- an explicit value in
+    the YAML always wins."""
     if not backtest_settings.checkpoint_path:
         backtest_settings.checkpoint_path = str(artifacts_dir / "checkpoint.pkl")
 
     for spec in backtest_settings.strategies:
+        if spec.strategy == "llm_trading" and "log_path" not in spec.params:
+            spec.params.setdefault("log_path", str(artifacts_dir / "llm_log" / f"{spec.portfolio_id}.csv"))
         lora = spec.params.get("lora")
         if lora is not None and "adapter_root" not in lora:
             lora.setdefault("adapter_root", str(artifacts_dir / "lora_adapters" / spec.portfolio_id))
@@ -104,12 +116,26 @@ def _validate_tickers_declared(backtest_settings: BacktestSettings) -> None:
             )
 
 
-def run(config_path: Path, mode: str = "batch", verbose: bool = False) -> None:
+def _print_banner(config_path: Path, config_hash: str, artifacts_dir: Path) -> None:
+    grid = RichTable.grid(padding=(0, 2))
+    grid.add_column(style="bold cyan", justify="right")
+    grid.add_column()
+    grid.add_row("Config", str(config_path))
+    grid.add_row("Hash", config_hash)
+    grid.add_row("Artifacts", str(artifacts_dir))
+    Console().print(Panel(grid, title="[bold]Backtest[/bold]", border_style="cyan", expand=False))
+
+
+def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int = 8050) -> None:
+    config_hash = _config_hash(config_path)
+    artifacts_dir = _artifacts_dir(config_path)
+    _print_banner(config_path, config_hash, artifacts_dir)
+
     cfg = Config(config_path)
     data_settings = cfg.data(DataSettings)
     backtest_settings = cfg.backtest(BacktestSettings)
     _validate_tickers_declared(backtest_settings)
-    _apply_artifact_defaults(backtest_settings, _artifacts_dir(config_path))
+    _apply_artifact_defaults(backtest_settings, artifacts_dir)
 
     repository = _build_repository(data_settings)
     start = date.fromisoformat(backtest_settings.start)
@@ -126,7 +152,7 @@ def run(config_path: Path, mode: str = "batch", verbose: bool = False) -> None:
     harness = BacktestHarness(repository, strategies, portfolios, dates)
 
     if mode == "live":
-        _run_live(harness, len(dates), backtest_settings, config_path, verbose)
+        _run_live(harness, len(dates), backtest_settings, config_path, verbose, port)
     else:
         _run_batch(harness, len(dates), backtest_settings, config_path)
 
@@ -179,6 +205,7 @@ def _run_live(
     backtest_settings: BacktestSettings,
     config_path: Path,
     verbose: bool = False,
+    port: int = 8050,
 ) -> None:
     """Runs the backtest on a background thread while the main thread serves a
     dashboard (tam.backtest.live) that polls the checkpoint the background run
@@ -194,8 +221,8 @@ def _run_live(
     thread = threading.Thread(target=_run_backtest, daemon=True)
     thread.start()
 
-    print("Live view: http://127.0.0.1:8050  (backtest running in the background)", file=sys.stderr)
-    serve(backtest_settings.checkpoint_path, title=f"Backtest (live): {config_path.stem}", verbose=verbose)
+    print(f"Live view: http://127.0.0.1:{port}  (backtest running in the background)", file=sys.stderr)
+    serve(backtest_settings.checkpoint_path, title=f"Backtest (live): {config_path.stem}", port=port, verbose=verbose)
 
 
 def _write_report(report, backtest_settings: BacktestSettings, config_path: Path) -> None:
@@ -228,8 +255,14 @@ def main() -> None:
             "e.g. while debugging the live server itself."
         ),
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8050,
+        help="Port for the --mode live dashboard (default 8050). Change this if that port's already in use.",
+    )
     args = parser.parse_args()
-    run(args.config, mode=args.mode, verbose=args.log_level == "verbose")
+    run(args.config, mode=args.mode, verbose=args.log_level == "verbose", port=args.port)
 
 
 if __name__ == "__main__":

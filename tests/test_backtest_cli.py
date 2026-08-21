@@ -180,8 +180,8 @@ backtest:
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, verbose=False):
-        serve_calls.append((checkpoint_path, title, verbose))
+    def fake_serve(checkpoint_path, title, port=8050, verbose=False):
+        serve_calls.append((checkpoint_path, title, port, verbose))
         deadline = time.time() + 5
         while not report_path.exists() and time.time() < deadline:
             time.sleep(0.02)
@@ -191,7 +191,8 @@ backtest:
     run(config_path, mode="live")
 
     assert len(serve_calls) == 1
-    checkpoint_path, _title, verbose = serve_calls[0]
+    checkpoint_path, _title, port, verbose = serve_calls[0]
     assert checkpoint_path  # auto-namespaced default was filled in
+    assert port == 8050
     assert verbose is False
     assert report_path.exists()

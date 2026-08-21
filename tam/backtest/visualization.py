@@ -34,6 +34,14 @@ _SELL_COLOR = "#d62728"
 _NEUTRAL_COLOR = "#7f7f7f"
 
 
+def _fill_rgba(hex_color: str, alpha: float = 0.2) -> str:
+    """`hex_color` (e.g. "#636EFA") as a semi-transparent rgba() string, for a
+    fill that matches a trace's own line color instead of a fixed one."""
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def _side_label(side) -> str:
     return side.value if hasattr(side, "value") else str(side)
 
@@ -128,6 +136,8 @@ def render(report: Report, title: str = "Backtest Report") -> go.Figure:
                 name=f"{portfolio_id} drawdown",
                 showlegend=False,
                 line=dict(color=colors[portfolio_id]),
+                fill="tozeroy",
+                fillcolor=_fill_rgba(colors[portfolio_id]),
             ),
             row=2,
             col=1,
