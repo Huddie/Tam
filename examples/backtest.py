@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import sys
 import tempfile
 import threading
@@ -61,21 +62,30 @@ def _build_repository(data_settings: DataSettings) -> DataRepository:
     return DataRepository(provider, store)
 
 
-def _config_hash(config_path: Path) -> str:
-    return hashlib.sha256(config_path.read_bytes()).hexdigest()[:12]
+def _config_hash(resolved: dict) -> str:
+    canonical = json.dumps(resolved, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
 
 
-def _artifacts_dir(config_path: Path) -> Path:
-    """Every config gets its own artifacts folder, keyed by a hash of its exact
-    contents -- so two configs (or two edited versions of the same config) never
-    collide on the same checkpoint/adapter/log files just because they happen to
-    share a filename. A byte-for-byte change (even a date range, even a
-    comment) gets a fresh folder rather than silently resuming/reusing another
-    run's state. Rooted next to the config file itself (config_path.parent /
-    "output"), not a hardcoded "examples/output" relative to cwd -- otherwise a
-    config living anywhere else (e.g. a test's tmp_path) would write real files
-    into this repo's examples/output/ instead of staying self-contained."""
-    return config_path.parent / "output" / config_path.stem / _config_hash(config_path)
+def _artifacts_dir(config_path: Path, config_hash: str) -> Path:
+    """Every config gets its own artifacts folder, keyed by a hash of its
+    fully RESOLVED contents (after base/include/vars resolution -- see
+    tam/config.py) -- not the top-level file's raw bytes. A config that pulls
+    in a shared block via `<< shared/foo.yaml#bar` changes its effective
+    contents the moment that shared file changes, even though the top-level
+    file's own bytes don't -- hashing only the top-level file's bytes would
+    silently keep resuming an old run's checkpoint/adapters under materially
+    different settings, with no record of which generation was trained under
+    which. So two configs (or two edited versions of the same config, or the
+    same config after an included file changes) never collide on the same
+    checkpoint/adapter/log files just because they happen to share a
+    filename -- a resolved-content change gets a fresh folder rather than
+    silently resuming/reusing another run's state. Rooted next to the config
+    file itself (config_path.parent / "output"), not a hardcoded
+    "examples/output" relative to cwd -- otherwise a config living anywhere
+    else (e.g. a test's tmp_path) would write real files into this repo's
+    examples/output/ instead of staying self-contained."""
+    return config_path.parent / "output" / config_path.stem / config_hash
 
 
 def _ephemeral_checkpoint_path() -> str:
@@ -177,11 +187,11 @@ def _print_banner(config_path: Path, config_hash: str, artifacts_dir: Path) -> N
 
 
 def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int = 8050, no_save: bool = False) -> None:
-    config_hash = _config_hash(config_path)
-    artifacts_dir = _artifacts_dir(config_path)
+    cfg = Config(config_path)
+    config_hash = _config_hash(cfg.to_dict())
+    artifacts_dir = _artifacts_dir(config_path, config_hash)
     _print_banner(config_path, config_hash, artifacts_dir)
 
-    cfg = Config(config_path)
     data_settings = cfg.data(DataSettings)
     backtest_settings = cfg.backtest(BacktestSettings)
     _validate_tickers_declared(backtest_settings)
