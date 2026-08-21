@@ -9,7 +9,8 @@ backtest:
   end: "2024-12-31"
   cash: 100000
   report_path: examples/output/trend_rotation_report.html
-  checkpoint_path: examples/output/.trend_rotation_checkpoint.pkl
+  # checkpoint_path omitted -> auto-namespaced by this file's own content hash;
+  # see examples/backtest.py:_artifacts_dir and llm_trading_config.yaml for why.
   checkpoint_every: 1
   strategies:
     # Always holds exactly one of TQQQ (long) or SQQQ (short) -- never both,

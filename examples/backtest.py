@@ -9,22 +9,28 @@ tam/backtest/config.py for how a spec becomes a Strategy+Portfolio pair.
 Usage:
     python -m examples.backtest examples/moving_average_config.yaml
     python -m examples.backtest examples/ma_crossover_config.yaml
+    python -m examples.backtest examples/trend_rotation_config.yaml --mode live
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import sys
+import threading
 from datetime import date
 from pathlib import Path
 
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
+
 from tam.backtest.config import build_strategies
-from tam.backtest.harness import BacktestHarness, Progress
+from tam.backtest.harness import BacktestHarness, Progress as RunProgress
 from tam.backtest.visualization import write_html
 from tam.config import Config
 from tam.data.providers import DataProvider
 from tam.data.repository import DataRepository
 from tam.data.storage import DataStore
 from tam.registry import Registry
+from tam.status import set_reporter
 
 
 class DataSettings:
@@ -48,6 +54,30 @@ def _build_repository(data_settings: DataSettings) -> DataRepository:
     provider = Registry.get(DataProvider, data_settings.provider)
     store = Registry.create(DataStore, data_settings.store, data_settings.root)
     return DataRepository(provider, store)
+
+
+def _artifacts_dir(config_path: Path) -> Path:
+    """Every config gets its own artifacts folder, keyed by a hash of its exact
+    contents -- so two configs (or two edited versions of the same config) never
+    collide on the same checkpoint/adapter files just because they happen to
+    share a filename. A byte-for-byte change (even a date range, even a
+    comment) gets a fresh folder rather than silently resuming/reusing another
+    run's state."""
+    digest = hashlib.sha256(config_path.read_bytes()).hexdigest()[:12]
+    return Path("examples/output") / config_path.stem / digest
+
+
+def _apply_artifact_defaults(backtest_settings: "BacktestSettings", artifacts_dir: Path) -> None:
+    """Fill in checkpoint_path / each strategy's lora.adapter_root from the
+    config-hash-namespaced artifacts dir, but only where the config didn't
+    already say explicitly -- an explicit value in the YAML always wins."""
+    if not backtest_settings.checkpoint_path:
+        backtest_settings.checkpoint_path = str(artifacts_dir / "checkpoint.pkl")
+
+    for spec in backtest_settings.strategies:
+        lora = spec.params.get("lora")
+        if lora is not None and "adapter_root" not in lora:
+            lora.setdefault("adapter_root", str(artifacts_dir / "lora_adapters" / spec.portfolio_id))
 
 
 def _validate_tickers_declared(backtest_settings: BacktestSettings) -> None:
@@ -74,25 +104,12 @@ def _validate_tickers_declared(backtest_settings: BacktestSettings) -> None:
             )
 
 
-def _print_progress(progress: Progress) -> None:
-    width = 30
-    filled = int(width * progress.fraction)
-    bar = "#" * filled + "-" * (width - filled)
-    end = "\n" if progress.day_index == progress.total_days else ""
-    print(
-        f"\r[{bar}] {progress.day_index}/{progress.total_days} days "
-        f"({progress.fraction:5.1%}) - {progress.current_date}",
-        end=end,
-        file=sys.stderr,
-        flush=True,
-    )
-
-
-def run(config_path: Path) -> None:
+def run(config_path: Path, mode: str = "batch", verbose: bool = False) -> None:
     cfg = Config(config_path)
     data_settings = cfg.data(DataSettings)
     backtest_settings = cfg.backtest(BacktestSettings)
     _validate_tickers_declared(backtest_settings)
+    _apply_artifact_defaults(backtest_settings, _artifacts_dir(config_path))
 
     repository = _build_repository(data_settings)
     start = date.fromisoformat(backtest_settings.start)
@@ -106,16 +123,82 @@ def run(config_path: Path) -> None:
     strategies, portfolios = build_strategies(
         repository, backtest_settings.strategies, float(backtest_settings.cash)
     )
-
     harness = BacktestHarness(repository, strategies, portfolios, dates)
-    report = harness.run(
-        on_progress=_print_progress,
-        checkpoint_path=backtest_settings.checkpoint_path,
-        checkpoint_every=backtest_settings.checkpoint_every,
+
+    if mode == "live":
+        _run_live(harness, len(dates), backtest_settings, config_path, verbose)
+    else:
+        _run_batch(harness, len(dates), backtest_settings, config_path)
+
+
+def _run_batch(harness: BacktestHarness, total_days: int, backtest_settings: BacktestSettings, config_path: Path) -> None:
+    """Runs to completion with a two-row live display: the overall day-count
+    bar, and a second row underneath showing whatever's happening right now
+    (loading a model, fine-tuning gen N with its own iter progress, etc.) --
+    fed by whatever a strategy reports via tam.status, if anything does."""
+    columns = (
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
     )
+    with Progress(*columns) as progress_ui:
+        day_task = progress_ui.add_task("Backtest", total=total_days)
+        activity_task = progress_ui.add_task("idle", total=None)
+
+        def on_progress(run_progress: RunProgress) -> None:
+            progress_ui.update(
+                day_task, completed=run_progress.day_index, description=f"Backtest — {run_progress.current_date}"
+            )
+
+        def reporter(text: str, current, total) -> None:
+            kwargs = {"description": text}
+            if total is not None:
+                kwargs["total"] = total
+            if current is not None:
+                kwargs["completed"] = current
+            progress_ui.update(activity_task, **kwargs)
+
+        set_reporter(reporter)
+        try:
+            report = harness.run(
+                on_progress=on_progress,
+                checkpoint_path=backtest_settings.checkpoint_path,
+                checkpoint_every=backtest_settings.checkpoint_every,
+            )
+        finally:
+            set_reporter(None)
 
     print(report.summary_all())
+    _write_report(report, backtest_settings, config_path)
 
+
+def _run_live(
+    harness: BacktestHarness,
+    total_days: int,
+    backtest_settings: BacktestSettings,
+    config_path: Path,
+    verbose: bool = False,
+) -> None:
+    """Runs the backtest on a background thread while the main thread serves a
+    dashboard (tam.backtest.live) that polls the checkpoint the background run
+    is writing -- the harness itself has no idea anything is watching it."""
+    if not backtest_settings.checkpoint_path:
+        raise ValueError("--mode live requires backtest.checkpoint_path to be set in the config")
+
+    from tam.backtest.live import serve
+
+    def _run_backtest() -> None:
+        _run_batch(harness, total_days, backtest_settings, config_path)
+
+    thread = threading.Thread(target=_run_backtest, daemon=True)
+    thread.start()
+
+    print("Live view: http://127.0.0.1:8050  (backtest running in the background)", file=sys.stderr)
+    serve(backtest_settings.checkpoint_path, title=f"Backtest (live): {config_path.stem}", verbose=verbose)
+
+
+def _write_report(report, backtest_settings: BacktestSettings, config_path: Path) -> None:
     report_path = Path(backtest_settings.report_path)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     write_html(report, str(report_path), title=f"Backtest: {config_path.stem}")
@@ -125,7 +208,28 @@ def run(config_path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", type=Path, help="Path to a backtest YAML config")
-    run(parser.parse_args().config)
+    parser.add_argument(
+        "--mode",
+        choices=["batch", "live"],
+        default="batch",
+        help=(
+            "'batch' (default): run to completion, then write the static HTML report. "
+            "'live': open a dashboard that updates as the backtest runs, polling "
+            "backtest.checkpoint_path (must be set in the config)."
+        ),
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=["default", "verbose"],
+        default="default",
+        help=(
+            "'default': quiet -- just the progress display (silences Dash/Werkzeug's "
+            "per-request access log in --mode live). 'verbose': also show those logs, "
+            "e.g. while debugging the live server itself."
+        ),
+    )
+    args = parser.parse_args()
+    run(args.config, mode=args.mode, verbose=args.log_level == "verbose")
 
 
 if __name__ == "__main__":

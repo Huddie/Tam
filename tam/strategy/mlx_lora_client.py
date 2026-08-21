@@ -21,11 +21,16 @@ than only reinforcing whatever it already happened to get right.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+from ..status import report
+
+_ITER_RE = re.compile(r"Iter (\d+): (.*)")
 
 
 class MLXLoRAClient:
@@ -72,13 +77,15 @@ class MLXLoRAClient:
     def _ensure_loaded(self) -> None:
         if self._model is not None:
             return
+        from huggingface_hub.utils import disable_progress_bars
         from mlx_lm.utils import load
 
-        print(f"[mlx_lora] loading {self._model_path}...", file=sys.stderr, flush=True)
+        disable_progress_bars()  # cache hits print a "Fetching/Reconstructing" bar every time otherwise
+        report(f"loading {self._model_path}...")
         start = time.time()
         adapter_path = str(self._current_adapter) if self._current_adapter is not None else None
         self._model, self._tokenizer = load(self._model_path, adapter_path=adapter_path)
-        print(f"[mlx_lora] loaded in {time.time() - start:.1f}s", file=sys.stderr, flush=True)
+        report(f"loaded {self._model_path} in {time.time() - start:.1f}s")
 
     def _messages_for(self, prompt: str, completion: Optional[str] = None) -> list:
         messages = []
@@ -145,26 +152,38 @@ class MLXLoRAClient:
         if resume_from is not None and resume_from.exists():
             args += ["--resume-adapter-file", str(resume_from)]
 
-        print(
-            f"[mlx_lora] fine-tuning generation {self._generation} on {len(self._buffer)} examples "
-            f"({self._iters} iters)...",
-            file=sys.stderr, flush=True,
-        )
+        report(f"fine-tuning gen {self._generation} on {len(self._buffer)} examples", 0, self._iters)
         start = time.time()
         self._run_training(args)
-        print(f"[mlx_lora] generation {self._generation} done in {time.time() - start:.1f}s", file=sys.stderr, flush=True)
+        report(f"gen {self._generation} done in {time.time() - start:.1f}s", self._iters, self._iters)
 
         self._current_adapter = new_adapter
         self._buffer.clear()
         self._model = None  # force a reload with the freshly-trained adapter on next call
 
     def _run_training(self, args: List[str]) -> None:
+        """Runs mlx_lm's training CLI as a subprocess, captured rather than
+        streamed raw -- "Iter N: ..." lines update a real (current/total)
+        sub-progress bar via tam.status instead of scrolling the terminal, but
+        the full captured output is dumped on a non-zero exit so a real
+        failure is still fully diagnosable, not silently swallowed."""
         import subprocess
 
-        # Not captured -- let mlx_lm's own training progress/loss stream straight
-        # to the terminal, so a fine-tune pass (which can take real wall-clock
-        # time) doesn't look identical to a hang.
-        subprocess.run(args, check=True)
+        process = subprocess.Popen(
+            args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
+        )
+        lines: List[str] = []
+        for line in process.stdout:
+            lines.append(line)
+            match = _ITER_RE.match(line.strip())
+            if match:
+                iteration, detail = int(match.group(1)), match.group(2)
+                report(f"fine-tuning gen {self._generation}: {detail}", iteration, self._iters)
+        process.wait()
+
+        if process.returncode != 0:
+            sys.stderr.write("".join(lines))
+            raise subprocess.CalledProcessError(process.returncode, args)
 
     def get_state(self) -> dict:
         """Everything not already durable on disk under adapter_root -- the

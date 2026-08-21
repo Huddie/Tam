@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -146,3 +147,51 @@ backtest:
 
     with pytest.raises(ValueError, match="SPY"):
         run(config_path)
+
+
+def test_run_live_mode_starts_backtest_in_background_and_calls_serve(tmp_path, monkeypatch):
+    # Regression test: run(mode="live") must forward the same total_days to both
+    # _run_batch (inside the background thread) and the Progress bar it builds --
+    # a signature mismatch between _run_live and _run_batch previously crashed
+    # this path with a TypeError before the backtest ever started.
+    report_path = tmp_path / "out.html"
+    config_path = tmp_path / "cfg.yaml"
+    config_path.write_text(
+        f"""
+data:
+  provider: fake_backtest_cli_provider
+  store: parquet
+  root: {tmp_path / "eod"}
+backtest:
+  tickers: [TQQQ]
+  start: "2024-01-02"
+  end: "2024-01-06"
+  cash: 1000
+  report_path: {report_path}
+  strategies:
+    - strategy: moving_average
+      portfolio_id: m
+      params:
+        ticker: TQQQ
+        window: 3
+        qty: 1
+"""
+    )
+
+    serve_calls = []
+
+    def fake_serve(checkpoint_path, title, verbose=False):
+        serve_calls.append((checkpoint_path, title, verbose))
+        deadline = time.time() + 5
+        while not report_path.exists() and time.time() < deadline:
+            time.sleep(0.02)
+
+    monkeypatch.setattr("tam.backtest.live.serve", fake_serve)
+
+    run(config_path, mode="live")
+
+    assert len(serve_calls) == 1
+    checkpoint_path, _title, verbose = serve_calls[0]
+    assert checkpoint_path  # auto-namespaced default was filled in
+    assert verbose is False
+    assert report_path.exists()

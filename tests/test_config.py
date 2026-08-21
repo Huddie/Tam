@@ -86,3 +86,14 @@ def test_calling_section_with_an_instance_mutates_in_place(tmp_path):
     assert result is obj
     assert obj.bar == 1
     assert obj.baz == "two"
+
+
+def test_setdefault_sets_when_absent_and_leaves_existing_value_alone(tmp_path):
+    path = tmp_path / "cfg.yaml"
+    path.write_text("foo:\n  bar: 1\n")
+    cfg = Config(path)
+
+    assert cfg.foo.setdefault("baz", 99) == 99
+    assert cfg.foo.baz == 99
+    assert cfg.foo.setdefault("bar", 12345) == 1  # already set -- untouched
+    assert cfg.foo.bar == 1

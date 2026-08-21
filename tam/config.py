@@ -74,6 +74,14 @@ class DotDict:
     def get(self, name: str, default: Any = None) -> Any:
         return self._data.get(name, default)
 
+    def setdefault(self, name: str, value: Any) -> Any:
+        """Set `name` to `value` only if not already present, and return the
+        (possibly just-set) value -- mirrors dict.setdefault. For the rare case
+        a caller needs to inject a computed default into an otherwise
+        read-only-by-convention config section, e.g. deriving an artifact path
+        from the config file's own hash when the config didn't specify one."""
+        return self._data.setdefault(name, value)
+
     def to_dict(self) -> dict:
         return {k: self._unwrap(v) for k, v in self._data.items()}
 

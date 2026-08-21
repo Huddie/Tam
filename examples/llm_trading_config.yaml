@@ -5,15 +5,18 @@ data:
 
 backtest:
   tickers: [QQQ, TQQQ, SQQQ]
-  start: "2015-01-01"
+  start: "2010-03-01"
   end: "2024-12-31"
   cash: 100000
   report_path: examples/output/llm_trading_report.html
-  # Checkpointed every day (cheap: a small pickle of portfolio + strategy state).
-  # If this run crashes -- a bad data day, a flaky local model server, anything --
-  # rerunning this same config resumes from the last completed day instead of
-  # restarting the whole (LLM-inference- and fine-tune-heavy) backtest from day one.
-  checkpoint_path: examples/output/.llm_trading_checkpoint.pkl
+  # checkpoint_path omitted -> defaults to examples/output/<config filename>/<hash
+  # of this exact file>/checkpoint.pkl (see examples/backtest.py:_artifacts_dir).
+  # Namespaced by the config's own content hash so editing this file (a date
+  # range, a signal, anything) gets its own fresh checkpoint instead of
+  # colliding with -- or wrongly resuming -- a different run's saved state.
+  # If this run crashes, rerunning this exact file resumes from the last
+  # completed day instead of restarting the whole (LLM-inference- and
+  # fine-tune-heavy) backtest from day one.
   checkpoint_every: 1
   strategies:
     # Requires a locally-served, OpenAI-compatible chat completions endpoint --
@@ -78,10 +81,10 @@ backtest:
           fine_tune_every_n_days: 20
           iters: 100
           learning_rate: 1.0e-4
-          # Persistent so a crash/restart resumes from the latest trained
-          # adapter generation instead of silently starting back at the base
-          # model -- MLXLoRAClient defaults to a throwaway tempdir otherwise.
-          adapter_root: data/lora_adapters/llm_trading
+          # adapter_root omitted -> defaults to <the same config-hash artifacts
+          # dir as checkpoint_path>/lora_adapters/llm_trading -- persistent
+          # across a crash/restart, and namespaced per-config for the same
+          # reason as checkpoint_path above.
         sell:
           qty:
             pct: 100

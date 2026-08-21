@@ -1,6 +1,11 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
+import pytest
+
+from tam import status
 from tam.strategy.mlx_lora_client import MLXLoRAClient
 
 
@@ -128,3 +133,30 @@ def test_construction_resumes_from_latest_generation_already_on_disk(tmp_path):
 
     assert client._current_adapter == tmp_path / "gen_3"
     assert client._generation == 3
+
+
+def test_run_training_reports_parsed_iter_progress(tmp_path):
+    client = MLXLoRAClient(adapter_root=str(tmp_path), iters=100)
+    calls = []
+    status.set_reporter(lambda text, current, total: calls.append((text, current, total)))
+    try:
+        script = "print('Iter 1: Train loss 2.500'); print('Iter 2: Train loss 2.100')"
+        client._run_training([sys.executable, "-c", script])
+    finally:
+        status.set_reporter(None)
+
+    iter_calls = [c for c in calls if c[1] is not None]
+    assert iter_calls == [
+        ("fine-tuning gen 0: Train loss 2.500", 1, 100),
+        ("fine-tuning gen 0: Train loss 2.100", 2, 100),
+    ]
+
+
+def test_run_training_raises_and_surfaces_output_on_nonzero_exit(tmp_path, capsys):
+    client = MLXLoRAClient(adapter_root=str(tmp_path))
+    script = "print('boom, something went wrong'); import sys; sys.exit(1)"
+
+    with pytest.raises(subprocess.CalledProcessError):
+        client._run_training([sys.executable, "-c", script])
+
+    assert "boom, something went wrong" in capsys.readouterr().err
