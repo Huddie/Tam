@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from examples.backtest import BacktestSettings, _validate_tickers_declared, run
+from tam.backtest.runner import run_backtest
 from tam.config import Config
 from tam.data.providers import DataProvider
 from tam.data.schema import OHLCV_COLUMNS
@@ -274,3 +275,73 @@ backtest:
     assert checkpoint_path
     assert not str(Path(checkpoint_path)).startswith(str(tmp_path))
     assert report_path.exists()
+
+
+def _small_config(tmp_path: Path) -> Path:
+    config_path = tmp_path / "cfg.yaml"
+    config_path.write_text(
+        f"""
+data:
+  provider: fake_backtest_cli_provider
+  store: parquet
+  root: {tmp_path / "eod"}
+backtest:
+  tickers: [TQQQ]
+  start: "2024-01-02"
+  end: "2024-01-06"
+  cash: 1000
+  report_path: {tmp_path / "out.html"}
+  strategies:
+    - strategy: moving_average
+      portfolio_id: m
+      params:
+        ticker: TQQQ
+        window: 3
+        qty: 1
+"""
+    )
+    return config_path
+
+
+def test_run_backtest_returns_the_report_and_renders_inline(tmp_path, monkeypatch):
+    # The notebook entry point (unlike the CLI's run()) must hand back the
+    # Report itself, and must render via fig.show() -- Plotly's own
+    # notebook-detection -- rather than writing an HTML file to disk for the
+    # user to separately open.
+    show_calls = []
+    monkeypatch.setattr("plotly.graph_objs.Figure.show", lambda self, *a, **k: show_calls.append(self))
+
+    report = run_backtest(_small_config(tmp_path))
+
+    assert report is not None
+    assert not report.summary_all().empty
+    assert len(show_calls) == 1
+
+
+def test_run_backtest_live_redraws_via_ipython_display_not_dash(tmp_path, monkeypatch):
+    # live=True does NOT use Dash (unlike --mode live on the CLI, which opens
+    # a real server for a real browser tab) -- Dash's own inline-in-notebook
+    # support doesn't work in Colab (confirmed both from Dash's own source
+    # and empirically). Instead it redraws the same chart in place via
+    # IPython's display()/update_display(display_id=...), the same
+    # rich-display mechanism the non-live path's fig.show() already uses.
+    config_path = _small_config(tmp_path)
+
+    display_calls = []
+    update_calls = []
+    monkeypatch.setattr("IPython.display.display", lambda fig, display_id: display_calls.append((fig, display_id)))
+    monkeypatch.setattr(
+        "IPython.display.update_display", lambda fig, display_id: update_calls.append((fig, display_id))
+    )
+
+    result = run_backtest(config_path, live=True)
+
+    assert result is None  # live mode returns None -- no single Report at the moment it returns
+    assert len(display_calls) == 1  # first frame -- establishes the notebook output slot
+    display_id = display_calls[0][1]
+    assert display_id  # a real id was generated
+    # Every later frame (including the final one, redrawn once the
+    # background thread finishes) updates that SAME slot in place, rather
+    # than each one calling display() again and stacking a new plot
+    # underneath every refresh.
+    assert all(call_display_id == display_id for _fig, call_display_id in update_calls)

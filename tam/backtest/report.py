@@ -29,6 +29,20 @@ class Report:
     trades: List[dict] = field(default_factory=list)
     annotations: List[dict] = field(default_factory=list)
 
+    def __repr__(self) -> str:
+        # The dataclass-default repr dumps every raw snapshot/trade dict --
+        # harmless in a script, but a real problem in a notebook: leaving a
+        # Report as a cell's bare last expression (e.g. run_backtest(...)
+        # not assigned to a variable) auto-echoes this repr, which for even
+        # a short backtest is thousands of characters of raw dicts. This one
+        # gives something actually worth reading in that situation, and
+        # str()/print() still fall back to it (no __str__ override).
+        return (
+            f"Report(portfolios={self.portfolio_ids()}, "
+            f"days={self.to_frame()['date'].nunique() if self.snapshots else 0}, "
+            f"trades={len(self.trades)})"
+        )
+
     def to_frame(self) -> pd.DataFrame:
         return pd.DataFrame(self.snapshots)
 

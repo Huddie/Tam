@@ -52,6 +52,18 @@ def serve(
     whatever's completed so far. Keeps showing the last good read after the
     checkpoint is removed on a clean finish, rather than reverting to blank.
 
+    A real browser-tab dashboard, via a real Dash server -- this is what
+    --mode live (the CLI) uses. For a notebook/Colab live view instead, see
+    tam.backtest.runner.run_backtest(..., live=True): it does NOT go through
+    this function at all -- Dash's own inline-in-notebook support depends on
+    correctly detecting a hosted notebook's reverse proxy, which Colab
+    specifically doesn't support (confirmed both by Dash's own source --
+    jupyter_dash.infer_jupyter_proxy_config is a documented no-op "when ...
+    in_colab" -- and empirically, rendering nothing at all). The notebook
+    path redraws the chart in place via IPython's own display()/
+    update_display() instead (see tam/backtest/presenter.py's
+    NotebookPresenter).
+
     `prices`, if given, is the same already-fetched historical price data
     write_html()'s optional top panel supports -- passed in whole, but
     render() itself truncates each series to whatever date the equity/
@@ -61,16 +73,14 @@ def serve(
     Flask/Werkzeug's per-request access log (one line per poll, forever) is
     silenced by default -- it drowns out the rich progress display the
     backtest itself is drawing in the same terminal. Pass verbose=True (or
-    --log-level verbose on the CLI) to see it, e.g. while debugging the server
-    itself."""
+    --log-level verbose on the CLI) to see it, e.g. while debugging the live
+    server itself."""
     try:
         import dash
         from dash import dcc, html
         from dash.dependencies import Input, Output
     except ImportError as exc:
-        raise ImportError(
-            "`--mode live` needs the `live` extra: run `uv sync --extra live` (adds dash) and retry."
-        ) from exc
+        raise ImportError("`--mode live` needs the `live` extra: run `uv sync --extra live` (adds dash) and retry.") from exc
 
     if not verbose:
         logging.getLogger("werkzeug").setLevel(logging.ERROR)

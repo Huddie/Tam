@@ -1,7 +1,8 @@
 [project]
-name = "tam"
-version = "0.1.0"
+name = "tam-quant"
+version = "0.1.1"
 description = "Config, data ingestion, and event-driven backtesting for stocks/indices"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pandas>=2.0",
@@ -13,13 +14,28 @@ dependencies = [
     "pydantic>=2.6",
     "tulipy>=0.4.0",
     "scikit-learn>=1.7.2",
-    "mlx-lm>=0.31.3",
     "rich>=13.7",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Huddie/Tam"
+
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ipython>=8.0"]
 live = ["dash>=2.17"]
+# mlx-lm/mlx are Apple-Silicon-only (Metal) -- a hard dependency here would
+# make `pip install tam-quant` fail outright on Linux/Colab/Windows, not just
+# leave an unusable feature installed. Only tam.strategy.mlx_lora_client
+# needs this; every other strategy works fine without it (see
+# tam/strategy/__init__.py, which registers strategies defensively so a
+# missing optional dependency skips just that one strategy, not the whole
+# package).
+llm = ["mlx-lm>=0.31.3"]
+# tam.backtest.runner.run_backtest(..., live=True) redraws the chart via
+# IPython's own display()/update_display() -- always present already inside
+# a real notebook kernel (Jupyter, Colab, ...), so this extra only matters
+# for running that code path OUTSIDE one (e.g. this repo's own test suite).
+notebook = ["ipython>=8.0"]
 
 [build-system]
 requires = ["setuptools>=68"]

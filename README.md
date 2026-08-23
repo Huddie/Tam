@@ -6,6 +6,10 @@ online-learning ML, local-LLM) are all pluggable — `examples/backtest.py`
 doesn't import any strategy directly, it builds whatever's listed in the
 config's `strategies:` section by name.
 
+Published on PyPI as `tam-quant` (`pip install tam-quant`; `import tam` either
+way). Running in Google Colab or Jupyter instead of this repo's own CLI? See
+[NOTEBOOK.md](NOTEBOOK.md).
+
 ## Setup
 
 Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.11 (pinned in
