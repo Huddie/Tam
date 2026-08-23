@@ -1,4 +1,4 @@
-"""Drives the backtest timeline: one end-of-day event per trading date."""
+"""Drives the backtest timeline: one open + one close event per trading date."""
 from __future__ import annotations
 
 from datetime import date
@@ -7,7 +7,8 @@ from typing import List, Sequence
 from .bus import EventBus
 from .types import Event
 
-EOD_TOPIC = "clock.eod"
+OPEN_TOPIC = "clock.open"
+EOD_TOPIC = "clock.eod"  # end-of-day / close tick -- name kept for backward compat
 
 
 class Clock:
@@ -16,4 +17,8 @@ class Clock:
         self._bus = bus
 
     def tick(self, current_date: date) -> None:
+        """Publishes the day's two ticks in order: OPEN_TOPIC (market open),
+        then EOD_TOPIC (market close). A strategy that only cares about one
+        side of the day just subscribes to that topic and ignores the other."""
+        self._bus.publish(OPEN_TOPIC, Event(type=OPEN_TOPIC, payload=current_date))
         self._bus.publish(EOD_TOPIC, Event(type=EOD_TOPIC, payload=current_date))

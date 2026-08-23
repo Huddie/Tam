@@ -4,11 +4,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Callable, List, Optional
 
-from ..portfolio.orders import Order, QtyBasis, Side
+from ..portfolio.orders import Order, PriceBasis, QtyBasis, Side
 from ..portfolio.portfolio import Portfolio
 from ..portfolio.registry import PortfolioRegistry
 
-PriceLookup = Callable[[str, date], float]
+PriceLookup = Callable[[str, date, PriceBasis], float]
 
 
 class TradeGateway:
@@ -22,7 +22,7 @@ class TradeGateway:
             raise RuntimeError("TradeGateway has no active simulation date")
         for order in orders:
             portfolio = self._portfolios[order.portfolio]
-            price = self._price_lookup(order.ticker, self.current_date)
+            price = self._price_lookup(order.ticker, self.current_date, order.price_basis)
             qty = self._resolve_qty(order, portfolio, price)
             if qty > 0:
                 portfolio.execute(order, qty, price, self.current_date)
@@ -37,7 +37,10 @@ class TradeGateway:
             return int(held * spec.pct / 100)
 
         if spec.basis is QtyBasis.PORTFOLIO_VALUE:
-            prices = {ticker: self._price_lookup(ticker, self.current_date) for ticker in portfolio.tickers}
+            prices = {
+                ticker: self._price_lookup(ticker, self.current_date, PriceBasis.CLOSE)
+                for ticker in portfolio.tickers
+            }
             prices[order.ticker] = price
             budget_base = portfolio.market_value(prices)
         else:

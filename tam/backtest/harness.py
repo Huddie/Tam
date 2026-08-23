@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence
 
 from ..data.repository import DataRepository
-from ..data.schema import CLOSE
+from ..data.schema import CLOSE, OPEN
 from ..events.bus import EventBus
 from ..events.clock import Clock
 from ..events.types import ANNOTATION_TOPIC, State
+from ..portfolio.orders import PriceBasis
 from ..portfolio.portfolio import Portfolio
 from ..portfolio.registry import PortfolioRegistry
 from ..strategy.base import Strategy
@@ -60,11 +61,12 @@ class BacktestHarness:
     def _on_annotation(self, event) -> None:
         self._annotations.append(dict(event.payload))
 
-    def _price_on(self, ticker: str, as_of: date) -> float:
+    def _price_on(self, ticker: str, as_of: date, basis: PriceBasis = PriceBasis.CLOSE) -> float:
         history = self._repository.query(ticker, end=as_of)
         if history.empty:
             raise LookupError(f"no price data for {ticker} on or before {as_of}")
-        return float(history.iloc[-1][CLOSE])
+        column = OPEN if basis is PriceBasis.OPEN else CLOSE
+        return float(history.iloc[-1][column])
 
     def run(
         self,

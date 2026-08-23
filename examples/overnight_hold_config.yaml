@@ -1,0 +1,32 @@
+data:
+  provider: yfinance    # yfinance (no key needed) or fmp (needs FMP_API_KEY env var)
+  store: parquet         # parquet or csv
+  root: data/eod
+
+# Compares three ways to trade the same ticker using only daily EOD bars (each
+# bar already carries that day's open, so no separate hourly feed is needed):
+#   overnight_hold - buy at close, sell at next day's open (the "overnight" edge)
+#   buy_and_hold   - buy once at the start and never sell (the passive baseline)
+#   intraday_hold  - buy at open, sell at that same day's close (the "day session" edge)
+backtest:
+  tickers: [MU]
+  start: "2000-01-01"
+  end: "2026-08-21"
+  cash: 10000
+  report_path: examples/output/overnight_hold_report.html
+  strategies:
+    - strategy: overnight_hold
+      portfolio_id: overnight_hold
+      params:
+        ticker: MU
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash each night
+    - strategy: buy_and_hold
+      portfolio_id: buy_and_hold
+      params:
+        ticker: MU
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash once
+    - strategy: intraday_hold
+      portfolio_id: intraday_hold
+      params:
+        ticker: MU
+        # qty omitted -> defaults to {pct: 100}: fully invest available cash each session
