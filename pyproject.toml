@@ -1,6 +1,6 @@
 [project]
 name = "tam-quant"
-version = "0.1.7"
+version = "0.1.8"
 description = "Config, data ingestion, and event-driven backtesting for stocks/indices"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,14 +42,17 @@ llm = ["mlx-lm>=0.31.3"]
 # runtime (Colab's own warning: "Upgrading ipython, ipykernel, tornado,
 # prompt-toolkit ... can cause your runtime to repeatedly crash").
 notebook = ["ipython"]
-
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+quantstats = [
+    "quantstats>=0.0.81",
+]
 
 [[tool.uv.index]]
 url = "https://pypi.apple.com/simple"
 default = true
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["tam*"]

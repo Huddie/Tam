@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List, Optional, Union
 
 import pandas as pd
 
@@ -28,6 +28,46 @@ class Report:
     snapshots: List[dict] = field(default_factory=list)
     trades: List[dict] = field(default_factory=list)
     annotations: List[dict] = field(default_factory=list)
+
+    @classmethod
+    def from_curves(
+        cls,
+        curves: Union[pd.DataFrame, Dict[str, pd.Series]],
+        trades: Optional[pd.DataFrame] = None,
+        annotations: Optional[List[dict]] = None,
+    ) -> "Report":
+        """Build a Report straight from equity curves you already have --
+        no BacktestHarness, no Strategy/Portfolio, no event-driven simulation
+        involved. `curves` is either {name: pd.Series} (one named curve per
+        portfolio/strategy, each indexed by date) or a wide pd.DataFrame (one
+        named curve per column, sharing one date index) -- whichever shape
+        you already have on hand. Every method render()/summary_all() calls
+        (equity_curve, drawdown_curve, summary, summary_all) is derived
+        purely from this snapshot shape, so a Report built this way behaves
+        identically to one produced by an actual harness run.
+
+        `trades`, if given, needs the same columns harness-produced trades
+        already have (date, portfolio, ticker, side, qty, price) -- omit it
+        (the default) for no trade markers on the chart, exactly like a
+        harness-produced Report with no trades. `annotations` is the same
+        {"date", "label"} dict shape Strategy.annotate() already produces.
+
+        Designed for a handful of named curves -- a strategy comparison,
+        the same shape the summary table/legend already assume -- not for an
+        unlabeled sweep of hundreds/thousands of variants (e.g. a vectorized
+        "start on day i" wealth matrix); plot those directly instead, this
+        dashboard isn't trying to replace a quick matplotlib/plotly line plot.
+        """
+        if isinstance(curves, pd.DataFrame):
+            curves = {str(name): curves[name] for name in curves.columns}
+
+        snapshots = [
+            {"date": index, "portfolio": name, "cash": 0.0, "value": value}
+            for name, series in curves.items()
+            for index, value in series.items()
+        ]
+        trade_dicts = trades.to_dict("records") if trades is not None else []
+        return cls(snapshots, trade_dicts, list(annotations) if annotations is not None else [])
 
     def __repr__(self) -> str:
         # The dataclass-default repr dumps every raw snapshot/trade dict --

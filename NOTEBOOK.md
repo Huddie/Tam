@@ -43,14 +43,18 @@ backtest:
         ticker: AAPL
 """)
 
-report = run_backtest("config.yaml")
+report = run_backtest("config.yaml", live=False)
 ```
 
 `run_backtest()` runs the full config-driven backtest, renders the equity/drawdown
 chart directly in the cell's output (via Plotly's own rich-display protocol -- no
-extra setup needed in Colab or Jupyter), and returns the `Report` object so you can
-keep working with it. Assign the result to a variable, as above, rather than leaving
-the call as a cell's bare last expression -- otherwise the notebook also auto-echoes
+extra setup needed in Colab or Jupyter), and (with `live=False`, as above) returns
+the `Report` object so you can keep working with it. `live` defaults to `True` --
+see "Live-updating view" below -- which redraws the chart as the backtest runs and
+returns `None` immediately instead; pass `live=False` whenever you want the
+finished `Report` back right away, as in this quick-start example. Assign the
+result to a variable, as above, rather than leaving the call as a cell's bare last
+expression -- otherwise the notebook also auto-echoes
 the `Report`'s `repr()` underneath the chart:
 
 ```python
@@ -219,6 +223,7 @@ Base install (`pip install tam-quant`) covers every built-in strategy except one
 | `notebook` | `ipython` | `run_backtest(..., live=True)` outside a real notebook kernel |
 | `live` | `dash` | `--mode live` on the CLI (a real Dash server, for a real browser tab) |
 | `llm` | `mlx-lm` | `llm_trading`'s local self-fine-tuning LoRA client (`tam.strategy.mlx_lora_client`) |
+| `quantstats` | `quantstats` (+ matplotlib/seaborn/tabulate) | `tam.backtest.quantstats_report` -- a much larger metrics/plot/tearsheet library, alongside `Report.summary()`/`visualization.render()`, not instead of them |
 
 ```python
 !pip install -q "tam-quant[notebook]"   # only needed outside a real notebook kernel

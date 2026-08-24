@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 
+import pandas as pd
+
 from tam.backtest.report import Report
 
 
@@ -149,3 +151,56 @@ def test_portfolio_ids_empty_and_sorted_unique():
     report = Report(snapshots)
 
     assert report.portfolio_ids() == ["alpha", "zeta"]
+
+
+def _index(start=date(2024, 1, 1), periods=5):
+    return pd.to_datetime([start + timedelta(days=i) for i in range(periods)])
+
+
+def test_from_curves_with_a_dict_of_series_matches_a_hand_built_report():
+    values = [100.0, 120.0, 90.0, 110.0, 150.0]
+    idx = _index(periods=len(values))
+    curves = {"main": pd.Series(values, index=idx)}
+
+    from_curves = Report.from_curves(curves)
+    hand_built = Report(_series("main", values))
+
+    assert from_curves.portfolio_ids() == ["main"]
+    assert list(from_curves.equity_curve("main")) == list(hand_built.equity_curve("main"))
+    assert from_curves.summary("main") == hand_built.summary("main")
+
+
+def test_from_curves_with_a_wide_dataframe_one_column_per_curve():
+    idx = _index(periods=4)
+    df = pd.DataFrame({"main": [100.0, 110.0, 105.0, 120.0], "alt": [50.0, 52.0, 48.0, 55.0]}, index=idx)
+
+    report = Report.from_curves(df)
+
+    assert report.portfolio_ids() == ["alt", "main"]
+    assert list(report.equity_curve("main")) == [100.0, 110.0, 105.0, 120.0]
+    assert list(report.equity_curve("alt")) == [50.0, 52.0, 48.0, 55.0]
+
+
+def test_from_curves_with_no_trades_or_annotations_has_none_by_default():
+    idx = _index(periods=3)
+    report = Report.from_curves({"main": pd.Series([100.0, 110.0, 105.0], index=idx)})
+
+    assert report.trades == []
+    assert report.trades_for("main").empty
+    assert report.annotations == []
+
+
+def test_from_curves_accepts_a_trades_dataframe_and_annotations():
+    idx = _index(periods=3)
+    curves = {"main": pd.Series([100.0, 110.0, 105.0], index=idx)}
+    trades = pd.DataFrame(
+        [{"date": idx[1], "portfolio": "main", "ticker": "AAPL", "side": "BUY", "qty": 10, "price": 100.0}]
+    )
+    annotations = [{"date": idx[1], "label": "note"}]
+
+    report = Report.from_curves(curves, trades=trades, annotations=annotations)
+
+    assert len(report.trades_for("main")) == 1
+    assert report.trades_for("main").iloc[0]["ticker"] == "AAPL"
+    assert report.annotations == annotations
+

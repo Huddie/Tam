@@ -7,6 +7,8 @@ from tam.data.providers import DataProvider
 from tam.data.repository import DataRepository
 from tam.data.schema import OHLCV_COLUMNS
 from tam.data.storage import CsvStore, ParquetStore
+from tam.data.writer import CsvRepoWriter, ParquetRepoWriter, RepoWriter
+from tam.registry import Registry
 
 
 class FakeProvider(DataProvider):
@@ -187,3 +189,57 @@ def test_ingest_across_years_only_rewrites_the_touched_year_partition(tmp_path):
     DataRepository(FakeProvider(frame_2024), store).ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 2))
 
     assert written_paths == [tmp_path / "AAPL" / "2024.parquet"]
+
+
+def test_repo_writer_registry_has_csv_and_parquet_built_in():
+    assert set(Registry.names(RepoWriter)) >= {"csv", "parquet"}
+
+
+class _RecordingRepoWriter(RepoWriter):
+    """A RepoWriter that isn't a file at all -- proof that DataRepository.write()
+    doesn't assume a destination shape, just hands over {symbol: DataFrame}."""
+
+    def __init__(self):
+        self.received = None
+
+    def write(self, data):
+        self.received = data
+        return {symbol: len(df) for symbol, df in data.items()}
+
+
+def test_repository_write_hands_every_symbols_full_history_to_the_writer(tmp_path):
+    aapl = _bars(["2024-01-02", "2024-01-03"], [100.0, 101.0])
+    msft = _bars(["2024-01-02", "2024-01-03", "2024-01-04"], [200.0, 201.0, 202.0])
+    store = CsvStore(tmp_path)
+
+    class _TwoSymbolProvider(DataProvider):
+        def fetch_eod(self, symbol, start, end):
+            frame = aapl if symbol == "AAPL" else msft
+            return frame[(frame.index >= pd.Timestamp(start)) & (frame.index <= pd.Timestamp(end))]
+
+    repo = DataRepository(_TwoSymbolProvider(), store)
+    repo.ingest(["AAPL", "MSFT"], date(2024, 1, 2), date(2024, 1, 4))
+
+    writer = _RecordingRepoWriter()
+    result = repo.write(writer, ["AAPL", "MSFT"])
+
+    assert set(writer.received) == {"AAPL", "MSFT"}
+    assert list(writer.received["AAPL"]["close"]) == [100.0, 101.0]
+    assert result == {"AAPL": 2, "MSFT": 3}
+
+
+@pytest.mark.parametrize("writer_cls,suffix,reader", [
+    (CsvRepoWriter, ".csv", pd.read_csv),
+    (ParquetRepoWriter, ".parquet", pd.read_parquet),
+])
+def test_flat_file_repo_writers_write_one_file_per_symbol(tmp_path, writer_cls, suffix, reader):
+    frame = _bars(["2024-01-02", "2024-01-03"], [100.0, 101.0])
+    store = CsvStore(tmp_path / "cache")
+    repo = DataRepository(FakeProvider(frame), store)
+    repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 3))
+
+    out_root = tmp_path / "out"
+    paths = repo.write(writer_cls(out_root), ["AAPL"])
+
+    assert paths == {"AAPL": out_root / f"AAPL{suffix}"}
+    assert list(reader(paths["AAPL"])["close"]) == [100.0, 101.0]

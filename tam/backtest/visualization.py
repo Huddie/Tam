@@ -6,7 +6,7 @@ only call into this module when you actually want a chart.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 import pandas as pd
 import plotly.colors
@@ -395,3 +395,24 @@ def write_html(
     options: Optional[RenderOptions] = None,
 ) -> None:
     render(report, title=title, ticker_colors=ticker_colors, prices=prices, options=options).write_html(path)
+
+
+def render_curves(
+    curves: Union[pd.DataFrame, Dict[str, pd.Series]],
+    trades: Optional[pd.DataFrame] = None,
+    annotations: Optional[list] = None,
+    title: str = "Backtest Report",
+    ticker_colors: Optional[Dict[str, str]] = None,
+    prices: Optional[Dict[str, pd.Series]] = None,
+    options: Optional[RenderOptions] = None,
+) -> go.Figure:
+    """render(), straight from equity curves you already have -- no
+    BacktestHarness/Strategy/Portfolio involved. `curves`/`trades`/`annotations`
+    are exactly Report.from_curves()'s own arguments (see there for the exact
+    shapes accepted and the "designed for a handful of named curves, not an
+    unlabeled sweep" scope note); `Report` stays an implementation detail you
+    never have to construct yourself:
+
+        render_curves({"my_strategy": wealth_series}).show()
+    """
+    return render(Report.from_curves(curves, trades, annotations), title=title, ticker_colors=ticker_colors, prices=prices, options=options)

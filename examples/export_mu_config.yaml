@@ -1,0 +1,16 @@
+# Fetches a symbol's history and writes it to a flat CSV file -- independent
+# of any backtest. Run with:
+#   python -m examples.export_data examples/export_mu_config.yaml
+data:
+  provider: yfinance
+  store: parquet
+  root: data/eod
+
+export:
+  symbol: MU
+  start: "2020-01-01"
+  end: "2024-01-01"
+  path: examples/output/mu.csv
+  # format omitted -> inferred from path's own suffix (.csv); "parquet" also
+  # ships built in via Registry(FileFormat, ...) -- register your own for
+  # anything else (feather, json, ...).

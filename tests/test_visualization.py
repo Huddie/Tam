@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from tam.backtest.report import Report
-from tam.backtest.visualization import RenderOptions, render, write_html
+from tam.backtest.visualization import RenderOptions, render, render_curves, write_html
 
 
 def _snap(d, portfolio, value, cash=0.0):
@@ -270,3 +270,28 @@ def test_write_html_with_prices_creates_nonempty_file(tmp_path):
 
     assert out_path.exists()
     assert out_path.stat().st_size > 0
+
+
+def test_render_curves_matches_render_of_the_equivalent_report():
+    values = [100.0, 120.0, 90.0, 110.0, 150.0]
+    idx = pd.to_datetime([date(2024, 1, 1) + timedelta(days=i) for i in range(len(values))])
+    curves = {"main": pd.Series(values, index=idx)}
+
+    from_curves_fig = render_curves(curves, title="My Custom Title")
+    equivalent_fig = render(Report.from_curves(curves), title="My Custom Title")
+
+    assert from_curves_fig.layout.title.text == equivalent_fig.layout.title.text == "My Custom Title"
+    from_curves_names = sorted(t.name for t in from_curves_fig.data if isinstance(t, go.Scatter))
+    equivalent_names = sorted(t.name for t in equivalent_fig.data if isinstance(t, go.Scatter))
+    assert from_curves_names == equivalent_names == ["main", "main drawdown"]
+
+
+def test_render_curves_accepts_a_wide_dataframe_and_render_options():
+    idx = pd.to_datetime([date(2024, 1, 1) + timedelta(days=i) for i in range(4)])
+    df = pd.DataFrame({"a": [100.0, 105.0, 102.0, 110.0], "b": [50.0, 49.0, 51.0, 53.0]}, index=idx)
+
+    fig = render_curves(df, options=RenderOptions(height=700))
+
+    assert fig.layout.height == 700
+    equity_names = sorted(t.name for t in fig.data if isinstance(t, go.Scatter) and t.mode == "lines" and t.name in ("a", "b"))
+    assert equity_names == ["a", "b"]

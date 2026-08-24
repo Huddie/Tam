@@ -120,7 +120,7 @@ def test_run_backtest_with_a_custom_presenter_instance_bypasses_the_registry(tmp
     config_path = _small_config(tmp_path)
     fake = _FakePresenter()
 
-    report = run_backtest(config_path, presenter=fake)
+    report = run_backtest(config_path, presenter=fake, live=False)
 
     assert fake.batch_calls == 1
     assert fake.shown == [report]
@@ -158,7 +158,7 @@ def test_run_backtest_show_trades_default_overrides_config(tmp_path, monkeypatch
 
     monkeypatch.setattr("tam.backtest.visualization.render", fake_render)
 
-    run_backtest(config_path, show_trades_default=False)
+    run_backtest(config_path, show_trades_default=False, live=False)
 
     assert captured["options"].show_trades_default is False
 

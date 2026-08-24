@@ -1,9 +1,11 @@
 from datetime import date, timedelta
 
 import pandas as pd
+import pytest
 
 from tam.backtest.harness import BacktestHarness
-from tam.backtest.live import report_from_checkpoint
+from tam.backtest.live import live_render, report_from_checkpoint, serve
+from tam.backtest.report import Report
 from tam.data.providers import DataProvider
 from tam.data.repository import DataRepository
 from tam.data.schema import OHLCV_COLUMNS
@@ -87,3 +89,53 @@ def test_report_from_checkpoint_is_none_again_after_a_clean_finish(tmp_path):
     harness.run(checkpoint_path=str(checkpoint_path), checkpoint_every=1)
 
     assert report_from_checkpoint(str(checkpoint_path)) is None
+
+
+def test_live_render_redraws_via_clear_output_using_a_custom_next_frame(monkeypatch):
+    # No BacktestHarness/checkpoint file at all -- next_frame is driven entirely
+    # by the caller's own loop, e.g. a vectorized numpy backtest wrapping its
+    # own running Series in Report.from_curves() each tick. This is the
+    # composable live-update entry point NotebookPresenter.run_live itself is
+    # now just a thin wrapper around (see presenter.py).
+    idx = pd.to_datetime([date(2024, 1, 1) + timedelta(days=i) for i in range(3)])
+    tick = {"n": 0}
+
+    def next_frame():
+        tick["n"] = min(tick["n"] + 1, 3)
+        n = tick["n"]
+        return Report.from_curves({"toy": pd.Series(range(100, 100 + n), index=idx[:n])})
+
+    clear_calls = []
+    display_calls = []
+    monkeypatch.setattr("IPython.display.clear_output", lambda wait=False: clear_calls.append(wait))
+    monkeypatch.setattr("IPython.display.display", lambda fig: display_calls.append(fig))
+
+    live_render(next_frame, poll_seconds=0, should_continue=lambda: tick["n"] < 3)
+
+    assert tick["n"] == 3
+    # 3 loop ticks + 1 final redraw after should_continue() goes False.
+    assert len(display_calls) == len(clear_calls) == 4
+    assert all(wait is True for wait in clear_calls)
+
+
+def test_live_render_never_draws_if_next_frame_always_returns_none(monkeypatch):
+    display_calls = []
+    monkeypatch.setattr("IPython.display.clear_output", lambda wait=False: None)
+    monkeypatch.setattr("IPython.display.display", lambda fig: display_calls.append(fig))
+
+    calls = {"n": 0}
+
+    def next_frame():
+        calls["n"] += 1
+        return None
+
+    live_render(next_frame, poll_seconds=0, should_continue=lambda: calls["n"] < 2)
+
+    assert display_calls == []  # nothing to draw yet, so it never called display()
+
+
+def test_serve_requires_exactly_one_of_checkpoint_path_or_next_frame():
+    with pytest.raises(ValueError, match="checkpoint_path or next_frame"):
+        serve()
+    with pytest.raises(ValueError, match="checkpoint_path or next_frame"):
+        serve(checkpoint_path="x.pkl", next_frame=lambda: None)

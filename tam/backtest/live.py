@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import pickle
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 import pandas as pd
 
@@ -46,8 +46,63 @@ def report_from_checkpoint(checkpoint_path: str) -> Optional[Report]:
     return Report(state["snapshots"], trades, state.get("annotations", []))
 
 
+def live_render(
+    next_frame: Callable[[], Optional[Report]],
+    title: str = "Backtest (live)",
+    poll_seconds: float = 2.0,
+    options: Optional[RenderOptions] = None,
+    ticker_colors: Optional[Dict[str, str]] = None,
+    prices: Optional[Dict[str, "pd.Series"]] = None,
+    should_continue: Callable[[], bool] = lambda: True,
+) -> None:
+    """Generalized notebook clear_output()/display() redraw loop: pulls
+    `next_frame()` every `poll_seconds` (`None` = "nothing new yet, keep
+    showing the last frame") and redraws it, until `should_continue()` is
+    False -- then does one final redraw and returns. Blocking.
+
+    This is exactly what NotebookPresenter.run_live already does for a
+    running BacktestHarness (there, `next_frame` is a closure around
+    report_from_checkpoint() and `should_continue` is a background thread's
+    `is_alive`) -- pulled out here so ANY Report-producing callable works the
+    same way, with no BacktestHarness/Strategy/checkpoint file required: e.g.
+    a vectorized numpy backtest extending a Series each tick, wrapped as
+    `lambda: Report.from_curves({"my_strategy": running_series})`, redraws
+    exactly like a real backtest's live view.
+
+    Needs the `notebook` extra (IPython) outside a real notebook kernel, same
+    as run_backtest(..., live=True)."""
+    import time
+
+    try:
+        from IPython.display import clear_output, display
+    except ImportError as exc:
+        raise ImportError(
+            "live_render needs IPython's display utilities -- always present already inside a real "
+            "notebook kernel (Jupyter, Colab, ...); outside one, install the `notebook` extra: "
+            'pip install "tam-quant[notebook]".'
+        ) from exc
+
+    last_report: Optional[Report] = None
+
+    def _redraw(report: Optional[Report]) -> None:
+        nonlocal last_report
+        if report is not None:
+            last_report = report
+        if last_report is None or not last_report.snapshots:
+            return
+        fig = render(last_report, title=title, ticker_colors=ticker_colors, prices=prices, options=options)
+        clear_output(wait=True)
+        display(fig)
+
+    while should_continue():
+        _redraw(next_frame())
+        time.sleep(poll_seconds)
+
+    _redraw(next_frame())
+
+
 def serve(
-    checkpoint_path: str,
+    checkpoint_path: Optional[str] = None,
     title: str = "Backtest (live)",
     poll_seconds: float = 3.0,
     port: int = 8050,
@@ -56,6 +111,7 @@ def serve(
     prices: Optional[Dict[str, "pd.Series"]] = None,
     jupyter_mode: Optional[str] = None,
     options: Optional[RenderOptions] = None,
+    next_frame: Optional[Callable[[], Optional[Report]]] = None,
 ) -> None:
     """Blocking (unless `jupyter_mode` says otherwise -- see below): serves a
     dashboard at http://127.0.0.1:<port> that re-reads the checkpoint every
@@ -63,6 +119,14 @@ def serve(
     produce for the final report -- just from whatever's completed so far.
     Keeps showing the last good read after the checkpoint is removed on a
     clean finish, rather than reverting to blank.
+
+    `next_frame`, if given, replaces the checkpoint-file polling entirely --
+    same Report-producing callable live_render() takes, so a fully custom
+    live Dash view (no BacktestHarness/checkpoint file at all) works via
+    `serve(next_frame=my_callable)`. `checkpoint_path` is then optional,
+    used only for the "backtest finished" status line below; omit it and
+    that line just never appears. Exactly one of `checkpoint_path`/
+    `next_frame` must be given.
 
     A real browser-tab dashboard, via a real Dash server -- this is what
     --mode live (the CLI) uses (jupyter_mode=None, the default: blocks,
@@ -78,9 +142,9 @@ def serve(
     and empirically, rendering a completely blank cell). run_backtest's
     default live view instead redraws the chart via IPython's own
     clear_output()/display() (see tam/backtest/presenter.py's
-    NotebookPresenter), which doesn't depend on Dash or proxy detection at
-    all. This jupyter_mode path is kept available as an explicit opt-in
-    (run_backtest(..., render_mode="native_dash"), see
+    NotebookPresenter, or live_render() directly), which doesn't depend on
+    Dash or proxy detection at all. This jupyter_mode path is kept available
+    as an explicit opt-in (run_backtest(..., render_mode="native_dash"), see
     DashNotebookPresenter) for classic Jupyter/JupyterLab -- where Dash's own
     docs describe this as fully supported -- or in case Colab's own
     Dash-in-notebook support improves later.
@@ -96,6 +160,11 @@ def serve(
     backtest itself is drawing in the same terminal. Pass verbose=True (or
     --log-level verbose on the CLI) to see it, e.g. while debugging the live
     server itself."""
+    if (checkpoint_path is None) == (next_frame is None):
+        raise ValueError("serve() needs exactly one of checkpoint_path or next_frame")
+    if next_frame is None:
+        next_frame = lambda: report_from_checkpoint(checkpoint_path)  # noqa: E731
+
     try:
         import dash
         from dash import dcc, html
@@ -131,7 +200,7 @@ def serve(
 
     @app.callback(Output("figure", "figure"), Output("status", "children"), Input("tick", "n_intervals"))
     def _refresh(_):
-        fresh = report_from_checkpoint(checkpoint_path)
+        fresh = next_frame()
         if fresh is not None:
             last_report["value"] = fresh
         report = last_report["value"]
@@ -144,7 +213,7 @@ def serve(
         last_date = frame["date"].max()
         day_count = frame["date"].nunique()
         status = f"through {last_date} — day {day_count}"
-        if not Path(checkpoint_path).exists():
+        if checkpoint_path is not None and not Path(checkpoint_path).exists():
             status += " -- backtest finished, showing final state"
         return fig, status
 

@@ -219,10 +219,9 @@ class NotebookPresenter(Presenter):
 
     def run_live(self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose):
         import threading
-        import time
 
         try:
-            from IPython.display import clear_output, display
+            from IPython.display import clear_output, display  # noqa: F401 -- availability check only; live_render below does the real import
         except ImportError as exc:
             raise ImportError(
                 "run_backtest(..., live=True) needs IPython's display utilities -- always present "
@@ -230,8 +229,7 @@ class NotebookPresenter(Presenter):
                 "the `notebook` extra: pip install \"tam-quant[notebook]\"."
             ) from exc
 
-        from .live import report_from_checkpoint
-        from .visualization import render
+        from .live import live_render, report_from_checkpoint
 
         result: dict = {}
 
@@ -241,19 +239,26 @@ class NotebookPresenter(Presenter):
         thread = threading.Thread(target=_run_backtest, daemon=True)
         thread.start()
 
-        def _redraw(report) -> None:
-            if report is None or not report.snapshots:
-                return
-            fig = render(report, title=title, ticker_colors=ticker_colors, prices=prices, options=self._render_options)
-            clear_output(wait=True)
-            display(fig)
+        def next_frame():
+            # Once the background thread finishes, prefer the harness's own
+            # returned Report over one more checkpoint read -- the checkpoint
+            # file is already unlinked by then (harness.run()'s own clean-finish
+            # cleanup), and even before that, a poll mid-write could catch a
+            # partial/stale day depending on checkpoint_every.
+            if not thread.is_alive() and "report" in result:
+                return result["report"]
+            return report_from_checkpoint(checkpoint_path)
 
-        while thread.is_alive():
-            _redraw(report_from_checkpoint(checkpoint_path))
-            time.sleep(self._poll_seconds)
-
+        live_render(
+            next_frame,
+            title=title,
+            poll_seconds=self._poll_seconds,
+            options=self._render_options,
+            ticker_colors=ticker_colors,
+            prices=prices,
+            should_continue=thread.is_alive,
+        )
         thread.join()
-        _redraw(result.get("report"))
 
 
 @Registry.register(Presenter, "native_dash")

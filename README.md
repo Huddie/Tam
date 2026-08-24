@@ -8,7 +8,9 @@ config's `strategies:` section by name.
 
 Published on PyPI as `tam-quant` (`pip install tam-quant`; `import tam` either
 way). Running in Google Colab or Jupyter instead of this repo's own CLI? See
-[NOTEBOOK.md](NOTEBOOK.md).
+[NOTEBOOK.md](NOTEBOOK.md). Want to use individual pieces (data fetching,
+rendering, live updates) outside the config-driven runner, or see every
+component's API at a glance? See [LIB.md](LIB.md).
 
 ## Setup
 
