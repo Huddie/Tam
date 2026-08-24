@@ -5,6 +5,7 @@ only call into this module when you actually want a chart.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 import pandas as pd
@@ -15,6 +16,18 @@ from plotly.subplots import make_subplots
 from .report import Report
 
 _PALETTE = plotly.colors.qualitative.Plotly
+
+
+@dataclass(frozen=True)
+class RenderOptions:
+    """Chart-rendering knobs, kept as one object so Presenters/config can pass
+    them around as a unit instead of every new knob growing render()'s and
+    every Presenter constructor's parameter list. Bare `RenderOptions()` (the
+    default everywhere it's accepted) reproduces today's behavior exactly."""
+
+    show_trades_default: bool = True
+    height: Optional[int] = None
+    template: str = "plotly_white"
 
 _PERCENT_METRICS = {"total_return", "cagr", "volatility", "max_drawdown"}
 _CURRENCY_METRICS = {"start_value", "end_value"}
@@ -67,7 +80,12 @@ def _side_label(side) -> str:
 
 
 def _trade_marker_trace(
-    report: Report, portfolio_id: str, normalized_curve: pd.Series, ticker_colors: Dict[str, str], fallback_color: str
+    report: Report,
+    portfolio_id: str,
+    normalized_curve: pd.Series,
+    ticker_colors: Dict[str, str],
+    fallback_color: str,
+    visible_default: bool,
 ):
     """One marker per trading day this portfolio traded, positioned on its own
     (indexed) equity line. Multiple trades on the same day are grouped into a
@@ -143,7 +161,7 @@ def _trade_marker_trace(
         name=f"{portfolio_id} trades",
         hovertext=texts,
         hoverinfo="text",
-        visible=True,
+        visible=visible_default,
     )
 
 
@@ -152,6 +170,7 @@ def render(
     title: str = "Backtest Report",
     ticker_colors: Optional[Dict[str, str]] = None,
     prices: Optional[Dict[str, pd.Series]] = None,
+    options: Optional[RenderOptions] = None,
 ) -> go.Figure:
     """Build the dashboard figure: normalized equity curves, drawdown, and a
     metrics table -- plus an optional raw ticker-price panel above the equity
@@ -171,7 +190,12 @@ def render(
 
     `report.annotations` (populated by strategies calling Strategy.annotate(),
     e.g. LLMTradingStrategy marking a LoRA fine-tune) are drawn as dotted
-    vertical lines on the equity chart, labeled with each one's text."""
+    vertical lines on the equity chart, labeled with each one's text.
+
+    `options`: a RenderOptions -- template/height/whether the trade-marker
+    toggle starts shown or hidden. Defaults to RenderOptions() (today's
+    behavior) when omitted."""
+    options = options or RenderOptions()
     ticker_colors = ticker_colors or {}
     portfolio_ids = report.portfolio_ids()
     colors = {pid: _PALETTE[i % len(_PALETTE)] for i, pid in enumerate(portfolio_ids)}
@@ -299,7 +323,8 @@ def render(
     trade_trace_indices = []
     for portfolio_id in portfolio_ids:
         marker_trace = _trade_marker_trace(
-            report, portfolio_id, normalized_curves[portfolio_id], ticker_colors, colors[portfolio_id]
+            report, portfolio_id, normalized_curves[portfolio_id], ticker_colors, colors[portfolio_id],
+            options.show_trades_default,
         )
         if marker_trace is not None:
             fig.add_trace(marker_trace, row=equity_row, col=1)
@@ -352,8 +377,8 @@ def render(
 
     fig.update_layout(
         title=title,
-        template="plotly_white",
-        height=1250 if has_prices else 1000,
+        template=options.template,
+        height=options.height or (1250 if has_prices else 1000),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         margin=dict(t=120),
         updatemenus=updatemenus,
@@ -367,5 +392,6 @@ def write_html(
     title: str = "Backtest Report",
     ticker_colors: Optional[Dict[str, str]] = None,
     prices: Optional[Dict[str, pd.Series]] = None,
+    options: Optional[RenderOptions] = None,
 ) -> None:
-    render(report, title=title, ticker_colors=ticker_colors, prices=prices).write_html(path)
+    render(report, title=title, ticker_colors=ticker_colors, prices=prices, options=options).write_html(path)

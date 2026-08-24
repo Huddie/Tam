@@ -181,7 +181,7 @@ backtest:
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False):
+    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, poll_seconds=3.0, options=None):
         serve_calls.append((checkpoint_path, title, port, verbose))
         deadline = time.time() + 5
         while not report_path.exists() and time.time() < deadline:
@@ -260,7 +260,7 @@ backtest:
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False):
+    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, poll_seconds=3.0, options=None):
         serve_calls.append(checkpoint_path)
         deadline = time.time() + 5
         while not report_path.exists() and time.time() < deadline:
@@ -311,37 +311,103 @@ def test_run_backtest_returns_the_report_and_renders_inline(tmp_path, monkeypatc
     show_calls = []
     monkeypatch.setattr("plotly.graph_objs.Figure.show", lambda self, *a, **k: show_calls.append(self))
 
-    report = run_backtest(_small_config(tmp_path))
+    report = run_backtest(_small_config(tmp_path), live=False)
 
     assert report is not None
     assert not report.summary_all().empty
     assert len(show_calls) == 1
 
 
-def test_run_backtest_live_redraws_via_ipython_display_not_dash(tmp_path, monkeypatch):
+def test_run_backtest_live_redraws_via_clear_output_not_dash(tmp_path, monkeypatch):
     # live=True does NOT use Dash (unlike --mode live on the CLI, which opens
     # a real server for a real browser tab) -- Dash's own inline-in-notebook
     # support doesn't work in Colab (confirmed both from Dash's own source
-    # and empirically). Instead it redraws the same chart in place via
-    # IPython's display()/update_display(display_id=...), the same
-    # rich-display mechanism the non-live path's fig.show() already uses.
+    # and empirically). It also doesn't use IPython's
+    # display(display_id=...)/update_display() -- Colab's frontend doesn't
+    # reliably replace rich HTML/JS content (e.g. a Plotly figure) in place
+    # via that mechanism (confirmed empirically: it kept stacking a new
+    # chart underneath the old one instead of replacing it). Instead, every
+    # redraw clears the cell's entire output first (clear_output(wait=True))
+    # and displays the new figure fresh -- the standard "live plot in Colab"
+    # pattern.
     config_path = _small_config(tmp_path)
 
+    clear_calls = []
     display_calls = []
-    update_calls = []
-    monkeypatch.setattr("IPython.display.display", lambda fig, display_id: display_calls.append((fig, display_id)))
-    monkeypatch.setattr(
-        "IPython.display.update_display", lambda fig, display_id: update_calls.append((fig, display_id))
-    )
+    monkeypatch.setattr("IPython.display.clear_output", lambda wait=False: clear_calls.append(wait))
+    monkeypatch.setattr("IPython.display.display", lambda fig: display_calls.append(fig))
 
     result = run_backtest(config_path, live=True)
 
     assert result is None  # live mode returns None -- no single Report at the moment it returns
-    assert len(display_calls) == 1  # first frame -- establishes the notebook output slot
-    display_id = display_calls[0][1]
-    assert display_id  # a real id was generated
-    # Every later frame (including the final one, redrawn once the
-    # background thread finishes) updates that SAME slot in place, rather
-    # than each one calling display() again and stacking a new plot
-    # underneath every refresh.
-    assert all(call_display_id == display_id for _fig, call_display_id in update_calls)
+    assert len(display_calls) >= 1  # at least the final frame got drawn
+    assert len(clear_calls) == len(display_calls)  # every display() is preceded by a clear_output()
+    assert all(wait is True for wait in clear_calls)  # wait=True -- no visible blank flash between frames
+
+
+def test_run_backtest_live_native_dash_uses_serve_with_jupyter_mode(tmp_path, monkeypatch):
+    # render_mode="native_dash" opts into the real-Dash-server presenter --
+    # kept available for classic Jupyter/JupyterLab (or in case Colab's own
+    # support improves later) even though it's no longer the default.
+    config_path = _small_config(tmp_path)
+
+    show_calls = []
+    monkeypatch.setattr("plotly.graph_objs.Figure.show", lambda self, *a, **k: show_calls.append(self))
+
+    serve_calls = []
+
+    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, jupyter_mode=None, poll_seconds=3.0, options=None):
+        serve_calls.append({"jupyter_mode": jupyter_mode, "poll_seconds": poll_seconds})
+        # Block until the background thread's tiny backtest actually
+        # finishes and renders -- otherwise that daemon thread can still be
+        # running (and calling the un-mocked real fig.show(), which tries to
+        # open a real browser) after this test has already returned and
+        # monkeypatch has undone its patches.
+        deadline = time.time() + 5
+        while not show_calls and time.time() < deadline:
+            time.sleep(0.02)
+
+    monkeypatch.setattr("tam.backtest.live.serve", fake_serve)
+
+    result = run_backtest(config_path, live=True, render_mode="native_dash")
+
+    assert result is None
+    assert len(serve_calls) == 1
+    assert serve_calls[0]["jupyter_mode"] == "inline"  # DashNotebookPresenter's own default
+    assert len(show_calls) == 1  # the background run finished and rendered before we returned
+
+
+def test_run_backtest_presenter_kwargs_forwards_to_the_chosen_presenter(tmp_path, monkeypatch):
+    # presenter_kwargs is passed straight through to whichever Presenter
+    # render_mode selects -- e.g. a custom jupyter_mode/poll_seconds for
+    # native_dash, without run_backtest needing to know those exist.
+    config_path = _small_config(tmp_path)
+
+    show_calls = []
+    monkeypatch.setattr("plotly.graph_objs.Figure.show", lambda self, *a, **k: show_calls.append(self))
+
+    serve_calls = []
+
+    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, jupyter_mode=None, poll_seconds=3.0, options=None):
+        serve_calls.append({"jupyter_mode": jupyter_mode, "poll_seconds": poll_seconds})
+        deadline = time.time() + 5
+        while not show_calls and time.time() < deadline:
+            time.sleep(0.02)
+
+    monkeypatch.setattr("tam.backtest.live.serve", fake_serve)
+
+    run_backtest(
+        config_path,
+        live=True,
+        render_mode="native_dash",
+        presenter_kwargs={"jupyter_mode": "external", "poll_seconds": 5.0},
+    )
+
+    assert serve_calls == [{"jupyter_mode": "external", "poll_seconds": 5.0}]
+
+
+def test_run_backtest_rejects_an_unknown_render_mode(tmp_path):
+    config_path = _small_config(tmp_path)
+
+    with pytest.raises(ValueError, match="render_mode"):
+        run_backtest(config_path, live=True, render_mode="not_a_real_mode")

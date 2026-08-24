@@ -9,6 +9,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from ..data.schema import CLOSE, OPEN
+
 
 class Side(str, Enum):
     BUY = "BUY"
@@ -30,6 +32,12 @@ class PriceBasis(str, Enum):
 
     OPEN = "open"
     CLOSE = "close"
+
+
+PRICE_BASIS_COLUMN = {
+    PriceBasis.OPEN: OPEN,
+    PriceBasis.CLOSE: CLOSE,
+}
 
 
 class Qty(BaseModel):

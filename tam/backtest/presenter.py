@@ -6,21 +6,26 @@ directly in the cell's output) without runner.py ever branching on "am I in
 a notebook" -- it just calls whichever Presenter it's given.
 
 Two concrete presenters ship here: CliPresenter (examples/backtest.py) and
-NotebookPresenter (tam.backtest.runner.run_backtest, for Colab/Jupyter). A
-third presentation style (a different notebook widget library, a web
-service's own progress UI, ...) is just another Presenter subclass -- nothing
-in runner.py needs to change to support it.
+NotebookPresenter (tam.backtest.runner.run_backtest, for Colab/Jupyter),
+plus DashNotebookPresenter, an opt-in alternative to NotebookPresenter's
+live view (see its own docstring). A different presentation style (a
+different notebook widget library, a web service's own progress UI, ...) is
+just another Presenter subclass -- nothing in runner.py needs to change to
+support it.
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Dict, Optional
 
+from ..registry import Registry
+
 if TYPE_CHECKING:
     import pandas as pd
 
     from .harness import BacktestHarness
     from .report import Report
+    from .visualization import RenderOptions
 
 
 class Presenter(ABC):
@@ -68,6 +73,7 @@ class Presenter(ABC):
         rendering (NotebookPresenter), or anything else a presenter wants."""
 
 
+@Registry.register(Presenter, "cli")
 class CliPresenter(Presenter):
     """Terminal presentation: a two-row Rich progress display (overall
     day-count, plus whatever a strategy reports via tam.status underneath --
@@ -75,8 +81,12 @@ class CliPresenter(Presenter):
     a printed summary table, a static HTML file written to `report_path`,
     and (run_live) a real Dash server in an actual browser tab."""
 
-    def __init__(self, report_path: str):
+    def __init__(self, report_path: str, poll_seconds: float = 3.0, render_options: Optional["RenderOptions"] = None):
+        from .visualization import RenderOptions
+
         self._report_path = report_path
+        self._poll_seconds = poll_seconds
+        self._render_options = render_options or RenderOptions()
 
     def run_batch(self, harness, total_days, checkpoint_path, checkpoint_every):
         from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
@@ -127,7 +137,7 @@ class CliPresenter(Presenter):
 
         report_path = Path(self._report_path)
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        write_html(report, str(report_path), title=title, ticker_colors=ticker_colors, prices=prices)
+        write_html(report, str(report_path), title=title, ticker_colors=ticker_colors, prices=prices, options=self._render_options)
         print(f"Report written to {report_path}")
 
     def run_live(self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose):
@@ -147,9 +157,19 @@ class CliPresenter(Presenter):
         thread.start()
 
         print(f"Live view: http://127.0.0.1:{port}  (backtest running in the background)", file=sys.stderr)
-        serve(checkpoint_path, title=title, ticker_colors=ticker_colors, prices=prices, port=port, verbose=verbose)
+        serve(
+            checkpoint_path,
+            title=title,
+            poll_seconds=self._poll_seconds,
+            ticker_colors=ticker_colors,
+            prices=prices,
+            port=port,
+            verbose=verbose,
+            options=self._render_options,
+        )
 
 
+@Registry.register(Presenter, "clear_output")
 class NotebookPresenter(Presenter):
     """Notebook/Colab presentation: no progress bars (a notebook cell is a
     poor place for an animated terminal UI, and every notebook host redraws
@@ -166,16 +186,28 @@ class NotebookPresenter(Presenter):
     own proxy-autodetection helper (jupyter_dash.infer_jupyter_proxy_config:
     "No op when ... in_colab"), which in practice reproduces as a
     completely blank cell -- no banner, no graph, nothing (confirmed
-    empirically, not just from reading Dash's source). Instead, run_live
-    polls the same checkpoint file Dash's live server would have, and
-    redraws the SAME figure render() always produces by re-displaying it
-    into the same notebook output slot via IPython's own
-    display()/update_display(display_id=...) -- the same rich-display
-    mechanism the non-live path already uses successfully, just refreshed
-    periodically instead of drawn once. No server, no iframe, no separate
-    URL, no proxy to misdetect."""
+    empirically, not just from reading Dash's source).
 
-    _POLL_SECONDS = 2.0
+    It also does NOT use IPython's display(display_id=...)/update_display()
+    -- that's the textbook-correct way to redraw a rich output in place, but
+    Colab's own frontend doesn't reliably implement update_display() for
+    HTML/JS-backed rich content like a Plotly figure (confirmed empirically:
+    it kept appending a new chart underneath the old one on every refresh,
+    instead of replacing it -- a known Colab gap, not present in classic
+    Jupyter/JupyterLab). Instead, run_live polls the same checkpoint file
+    Dash's live server would have, and on every refresh clears the cell's
+    entire output and redraws the chart from scratch via
+    IPython.display.clear_output(wait=True) -- the same trick every "live
+    matplotlib in Colab" tutorial uses for exactly this reason. wait=True
+    defers the actual clear until the instant before the new output is
+    ready, so there's no visible blank flash between frames. No server, no
+    iframe, no separate URL, no proxy or display_id to misbehave."""
+
+    def __init__(self, poll_seconds: float = 2.0, render_options: Optional["RenderOptions"] = None):
+        from .visualization import RenderOptions
+
+        self._poll_seconds = poll_seconds
+        self._render_options = render_options or RenderOptions()
 
     def run_batch(self, harness, total_days, checkpoint_path, checkpoint_every):
         return harness.run(checkpoint_path=checkpoint_path, checkpoint_every=checkpoint_every)
@@ -183,15 +215,14 @@ class NotebookPresenter(Presenter):
     def show_report(self, report, title, ticker_colors, prices):
         from .visualization import render
 
-        render(report, title=title, ticker_colors=ticker_colors, prices=prices).show()
+        render(report, title=title, ticker_colors=ticker_colors, prices=prices, options=self._render_options).show()
 
     def run_live(self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose):
         import threading
         import time
-        import uuid
 
         try:
-            from IPython.display import display, update_display
+            from IPython.display import clear_output, display
         except ImportError as exc:
             raise ImportError(
                 "run_backtest(..., live=True) needs IPython's display utilities -- always present "
@@ -210,26 +241,65 @@ class NotebookPresenter(Presenter):
         thread = threading.Thread(target=_run_backtest, daemon=True)
         thread.start()
 
-        # A fresh id per call -- this is the notebook output slot every
-        # display()/update_display() call below redraws in place, rather
-        # than appending a new plot underneath on every refresh.
-        display_id = f"tam-live-{uuid.uuid4().hex}"
-        shown = False
-
         def _redraw(report) -> None:
-            nonlocal shown
             if report is None or not report.snapshots:
                 return
-            fig = render(report, title=title, ticker_colors=ticker_colors, prices=prices)
-            if shown:
-                update_display(fig, display_id=display_id)
-            else:
-                display(fig, display_id=display_id)
-                shown = True
+            fig = render(report, title=title, ticker_colors=ticker_colors, prices=prices, options=self._render_options)
+            clear_output(wait=True)
+            display(fig)
 
         while thread.is_alive():
             _redraw(report_from_checkpoint(checkpoint_path))
-            time.sleep(self._POLL_SECONDS)
+            time.sleep(self._poll_seconds)
 
         thread.join()
         _redraw(result.get("report"))
+
+
+@Registry.register(Presenter, "native_dash")
+class DashNotebookPresenter(NotebookPresenter):
+    """Opt-in alternative to NotebookPresenter's default clear_output-based
+    live view (see NotebookPresenter's own docstring for why that's the
+    default, not this) -- embeds a real Dash server directly in the cell via
+    jupyter_mode="inline", the same mechanism CliPresenter uses for a real
+    browser tab, just rendered inline instead. Select via
+    run_backtest(..., render_mode="native_dash").
+
+    Kept available, not removed, for: (a) classic Jupyter/JupyterLab, where
+    Dash's own docs describe this as fully supported (unlike Colab), and
+    (b) in case Colab's own Dash-in-notebook support improves in the future
+    -- switching back is a render_mode string, not a code change. Only
+    run_live differs from NotebookPresenter; run_batch/show_report (the
+    non-live path) are identical either way, so this subclasses rather than
+    reimplementing them."""
+
+    def __init__(self, jupyter_mode: str = "inline", poll_seconds: float = 3.0, render_options: Optional["RenderOptions"] = None):
+        from .visualization import RenderOptions
+
+        self._jupyter_mode = jupyter_mode
+        self._poll_seconds = poll_seconds
+        self._render_options = render_options or RenderOptions()
+
+    def run_live(self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose):
+        import threading
+
+        from .live import serve
+
+        def _run_backtest() -> None:
+            report = harness.run(checkpoint_path=checkpoint_path, checkpoint_every=checkpoint_every)
+            self.show_report(report, title, ticker_colors, prices)
+
+        thread = threading.Thread(target=_run_backtest, daemon=True)
+        thread.start()
+
+        serve(
+            checkpoint_path,
+            title=title,
+            poll_seconds=self._poll_seconds,
+            ticker_colors=ticker_colors,
+            prices=prices,
+            port=port,
+            verbose=verbose,
+            jupyter_mode=self._jupyter_mode,
+            options=self._render_options,
+        )

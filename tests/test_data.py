@@ -126,6 +126,52 @@ def test_ingest_warns_when_provider_returns_no_data_for_a_gap(tmp_path):
         repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4))
 
 
+@pytest.mark.parametrize("store_cls", [CsvStore, ParquetStore])
+def test_history_reads_store_at_most_once_per_symbol(tmp_path, store_cls):
+    frame = _bars(["2024-01-02", "2024-01-03", "2024-01-04"], [100.0, 101.0, 99.0])
+    store = store_cls(tmp_path)
+    repo = DataRepository(FakeProvider(frame), store)
+    repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4))
+
+    read_calls = []
+    original_read = store.read
+    store.read = lambda symbol: (read_calls.append(symbol), original_read(symbol))[1]
+
+    repo.history("AAPL")
+    repo.history("AAPL")
+    repo.query("AAPL")
+
+    assert read_calls == ["AAPL"]
+
+
+def test_ingest_invalidates_cached_history(tmp_path):
+    frame = _bars(["2024-01-02", "2024-01-03"], [100.0, 101.0])
+    store = CsvStore(tmp_path)
+    provider = FakeProvider(frame)
+    repo = DataRepository(provider, store)
+    repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 3))
+
+    repo.history("AAPL")  # warms the cache
+
+    wider = _bars(["2024-01-02", "2024-01-03", "2024-01-04"], [100.0, 101.0, 99.0])
+    provider._frame = wider
+    repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4))
+
+    assert list(repo.history("AAPL").frame["close"]) == [100.0, 101.0, 99.0]
+
+
+def test_query_returns_an_independent_copy_not_the_cached_frame(tmp_path):
+    frame = _bars(["2024-01-02", "2024-01-03"], [100.0, 101.0])
+    store = CsvStore(tmp_path)
+    repo = DataRepository(FakeProvider(frame), store)
+    repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 3))
+
+    result = repo.query("AAPL")
+    result.iloc[0, result.columns.get_loc("close")] = -1.0
+
+    assert repo.history("AAPL").frame.iloc[0]["close"] == 100.0
+
+
 def test_ingest_across_years_only_rewrites_the_touched_year_partition(tmp_path):
     store = ParquetStore(tmp_path)
     written_paths = []

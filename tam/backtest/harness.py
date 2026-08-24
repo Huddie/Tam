@@ -5,20 +5,21 @@ import os
 import pickle
 import tempfile
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence
 
 from ..data.repository import DataRepository
-from ..data.schema import CLOSE, OPEN
 from ..events.bus import EventBus
 from ..events.clock import Clock
 from ..events.types import ANNOTATION_TOPIC, State
-from ..portfolio.orders import PriceBasis
+from ..portfolio.orders import PRICE_BASIS_COLUMN, PriceBasis
 from ..portfolio.portfolio import Portfolio
 from ..portfolio.registry import PortfolioRegistry
+from ..registry import RunRegistry
 from ..strategy.base import Strategy
 from ..trading.gateway import TradeGateway
+from ..trading.trader import Trader
 from .report import Report
 
 
@@ -46,6 +47,7 @@ class BacktestHarness:
         strategies: Sequence[Strategy],
         portfolios: Dict[str, Portfolio],
         dates: Sequence[date],
+        traders: Optional[Sequence[Trader]] = None,
     ):
         self._repository = repository
         self._bus = EventBus()
@@ -58,15 +60,20 @@ class BacktestHarness:
             strategy.bind(self._bus, self._trader, self._portfolios)
         self._clock = Clock(dates, self._bus)
 
+        self.traders = list(traders or [])
+        self.runtime = RunRegistry()
+        for trader in self.traders:
+            self.runtime.put(Trader, trader.name, trader)
+            self.runtime.put(Strategy, trader.name, trader.strategy)
+
     def _on_annotation(self, event) -> None:
         self._annotations.append(dict(event.payload))
 
     def _price_on(self, ticker: str, as_of: date, basis: PriceBasis = PriceBasis.CLOSE) -> float:
-        history = self._repository.query(ticker, end=as_of)
-        if history.empty:
-            raise LookupError(f"no price data for {ticker} on or before {as_of}")
-        column = OPEN if basis is PriceBasis.OPEN else CLOSE
-        return float(history.iloc[-1][column])
+        try:
+            return self._repository.history(ticker).price_at(as_of, PRICE_BASIS_COLUMN[basis])
+        except LookupError as exc:
+            raise LookupError(f"no price data for {ticker} on or before {as_of}") from exc
 
     def run(
         self,
@@ -93,6 +100,21 @@ class BacktestHarness:
             strategy.state_change(State.START)
         for strategy in self._strategies:
             strategy.state_change(State.RUNNING)
+
+        if completed_days == 0 and self._clock.dates:
+            # A pre-trade anchor point, dated the day before the first
+            # trading day -- portfolios are freshly built with nothing but
+            # their configured starting cash at this point (state_change
+            # above only subscribes strategies to topics; no trades fire
+            # until the first Clock.tick below). Without this, a strategy
+            # that round-trips within day 1 (e.g. intraday_hold: buy at
+            # open, sell at close) would have its FIRST plotted/summarized
+            # value already reflect day 1's return, making its "start_value"
+            # silently diverge from the cash actually configured while
+            # other strategies' (which don't fully round-trip before the
+            # first snapshot) start_value coincidentally matches it.
+            first_date = self._clock.dates[0]
+            snapshots.extend(self._snapshot(first_date - timedelta(days=1), price_date=first_date))
 
         total_days = len(self._clock.dates)
         for day_index, current_date in enumerate(self._clock.dates, start=1):
@@ -153,10 +175,16 @@ class BacktestHarness:
             for trade in portfolio.trades
         ]
 
-    def _snapshot(self, as_of: date) -> List[dict]:
+    def _snapshot(self, as_of: date, price_date: Optional[date] = None) -> List[dict]:
+        """`price_date` (defaults to `as_of`) is what's used to look up mark-to-
+        market prices -- distinct from `as_of` only for the pre-trade anchor
+        snapshot, which is labeled a day before the data range starts (so no
+        price history exists there yet) but still needs to price whatever a
+        portfolio already holds at that point."""
+        price_date = price_date if price_date is not None else as_of
         rows = []
         for portfolio_id, portfolio in self._portfolios.items():
-            prices = {ticker: self._price_on(ticker, as_of) for ticker in portfolio.tickers}
+            prices = {ticker: self._price_on(ticker, price_date) for ticker in portfolio.tickers}
             rows.append(
                 {
                     "date": as_of,

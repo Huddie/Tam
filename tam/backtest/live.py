@@ -17,17 +17,26 @@ from typing import Dict, Optional
 import pandas as pd
 
 from .report import Report
-from .visualization import render
+from .visualization import RenderOptions, render
 
 
 def report_from_checkpoint(checkpoint_path: str) -> Optional[Report]:
     """Reconstruct a partial Report from whatever's in the checkpoint right
-    now, or None if it doesn't exist yet (e.g. day 1 hasn't completed)."""
+    now, or None if it doesn't exist yet (e.g. day 1 hasn't completed) --
+    also None if it existed a moment ago but is gone by the time we get to
+    read it: the writer (BacktestHarness.run(), on its own thread) unlinks
+    the checkpoint on a clean finish, and a slow/laggy filesystem (a
+    Drive-mounted config directory in Colab, say) widens the window between
+    this function's own exists() check and open() enough for that race to
+    actually happen in practice, not just in theory."""
     path = Path(checkpoint_path)
     if not path.exists():
         return None
-    with path.open("rb") as handle:
-        state = pickle.load(handle)
+    try:
+        with path.open("rb") as handle:
+            state = pickle.load(handle)
+    except FileNotFoundError:
+        return None
 
     trades = [
         {**trade, "portfolio": portfolio_id}
@@ -45,24 +54,36 @@ def serve(
     verbose: bool = False,
     ticker_colors: Optional[Dict[str, str]] = None,
     prices: Optional[Dict[str, "pd.Series"]] = None,
+    jupyter_mode: Optional[str] = None,
+    options: Optional[RenderOptions] = None,
 ) -> None:
-    """Blocking: serves a dashboard at http://127.0.0.1:<port> that re-reads
-    the checkpoint every `poll_seconds` and redraws the same figure
-    visualization.render() would produce for the final report -- just from
-    whatever's completed so far. Keeps showing the last good read after the
-    checkpoint is removed on a clean finish, rather than reverting to blank.
+    """Blocking (unless `jupyter_mode` says otherwise -- see below): serves a
+    dashboard at http://127.0.0.1:<port> that re-reads the checkpoint every
+    `poll_seconds` and redraws the same figure visualization.render() would
+    produce for the final report -- just from whatever's completed so far.
+    Keeps showing the last good read after the checkpoint is removed on a
+    clean finish, rather than reverting to blank.
 
     A real browser-tab dashboard, via a real Dash server -- this is what
-    --mode live (the CLI) uses. For a notebook/Colab live view instead, see
-    tam.backtest.runner.run_backtest(..., live=True): it does NOT go through
-    this function at all -- Dash's own inline-in-notebook support depends on
-    correctly detecting a hosted notebook's reverse proxy, which Colab
-    specifically doesn't support (confirmed both by Dash's own source --
-    jupyter_dash.infer_jupyter_proxy_config is a documented no-op "when ...
-    in_colab" -- and empirically, rendering nothing at all). The notebook
-    path redraws the chart in place via IPython's own display()/
-    update_display() instead (see tam/backtest/presenter.py's
-    NotebookPresenter).
+    --mode live (the CLI) uses (jupyter_mode=None, the default: blocks,
+    serves a normal HTTP dashboard for a separate browser tab).
+
+    `jupyter_mode` renders inline in a notebook cell instead (passed straight
+    through to Dash's own `app.run()`) -- this is NOT what
+    tam.backtest.runner.run_backtest(..., live=True) uses by default: Dash's
+    own inline-in-notebook support depends on correctly detecting a hosted
+    notebook's reverse proxy, and Colab specifically doesn't support that
+    (confirmed both by Dash's own source -- jupyter_dash.
+    infer_jupyter_proxy_config is a documented no-op "when ... in_colab" --
+    and empirically, rendering a completely blank cell). run_backtest's
+    default live view instead redraws the chart via IPython's own
+    clear_output()/display() (see tam/backtest/presenter.py's
+    NotebookPresenter), which doesn't depend on Dash or proxy detection at
+    all. This jupyter_mode path is kept available as an explicit opt-in
+    (run_backtest(..., render_mode="native_dash"), see
+    DashNotebookPresenter) for classic Jupyter/JupyterLab -- where Dash's own
+    docs describe this as fully supported -- or in case Colab's own
+    Dash-in-notebook support improves later.
 
     `prices`, if given, is the same already-fetched historical price data
     write_html()'s optional top panel supports -- passed in whole, but
@@ -80,7 +101,20 @@ def serve(
         from dash import dcc, html
         from dash.dependencies import Input, Output
     except ImportError as exc:
-        raise ImportError("`--mode live` needs the `live` extra: run `uv sync --extra live` (adds dash) and retry.") from exc
+        raise ImportError(
+            "native_dash / --mode live needs the `live` extra (adds dash): run `uv sync --extra live` "
+            "and retry, or in a notebook `!pip install -q \"tam-quant[live]\"` -- the `notebook` extra "
+            "alone does NOT include dash. If you're in a notebook and don't specifically need a real "
+            "Dash server, render_mode=\"clear_output\" (the default) needs no extra dependency at all."
+        ) from exc
+
+    if jupyter_mode is not None:
+        # A no-op outside a notebook context, and (per Dash's own source)
+        # also a no-op specifically in Colab -- but harmless either way, and
+        # still useful for classic Jupyter/JupyterLab behind a proxy.
+        from dash import jupyter_dash
+
+        jupyter_dash.infer_jupyter_proxy_config()
 
     if not verbose:
         logging.getLogger("werkzeug").setLevel(logging.ERROR)
@@ -105,7 +139,7 @@ def serve(
         if report is None or not report.snapshots:
             return {}, "waiting for the first completed day..."
 
-        fig = render(report, title=title, ticker_colors=ticker_colors, prices=prices)
+        fig = render(report, title=title, ticker_colors=ticker_colors, prices=prices, options=options)
         frame = report.to_frame()
         last_date = frame["date"].max()
         day_count = frame["date"].nunique()
@@ -114,4 +148,7 @@ def serve(
             status += " -- backtest finished, showing final state"
         return fig, status
 
-    app.run(port=port, debug=False, threaded=True)
+    run_kwargs = {"port": port, "debug": False, "threaded": True}
+    if jupyter_mode is not None:
+        run_kwargs["jupyter_mode"] = jupyter_mode
+    app.run(**run_kwargs)

@@ -79,7 +79,7 @@ class MLWalkForwardStrategy(Strategy):
 
     def on_event(self, event: Event) -> None:
         as_of = event.payload
-        history = self._repository.query(self._signal_ticker, end=as_of).tail(_LOOKBACK)
+        history = self._repository.history(self._signal_ticker).window_ending(as_of, _LOOKBACK)
         if len(history) < _LOOKBACK:
             return
 

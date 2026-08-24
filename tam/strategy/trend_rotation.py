@@ -125,7 +125,7 @@ class TrendRotationStrategy(Strategy):
 
     def _target_side(self, as_of):
         required = max(self._trend_window, self._momentum_window + 1)
-        history = self._repository.query(self._signal_ticker, end=as_of).tail(required)
+        history = self._repository.history(self._signal_ticker).window_ending(as_of, required)
         if len(history) < required:
             return None
 
@@ -144,11 +144,11 @@ class TrendRotationStrategy(Strategy):
         return self._held  # signals disagree -- hold whatever side we're already on
 
     def _current_price(self, ticker: str, as_of):
-        history = self._repository.query(ticker, end=as_of).tail(1)
+        history = self._repository.history(ticker).window_ending(as_of, 1)
         return history["close"].iloc[-1] if len(history) else None
 
     def _realized_vol(self, as_of) -> Optional[float]:
-        history = self._repository.query(self._signal_ticker, end=as_of).tail(self._vol_window + 1)
+        history = self._repository.history(self._signal_ticker).window_ending(as_of, self._vol_window + 1)
         if len(history) < self._vol_window + 1:
             return None
         return history["close"].pct_change().dropna().std() * ANNUALIZATION_FACTOR

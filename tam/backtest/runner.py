@@ -17,15 +17,16 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
 from .config import build_strategies
 from .harness import BacktestHarness
-from .presenter import CliPresenter, NotebookPresenter, Presenter
+from .presenter import Presenter
 from .report import Report
-from .visualization import BUY_COLOR, SELL_COLOR
+from .visualization import BUY_COLOR, RenderOptions, SELL_COLOR
 from ..config import Config
 from ..data.providers import DataProvider
 from ..data.repository import DataRepository
@@ -37,6 +38,23 @@ class DataSettings:
     provider: str
     store: str
     root: str
+
+
+class ReportSettings:
+    """Optional top-level `report:` config section -- everything here is
+    None/unset by default, so a config that omits it entirely (every example
+    config as of this writing) behaves exactly as before. `presenter` names
+    an entry in Registry(Presenter, ...) -- "cli"/"clear_output"/"native_dash"
+    ship built in (see presenter.py); a project can register its own with
+    @Registry.register(Presenter, "my_presenter") and reference it the same
+    way, no code change needed here."""
+
+    presenter: str = None
+    presenter_kwargs: dict = None
+    poll_seconds: float = None
+    show_trades_default: bool = None
+    height: int = None
+    template: str = None
 
 
 class BacktestSettings:
@@ -55,6 +73,38 @@ def _build_repository(data_settings: DataSettings) -> DataRepository:
     provider = Registry.get(DataProvider, data_settings.provider)
     store = Registry.create(DataStore, data_settings.store, data_settings.root)
     return DataRepository(provider, store)
+
+
+def _build_render_options(report_settings: "ReportSettings", **overrides) -> RenderOptions:
+    fields = {
+        field: getattr(report_settings, field)
+        for field in ("show_trades_default", "height", "template")
+        if getattr(report_settings, field) is not None
+    }
+    fields.update({field: value for field, value in overrides.items() if value is not None})
+    return replace(RenderOptions(), **fields)
+
+
+def _build_presenter(name: str, report_settings: "ReportSettings", render_options: Optional[RenderOptions] = None, **explicit_kwargs) -> Presenter:
+    """Construct a Presenter by its Registry(Presenter, ...) name, with
+    `report_settings.presenter_kwargs` as the base and `explicit_kwargs`
+    (whatever the caller passed directly -- run()'s always-required
+    report_path, or run_backtest()'s optional presenter_kwargs= override)
+    taking priority on any overlapping key. Callers resolve `name` and
+    `render_options` themselves first, since precedence between config and an
+    explicit Python argument differs between run() (config always wins if
+    set) and run_backtest() (an explicit render_mode/show_trades_default
+    argument wins over config)."""
+    kwargs = {**(report_settings.presenter_kwargs or {}), **explicit_kwargs}
+    if report_settings.poll_seconds is not None:
+        kwargs.setdefault("poll_seconds", report_settings.poll_seconds)
+    kwargs.setdefault("render_options", render_options if render_options is not None else _build_render_options(report_settings))
+    try:
+        return Registry.create(Presenter, name, **kwargs)
+    except KeyError:
+        raise ValueError(
+            f"report.presenter/render_mode must be one of {sorted(Registry.names(Presenter))}, got {name!r}"
+        ) from None
 
 
 def _config_hash(resolved: dict) -> str:
@@ -190,14 +240,15 @@ def _load(config_path: Path):
     """Everything shared by every entry point (CLI run(), notebook
     run_backtest()) up through "the harness is built and ready to run" --
     config resolution, artifact-dir namespacing, ticker validation, data
-    ingestion. Returns (harness, total_days, backtest_settings, price_series,
-    config_hash, artifacts_dir)."""
+    ingestion. Returns (harness, total_days, backtest_settings,
+    report_settings, price_series, config_hash, artifacts_dir)."""
     cfg = Config(config_path)
     config_hash = _config_hash(cfg.to_dict())
     artifacts_dir = _artifacts_dir(config_path, config_hash)
 
     data_settings = cfg.data(DataSettings)
     backtest_settings = cfg.backtest(BacktestSettings)
+    report_settings = cfg.report(ReportSettings) if "report" in cfg else ReportSettings()
     _validate_tickers_declared(backtest_settings)
     _apply_artifact_defaults(backtest_settings, artifacts_dir)
 
@@ -211,10 +262,12 @@ def _load(config_path: Path):
     dates = [ts.date() for ts in history.index]
     price_series = _collect_price_series(repository, backtest_settings, start, end)
 
-    strategies, portfolios = build_strategies(repository, backtest_settings.strategies, float(backtest_settings.cash))
-    harness = BacktestHarness(repository, strategies, portfolios, dates)
+    strategies, portfolios, traders = build_strategies(
+        repository, backtest_settings.strategies, float(backtest_settings.cash)
+    )
+    harness = BacktestHarness(repository, strategies, portfolios, dates, traders=traders)
 
-    return harness, len(dates), backtest_settings, price_series, config_hash, artifacts_dir
+    return harness, len(dates), backtest_settings, report_settings, price_series, config_hash, artifacts_dir
 
 
 def _drive(
@@ -257,28 +310,49 @@ def _drive(
     return report
 
 
-def run(config_path: Path, mode: str = "batch", verbose: bool = False, port: int = 8050, no_save: bool = False) -> None:
+def run(
+    config_path: Path,
+    mode: str = "batch",
+    verbose: bool = False,
+    port: int = 8050,
+    no_save: bool = False,
+    presenter: Optional[Presenter] = None,
+) -> None:
     """CLI entry point (examples/backtest.py) -- prints a Rich progress UI,
     writes the final report to backtest.report_path, and (mode="live") serves
     a browser dashboard. For notebook/programmatic use where you want the
-    Report object back and an inline chart instead, see run_backtest()."""
+    Report object back and an inline chart instead, see run_backtest().
+
+    `presenter`, if given, is used as-is -- any object conforming to the
+    Presenter interface (presenter.py), registered or not. Otherwise the
+    config's own `report.presenter` (defaulting to "cli") is looked up in
+    Registry(Presenter, ...) -- see ReportSettings."""
     config_path = Path(config_path)
-    harness, total_days, backtest_settings, price_series, config_hash, artifacts_dir = _load(config_path)
+    harness, total_days, backtest_settings, report_settings, price_series, config_hash, artifacts_dir = _load(
+        config_path
+    )
     _print_banner(config_path, config_hash, artifacts_dir)
 
     live = mode == "live"
     if no_save:
         backtest_settings.checkpoint_path = _ephemeral_checkpoint_path() if live else None
 
-    presenter = CliPresenter(backtest_settings.report_path)
+    if presenter is None:
+        name = report_settings.presenter or "cli"
+        presenter = _build_presenter(name, report_settings, report_path=backtest_settings.report_path)
     _drive(presenter, harness, total_days, backtest_settings, config_path, price_series, live, port, verbose)
 
 
 def run_backtest(
     config_path,
-    live: bool = False,
+    live: bool = True,
     verbose: bool = False,
     port: int = 8050,
+    render_mode: Optional[str] = None,
+    presenter_kwargs: Optional[dict] = None,
+    show_trades_default: Optional[bool] = False,
+    presenter: Optional[Presenter] = None,
+    checkpoint: bool = False,
 ) -> Optional[Report]:
     """Notebook/programmatic entry point -- same config-driven backtest as
     run() (the CLI's entry point), but tailored for interactive use instead
@@ -286,34 +360,94 @@ def run_backtest(
     directly in the current cell's output instead of being written to an
     HTML file for you to separately open.
 
-    live=False (default): runs to completion, displays the final chart via
-    Plotly's own rich-display protocol (the same thing fig.show() uses --
-    renders inline in Jupyter/Colab automatically, no extra setup needed
-    there), and returns the Report so you can also call
-    report.summary_all(), report.to_frame(), etc. yourself. Assign the
-    result to a variable (`report = run_backtest(...)`) rather than leaving
-    the call as a cell's bare last expression -- otherwise the notebook also
+    live=True (default): starts the backtest on a background thread and
+    redraws the SAME chart directly in the current cell every few seconds
+    (poll_seconds defaults to 5.0 -- see presenter_kwargs below) as the
+    backtest progresses. Returns None immediately (the chart keeps updating
+    asynchronously in the output area; there's no single Report yet at the
+    moment this call returns). Needs the `notebook` extra (IPython) outside
+    a real notebook kernel.
+
+    live=False: runs to completion, displays the final chart via Plotly's
+    own rich-display protocol (the same thing fig.show() uses -- renders
+    inline in Jupyter/Colab automatically, no extra setup needed there), and
+    returns the Report so you can also call report.summary_all(),
+    report.to_frame(), etc. yourself. Assign the result to a variable
+    (`report = run_backtest(..., live=False)`) rather than leaving the call
+    as a cell's bare last expression -- otherwise the notebook also
     auto-echoes the Report's repr underneath the chart.
 
-    live=True: starts the backtest on a background thread and redraws the
-    SAME chart directly in the current cell every couple of seconds as the
-    backtest progresses, via IPython's own display()/update_display() --
-    not a real Dash server (unlike --mode live on the CLI, which does use
-    one for a real browser tab); Dash's own inline-notebook support depends
-    on correctly detecting a hosted notebook's reverse proxy, which Colab
-    specifically doesn't support (confirmed both by Dash's own source --
-    jupyter_dash.infer_jupyter_proxy_config is a documented no-op "when ...
-    in_colab" -- and empirically: a Dash-backed attempt here rendered
-    nothing at all, no banner, no graph). Returns None immediately (the
-    chart keeps updating asynchronously in the output area; there's no
-    single Report yet at the moment this call returns). Needs the
-    `notebook` extra (IPython) outside a real notebook kernel.
+    checkpoint=False (default): the backtest writes its progress to a
+    throwaway temp file, not the config's own persistent, resumable
+    checkpoint path (which -- unless `backtest.checkpoint_path` is set
+    explicitly -- lives next to the config file itself, e.g. on a
+    Drive-mounted directory in Colab; reading/writing that rapidly from two
+    threads, as live=True's polling does, over a slow/laggy mount is a real
+    source of flaky FileNotFoundErrors, not just a style preference).
+    checkpoint=True switches back to that persistent path, so an
+    interrupted run can be resumed by calling run_backtest() again with the
+    same config -- worth it for a long, unattended run; not needed for
+    quick interactive iteration, which is why it isn't the default here
+    (unlike the CLI's run(), which defaults to persistent checkpointing and
+    opts OUT via --no-save instead).
+
+    `presenter`, if given, is used as-is -- any object conforming to the
+    Presenter interface (presenter.py), registered or not; this is the
+    escape hatch for a fully custom presentation, no `@Registry.register`
+    needed. Everything below only applies when `presenter` is omitted.
+
+    render_mode picks which Presenter (see presenter.py), by name, from
+    Registry(Presenter, ...) -- defaults to the config's own `report.presenter`
+    (see ReportSettings), falling back to "clear_output" if that's unset too:
+      - "clear_output" (default): IPython's clear_output()/display() --
+        NOT a real Dash server (unlike --mode live on the CLI, which does
+        use one for a real browser tab). Dash's own inline-notebook support
+        depends on correctly detecting a hosted notebook's reverse proxy,
+        which Colab specifically doesn't support (confirmed both by Dash's
+        own source -- jupyter_dash.infer_jupyter_proxy_config is a
+        documented no-op "when ... in_colab" -- and empirically: a
+        Dash-backed attempt here rendered nothing at all). This is also why
+        it's clear_output()-based rather than display(display_id=...)/
+        update_display() -- Colab's frontend doesn't reliably replace rich
+        HTML/JS content (e.g. a Plotly figure) in place via update_display
+        either (confirmed empirically: it kept stacking a new chart
+        underneath the old one).
+      - "native_dash": DashNotebookPresenter -- the real-Dash-server
+        approach, embedded via jupyter_mode="inline" instead of a browser
+        tab. Needs the `live` extra (`pip install "tam-quant[live]"` --
+        NOT the `notebook` extra, which only adds IPython). Kept available
+        for classic Jupyter/JupyterLab (where Dash's own docs describe this
+        as fully supported) or in case Colab's own support improves later.
+      - anything self-registered via @Registry.register(Presenter, "name")
+        (e.g. in your own notebook cell, before calling run_backtest) --
+        Registry has no notion of "built in" vs. "yours".
+
+    presenter_kwargs, if given, is merged over the config's own
+    `report.presenter_kwargs` and passed straight through to the chosen
+    Presenter's constructor -- e.g. render_mode="native_dash",
+    presenter_kwargs={"jupyter_mode": "external"} to fall back to a
+    clickable link instead of an iframe, or presenter_kwargs=
+    {"poll_seconds": 2.0} to refresh more often than the default 5.0s --
+    same as setting `report.poll_seconds` in the config, just from Python.
+    See each Presenter class in presenter.py for what it accepts.
+
+    show_trades_default overrides the config's own `report.show_trades_default`
+    (both default to False here): whether the equity chart's trade markers
+    start shown or hidden -- either way, the "Show/Hide Trades" toggle
+    button still lets a viewer switch it themselves after the fact.
     """
     config_path = Path(config_path)
-    harness, total_days, backtest_settings, price_series, _config_hash, _artifacts_dir = _load(config_path)
+    harness, total_days, backtest_settings, report_settings, price_series, _config_hash, _artifacts_dir = _load(
+        config_path
+    )
 
-    if live and not backtest_settings.checkpoint_path:
-        backtest_settings.checkpoint_path = _ephemeral_checkpoint_path()
+    if not checkpoint:
+        backtest_settings.checkpoint_path = _ephemeral_checkpoint_path() if live else None
 
-    presenter = NotebookPresenter()
+    if presenter is None:
+        name = render_mode or report_settings.presenter or "clear_output"
+        render_options = _build_render_options(report_settings, show_trades_default=show_trades_default)
+        effective_presenter_kwargs = presenter_kwargs if presenter_kwargs is not None else {"poll_seconds": 5.0}
+        presenter = _build_presenter(name, report_settings, render_options=render_options, **effective_presenter_kwargs)
+
     return _drive(presenter, harness, total_days, backtest_settings, config_path, price_series, live, port, verbose)

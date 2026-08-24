@@ -64,3 +64,28 @@ class Registry:
     def __class_getitem__(cls, key: _Key):
         base_type, name = key
         return cls.get(base_type, name)
+
+
+class RunRegistry:
+    """Instance-only (type, name) -> object lookup scoped to one run (e.g. one
+    BacktestHarness). Unlike Registry, this holds already-built instances that were
+    constructed with per-run args (a Trader, a bound Strategy) rather than
+    no-arg-constructible classes, and carries no process-global state -- a fresh
+    RunRegistry per run means two backtests in the same process never collide or
+    leak into each other, unlike Registry._singletons, which is never cleared."""
+
+    def __init__(self):
+        self._instances: Dict[_Key, object] = {}
+
+    def put(self, base_type: type, name: str, instance: object) -> None:
+        self._instances[(base_type, name)] = instance
+
+    def get(self, base_type: type, name: str):
+        try:
+            return self._instances[(base_type, name)]
+        except KeyError as exc:
+            raise KeyError(f"no {base_type.__name__} registered as {name!r}") from exc
+
+    def __getitem__(self, key: _Key):
+        base_type, name = key
+        return self.get(base_type, name)

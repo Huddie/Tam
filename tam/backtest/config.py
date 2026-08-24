@@ -14,16 +14,20 @@ from ..data.repository import DataRepository
 from ..portfolio.portfolio import Portfolio
 from ..registry import Registry
 from ..strategy.base import Strategy
+from ..trading.trader import Trader
 
 
 def build_strategies(
     repository: DataRepository, specs, default_cash: float
-) -> Tuple[List[Strategy], dict]:
+) -> Tuple[List[Strategy], dict, List[Trader]]:
     strategies = []
     portfolios = {}
+    traders = []
     for spec in specs:
         cash = float(spec.cash) if "cash" in spec else default_cash
         strategy = Registry.create(Strategy, spec.strategy, repository, spec.portfolio_id, spec.params, cash)
+        portfolio = Portfolio(spec.portfolio_id, cash=cash)
         strategies.append(strategy)
-        portfolios[spec.portfolio_id] = Portfolio(spec.portfolio_id, cash=cash)
-    return strategies, portfolios
+        portfolios[spec.portfolio_id] = portfolio
+        traders.append(Trader(spec.portfolio_id, strategy, portfolio))
+    return strategies, portfolios, traders

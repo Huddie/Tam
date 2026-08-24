@@ -1,6 +1,6 @@
 import pytest
 
-from tam.registry import Registry
+from tam.registry import Registry, RunRegistry
 
 
 def test_register_returns_class_unchanged_and_makes_it_creatable():
@@ -110,3 +110,40 @@ def test_names_returns_sorted_names_scoped_to_base_type():
 
     assert Registry.names(_BaseNamesA) == ["alpha", "zebra"]
     assert "unrelated" not in Registry.names(_BaseNamesA)
+
+
+def test_run_registry_put_and_get_roundtrip():
+    class _BaseRunPutGet:
+        pass
+
+    class _ImplRunPutGet(_BaseRunPutGet):
+        def __init__(self, value):
+            self.value = value
+
+    run = RunRegistry()
+    instance = _ImplRunPutGet("hello")
+    run.put(_BaseRunPutGet, "thing", instance)
+
+    assert run.get(_BaseRunPutGet, "thing") is instance
+    assert run[_BaseRunPutGet, "thing"] is instance
+
+
+def test_run_registry_unregistered_name_raises_key_error_with_name_in_message():
+    class _BaseRunUnregistered:
+        pass
+
+    run = RunRegistry()
+    with pytest.raises(KeyError, match="missing"):
+        run.get(_BaseRunUnregistered, "missing")
+
+
+def test_run_registry_instances_are_isolated_per_registry():
+    class _BaseRunIsolated:
+        pass
+
+    run_a = RunRegistry()
+    run_b = RunRegistry()
+    run_a.put(_BaseRunIsolated, "thing", _BaseRunIsolated())
+
+    with pytest.raises(KeyError):
+        run_b.get(_BaseRunIsolated, "thing")

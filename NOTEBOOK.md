@@ -84,11 +84,15 @@ This does **not** use Dash, unlike `--mode live` on the CLI (which opens a real 
 server for a real browser tab) -- Dash's own inline-in-notebook support depends on
 correctly detecting a hosted notebook's reverse proxy, and Colab specifically is a
 documented no-op case for that detection (confirmed empirically too: a Dash-backed
-attempt here rendered a completely blank cell, no banner, no graph). Instead,
-`live=True` redraws the chart via IPython's own `display()`/`update_display()` --
-the same rich-display mechanism the non-live path's chart already uses successfully,
-just refreshed periodically instead of drawn once. No server, no iframe, no separate
-URL, nothing that depends on how a given notebook host proxies ports.
+attempt here rendered a completely blank cell, no banner, no graph). It also doesn't
+use IPython's `display(display_id=...)`/`update_display()` -- Colab's frontend
+doesn't reliably replace rich HTML/JS content (e.g. a Plotly figure) in place via
+that mechanism either (confirmed empirically: it kept stacking a new chart underneath
+the old one on every refresh instead of replacing it). Instead, by default,
+`live=True` clears the cell's output and redraws the chart from scratch on every
+refresh, via `IPython.display.clear_output(wait=True)` -- the same trick every "live
+matplotlib in Colab" tutorial uses for exactly this reason. No server, no iframe, no
+separate URL, nothing that depends on how a given notebook host proxies ports.
 
 `live=True` needs the `notebook` extra outside a real notebook kernel (a real
 Jupyter/Colab kernel always has this already, since it's what powers the kernel
@@ -97,6 +101,114 @@ itself):
 ```python
 !pip install -q "tam-quant[notebook]"
 ```
+
+### Choosing a different live-rendering mode
+
+`render_mode` picks which Presenter (see `tam/backtest/presenter.py`) drives that live
+view -- by name, from the same `Registry` that strategies/data providers use elsewhere
+in this project:
+
+```python
+run_backtest("config.yaml", live=True, render_mode="clear_output")   # default, described above
+run_backtest("config.yaml", live=True, render_mode="native_dash")    # real Dash server, jupyter_mode="inline"
+```
+
+`"native_dash"` is the approach that doesn't work reliably in Colab (see above) --
+kept available, not removed, for classic Jupyter/JupyterLab (where Dash's own docs
+describe this as fully supported) or in case Colab's own support improves later.
+
+`presenter_kwargs` passes through to whichever mode you picked, for anything it
+accepts beyond the defaults -- e.g. a slower refresh interval, or falling back to a
+clickable link instead of an iframe for `native_dash`:
+
+```python
+run_backtest("config.yaml", live=True, presenter_kwargs={"poll_seconds": 5.0})
+run_backtest(
+    "config.yaml", live=True, render_mode="native_dash", port=8060,
+    presenter_kwargs={"jupyter_mode": "external"},
+)
+```
+
+`show_trades_default=False` starts the equity chart's trade markers hidden instead
+of shown (either way, a "Show/Hide Trades" button on the chart itself still lets a
+viewer flip it afterward):
+
+```python
+run_backtest("config.yaml", show_trades_default=False)
+```
+
+See `tam/backtest/presenter.py`'s `NotebookPresenter` and `DashNotebookPresenter` for
+everything each one accepts.
+
+#### A fully custom presenter
+
+`render_mode` only reaches classes already registered with
+`@Registry.register(Presenter, "name")` -- ships with `"cli"`, `"clear_output"`, and
+`"native_dash"` built in. Register your own the same way (any class implementing
+`run_batch`/`show_report`/`run_live`, see `tam/backtest/presenter.py`'s `Presenter`
+ABC) and reference it by name from either Python or config:
+
+```python
+from tam.backtest.presenter import Presenter
+from tam.registry import Registry
+
+@Registry.register(Presenter, "my_presenter")
+class MyPresenter(Presenter):
+    ...
+
+run_backtest("config.yaml", live=True, render_mode="my_presenter")
+```
+
+Or skip the registry entirely and hand `run_backtest`/`run` an instance directly --
+useful for a one-off presenter you don't want to register globally:
+
+```python
+run_backtest("config.yaml", presenter=MyPresenter())
+```
+
+### Controlling rendering from the config file itself
+
+Everything above also has a config-file equivalent, via a top-level `report:`
+section (a sibling of `data:`/`backtest:`) -- handy so a config checked into a repo
+or shared with a teammate carries its own presentation choices, not just the
+Python call site's:
+
+```yaml
+report:
+  presenter: cli              # or "clear_output" / "native_dash" / a name you registered
+  presenter_kwargs:
+    poll_seconds: 2.5
+  show_trades_default: false
+  height: 900
+```
+
+An explicit Python argument (`render_mode=`, `presenter_kwargs=`, `show_trades_default=`,
+or `presenter=` for a ready-made instance) always overrides whatever `report:` says;
+omitting `report:` entirely (every config in `examples/` as of this writing) behaves
+exactly as before this section existed.
+
+## Running a backtest with a magic command
+
+Inside a real notebook kernel, `%load_ext` registers `%backtest` as a line magic so
+you don't have to write the `from tam.backtest.runner import run_backtest` import and
+call yourself:
+
+```python
+%load_ext tam.notebook.magic
+
+%backtest config.yaml
+%backtest config.yaml --live
+%backtest config.yaml --live --render-mode native_dash --poll-seconds 5 --show-trades false
+```
+
+Like any IPython line magic, capture its return value the normal way:
+
+```python
+report = %backtest config.yaml
+```
+
+See `tam/notebook/magic.py` for the full set of flags (mirrors `run_backtest`'s own
+keyword arguments).
 
 ## Optional extras
 

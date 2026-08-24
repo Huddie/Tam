@@ -1,6 +1,6 @@
 [project]
 name = "tam-quant"
-version = "0.1.1"
+version = "0.1.7"
 description = "Config, data ingestion, and event-driven backtesting for stocks/indices"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,10 +32,16 @@ live = ["dash>=2.17"]
 # package).
 llm = ["mlx-lm>=0.31.3"]
 # tam.backtest.runner.run_backtest(..., live=True) redraws the chart via
-# IPython's own display()/update_display() -- always present already inside
+# IPython's own display()/clear_output() -- always present already inside
 # a real notebook kernel (Jupyter, Colab, ...), so this extra only matters
 # for running that code path OUTSIDE one (e.g. this repo's own test suite).
-notebook = ["ipython>=8.0"]
+# No version floor: both functions predate IPython 7.x, and Colab pins its
+# own ipython==7.34.0 (via the google-colab package) -- a ">=8.0" floor here
+# forces pip to upgrade ipython/ipykernel/tornado/prompt-toolkit underneath
+# an already-running Colab kernel, which reliably crashes or hangs the
+# runtime (Colab's own warning: "Upgrading ipython, ipykernel, tornado,
+# prompt-toolkit ... can cause your runtime to repeatedly crash").
+notebook = ["ipython"]
 
 [build-system]
 requires = ["setuptools>=68"]

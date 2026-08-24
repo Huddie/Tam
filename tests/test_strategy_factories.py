@@ -156,7 +156,7 @@ strategies:
     )
     cfg = Config(config_path)
 
-    strategies, portfolios = build_strategies(repo, cfg.strategies, default_cash=1_000.0)
+    strategies, portfolios, traders = build_strategies(repo, cfg.strategies, default_cash=1_000.0)
 
     assert len(strategies) == 2
     assert set(portfolios) == {"baseline_default_cash", "baseline_custom_cash"}

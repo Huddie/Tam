@@ -178,7 +178,7 @@ class LLMTradingStrategy(Strategy):
 
     def on_event(self, event: Event) -> None:
         as_of = event.payload
-        history = self._repository.query(self._signal_ticker, end=as_of).tail(self._max_required_history)
+        history = self._repository.history(self._signal_ticker).window_ending(as_of, self._max_required_history)
         if len(history) < self._min_required_history:
             return
 

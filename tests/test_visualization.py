@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from tam.backtest.report import Report
-from tam.backtest.visualization import render, write_html
+from tam.backtest.visualization import RenderOptions, render, write_html
 
 
 def _snap(d, portfolio, value, cash=0.0):
@@ -113,6 +113,24 @@ def test_render_adds_visible_by_default_trade_marker_trace_when_trades_exist():
     assert trace.visible is True
     assert trace.name == "main trades"
     assert len(trace.x) == 2  # two distinct trade dates: Jan 2 and Jan 4
+
+
+def test_render_options_show_trades_default_false_hides_marker_trace_initially():
+    report = _report_with_trades()
+
+    fig = render(report, options=RenderOptions(show_trades_default=False))
+
+    marker_traces = [t for t in fig.data if isinstance(t, go.Scatter) and t.mode == "markers"]
+    assert len(marker_traces) == 1
+    assert marker_traces[0].visible is False
+
+
+def test_render_options_template_and_height_are_applied():
+    report = _two_portfolio_report()
+
+    fig = render(report, options=RenderOptions(template="plotly_dark", height=700))
+
+    assert fig.layout.height == 700
 
 
 def test_render_groups_same_day_trades_into_one_marker_with_combined_hover_text():

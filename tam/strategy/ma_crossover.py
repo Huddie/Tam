@@ -43,7 +43,7 @@ class MACrossoverStrategy(Strategy):
     def on_event(self, event: Event) -> None:
         as_of = event.payload
         lookback = max(self._first_window, self._second_window)
-        history = self._repository.query(self._ticker, end=as_of).tail(lookback)
+        history = self._repository.history(self._ticker).window_ending(as_of, lookback)
         if len(history) < lookback:
             return
 

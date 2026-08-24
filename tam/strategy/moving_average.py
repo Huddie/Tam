@@ -30,7 +30,7 @@ class MovingAverageStrategy(Strategy):
 
     def on_event(self, event: Event) -> None:
         as_of = event.payload
-        history = self._repository.query(self._ticker, end=as_of).tail(self._window)
+        history = self._repository.history(self._ticker).window_ending(as_of, self._window)
         if len(history) < self._window:
             return
 
