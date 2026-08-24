@@ -31,6 +31,7 @@ from ..config import Config
 from ..data.providers import DataProvider
 from ..data.repository import DataRepository
 from ..data.storage import DataStore
+from ..portfolio.costs import CostModel
 from ..registry import Registry
 
 
@@ -67,12 +68,24 @@ class BacktestSettings:
     checkpoint_path: str = None
     checkpoint_every: int = 1
     price_chart: dict = None
+    cost_model: dict = None
 
 
 def _build_repository(data_settings: DataSettings) -> DataRepository:
     provider = Registry.get(DataProvider, data_settings.provider)
     store = Registry.create(DataStore, data_settings.store, data_settings.root)
     return DataRepository(provider, store)
+
+
+def _build_cost_model(backtest_settings: "BacktestSettings") -> Optional[CostModel]:
+    """`backtest.cost_model: {name: ..., **kwargs}` -- omitted (the default
+    for every existing config) means None, which Portfolio itself turns into
+    ZeroCost (today's exact behavior, unchanged)."""
+    if not backtest_settings.cost_model:
+        return None
+    spec = dict(backtest_settings.cost_model)
+    name = spec.pop("name")
+    return Registry.create(CostModel, name, **spec)
 
 
 def _build_render_options(report_settings: "ReportSettings", **overrides) -> RenderOptions:
@@ -236,12 +249,17 @@ def _print_banner(config_path: Path, config_hash: str, artifacts_dir: Path) -> N
     Console().print(Panel(grid, title="[bold]Backtest[/bold]", border_style="cyan", expand=False))
 
 
-def _load(config_path: Path):
+def _load(config_path: Path, start_override: Optional[date] = None, end_override: Optional[date] = None):
     """Everything shared by every entry point (CLI run(), notebook
     run_backtest()) up through "the harness is built and ready to run" --
     config resolution, artifact-dir namespacing, ticker validation, data
     ingestion. Returns (harness, total_days, backtest_settings,
-    report_settings, price_series, config_hash, artifacts_dir)."""
+    report_settings, price_series, config_hash, artifacts_dir).
+
+    `start_override`/`end_override`, if given, replace `backtest.start`/`.end`
+    from the config -- used by walk_forward.py to run the same config over a
+    different (train_start, test_end) date range per window without editing
+    the config file itself."""
     cfg = Config(config_path)
     config_hash = _config_hash(cfg.to_dict())
     artifacts_dir = _artifacts_dir(config_path, config_hash)
@@ -253,8 +271,8 @@ def _load(config_path: Path):
     _apply_artifact_defaults(backtest_settings, artifacts_dir)
 
     repository = _build_repository(data_settings)
-    start = date.fromisoformat(backtest_settings.start)
-    end = date.fromisoformat(backtest_settings.end)
+    start = start_override if start_override is not None else date.fromisoformat(backtest_settings.start)
+    end = end_override if end_override is not None else date.fromisoformat(backtest_settings.end)
 
     tickers = list(backtest_settings.tickers)
     repository.ingest(tickers, start, end)
@@ -263,7 +281,7 @@ def _load(config_path: Path):
     price_series = _collect_price_series(repository, backtest_settings, start, end)
 
     strategies, portfolios, traders = build_strategies(
-        repository, backtest_settings.strategies, float(backtest_settings.cash)
+        repository, backtest_settings.strategies, float(backtest_settings.cash), cost_model=_build_cost_model(backtest_settings)
     )
     harness = BacktestHarness(repository, strategies, portfolios, dates, traders=traders)
 

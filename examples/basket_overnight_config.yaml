@@ -1,0 +1,48 @@
+# Cross-sectional overnight (BCSO) basket: monthly re-select a diversified
+# basket from a point-in-time universe (tam.basket.universe/factors/
+# selection/weighting -- see LIB.md's "tam.basket" section for the same
+# building blocks used standalone in a notebook), execute the overnight
+# round-trip daily. See tam/strategy/basket_overnight.py for every param.
+data:
+  provider: yfinance
+  store: parquet
+  root: data/eod
+
+backtest:
+  # Only the benchmark needs to be declared here -- it anchors the harness's
+  # own trading calendar. basket_overnight ingests its own universe members
+  # itself, the first time it needs them (see _rebalance in
+  # tam/strategy/basket_overnight.py), since that list is dynamic (from
+  # universe.constituents(as_of)), not a fixed config-declared list.
+  tickers: [SPY]
+  start: "2018-01-01"
+  end: "2024-01-01"
+  cash: 100000
+  report_path: examples/output/basket_overnight_report.html
+  strategies:
+    - strategy: basket_overnight
+      portfolio_id: bcso_basket
+      params:
+        # StaticUniverse for this example -- swap for
+        # {provider: csv, path: sp500_membership.csv} for a real point-in-time
+        # universe (see tam/basket/universe.py's CsvUniverse).
+        universe:
+          provider: static
+          tickers: [AAPL, MSFT, NVDA, AMD, MU, JPM, BAC, GS, XOM, CVX, WMT, COST, PG]
+        benchmark_ticker: SPY
+        rebalance: monthly
+        factors:
+          sharpe_1y: {factor: sharpe, window_days: 252, weight: 0.4}
+          persistence: {factor: persistence, period_days: 60, weight: 0.3}
+          overnight_alpha: {factor: overnight_alpha, window_days: 252, benchmark: SPY, weight: 0.2}
+          expected_shortfall: {factor: expected_shortfall, window_days: 252, weight: -0.1}
+        selection:
+          top_n: 8
+          n_clusters: 4
+          max_per_cluster: 2
+          final_n: 5
+        weighting:
+          max_weight: 0.3
+        target_vol: 0.15
+        hedge_ticker: SPY
+        hedge_fraction: 0.5

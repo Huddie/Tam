@@ -8,9 +8,10 @@ adapter function (see tam/strategy/buy_and_hold.py for an example).
 """
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from ..data.repository import DataRepository
+from ..portfolio.costs import CostModel
 from ..portfolio.portfolio import Portfolio
 from ..registry import Registry
 from ..strategy.base import Strategy
@@ -18,7 +19,7 @@ from ..trading.trader import Trader
 
 
 def build_strategies(
-    repository: DataRepository, specs, default_cash: float
+    repository: DataRepository, specs, default_cash: float, cost_model: Optional[CostModel] = None
 ) -> Tuple[List[Strategy], dict, List[Trader]]:
     strategies = []
     portfolios = {}
@@ -26,7 +27,7 @@ def build_strategies(
     for spec in specs:
         cash = float(spec.cash) if "cash" in spec else default_cash
         strategy = Registry.create(Strategy, spec.strategy, repository, spec.portfolio_id, spec.params, cash)
-        portfolio = Portfolio(spec.portfolio_id, cash=cash)
+        portfolio = Portfolio(spec.portfolio_id, cash=cash, cost_model=cost_model)
         strategies.append(strategy)
         portfolios[spec.portfolio_id] = portfolio
         traders.append(Trader(spec.portfolio_id, strategy, portfolio))

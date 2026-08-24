@@ -13,8 +13,8 @@ instance = Registry.get(BaseType, "name")            # cached singleton, no-arg
 instance = Registry.create(BaseType, "name", *args)  # fresh instance, args passed through
 ```
 (`tam/registry.py`.) `DataProvider`, `DataStore`, `RepoWriter`, `FileFormat`,
-`Strategy`, and `Presenter` all use this. Adding your own never requires
-editing existing code.
+`Strategy`, `Presenter`, `UniverseProvider`, `Factor`, and `CostModel` all use
+this. Adding your own never requires editing existing code.
 
 ---
 
@@ -36,6 +36,8 @@ class DataStore(ABC):
 thing everything else actually calls:
 
 ```python
+from datetime import date
+
 from tam.data.providers import DataProvider
 from tam.data.storage import DataStore
 from tam.data.repository import DataRepository
@@ -68,6 +70,8 @@ No backtest involved at all — for when you just want one symbol's data in
 your own hands, in one call:
 
 ```python
+from datetime import date
+
 from tam.data.export import export_history
 
 export_history(
@@ -114,11 +118,16 @@ def build_buy_and_hold(repository, portfolio_id: str, params: dict, cash: float)
 ```
 See `tam/strategy/*.py` for the built-ins (`buy_and_hold`, `moving_average`,
 `ma_crossover`, `trend_rotation`, `ml_walk_forward`, `overnight_hold`,
-`intraday_hold`, `llm_trading`) — copy whichever is closest to what you need.
+`intraday_hold`, `llm_trading`, `basket_overnight` -- a cross-sectional,
+many-tickers-at-once strategy, see the `tam.basket` section below) — copy
+whichever is closest to what you need.
 
 ## Portfolio & Trader — the book your strategy trades against
 
 ```python
+from tam.portfolio.portfolio import Portfolio
+from tam.trading.trader import Trader
+
 portfolio = Portfolio(portfolio_id, cash=10_000.0)   # tracks cash, positions, trade history
 trader = Trader(name, strategy, portfolio)           # just pairs the two together
 ```
@@ -235,10 +244,119 @@ quantstats_report.write_html(report, "main", "tearsheet.html")    # a QuantStats
 (compares two strategies from one backtest run, no network) — or a raw
 ticker string/`pd.Series`, which QuantStats resolves itself.
 
+## `tam.basket` — cross-sectional (many-tickers-at-once) research
+
+For screening a universe and building a diversified basket (e.g. "own stocks
+with a persistent overnight edge, decorrelated from each other") -- a
+research *toolkit*, not one fixed strategy: pull each piece you need, compare
+candidate configs against each other, and only turn it into a real
+`Strategy` once you know what you want. No `BacktestHarness` anywhere below.
+
+```python
+from datetime import date
+
+from tam.basket.matrix import overnight_return_matrix
+from tam.basket.factors import RollingSharpe, Persistence, OvernightAlpha, compute_factors, score
+from tam.basket.selection import cluster, select_diversified
+from tam.basket.weighting import inverse_vol_weights
+from tam.basket.simulate import basket_wealth_curve
+from tam.backtest.visualization import render_curves
+
+# 1. date x ticker cross-sectional returns (BCSO = buy-close-sell-open)
+returns = overnight_return_matrix(repository, tickers, date(2015, 1, 1), date(2024, 1, 1))
+
+# 2. rolling, point-in-time-safe factors (only ever see data on/before as_of)
+as_of = date(2023, 6, 1)
+factors = compute_factors(returns, as_of, {
+    "sharpe_3y": RollingSharpe(window_days=756),
+    "persistence": Persistence(period_days=252),
+    "alpha": OvernightAlpha(window_days=756, benchmark="SPY"),
+})
+scores = score(factors, {"sharpe_3y": 0.5, "persistence": 0.3, "alpha": 0.2})
+
+# 3. don't just take the top-N -- diversify across correlation clusters first
+clusters = cluster(returns.loc[:as_of], n_clusters=8)
+picks = select_diversified(scores, clusters, n=20, max_per_cluster=2)
+
+# 4. weight inversely to volatility, capped
+vol = returns[picks].loc[:as_of].tail(252).std()
+weights = inverse_vol_weights(scores[picks], vol, max_weight=0.05)
+
+# 5. compare THIS config's wealth curve against another candidate config, or
+#    plot it on its own -- same render_curves()/Report already covered above
+wealth = basket_wealth_curve(returns.loc[as_of:], weights)
+render_curves({"this_config": wealth, "other_config": other_wealth}).show()
+```
+`RollingSharpe`/`Persistence`/`OvernightAlpha`/`OvernightBeta`/
+`ExpectedShortfall`/`MaxDrawdown` are all `Registry(Factor, ...)` entries --
+register your own the same way for anything not built in. Universe
+membership (point-in-time, to avoid survivorship bias) is its own piece:
+`tam.basket.universe.{StaticUniverse,CsvUniverse}` (`Registry(UniverseProvider, ...)`)
+resolve `constituents(as_of)` from a fixed list or a point-in-time membership
+file, respectively.
+
+Once a config like this looks right, `basket_overnight` (see the Strategy
+section above, `examples/basket_overnight_config.yaml`) turns it into a real,
+tradeable, config-driven `Strategy` against the exact same universe/factors/
+selection/weighting building blocks -- monthly re-selection, daily
+buy-close/sell-open execution, with optional vol targeting and a SPY-beta
+hedge (short the benchmark sized to the basket's own weighted overnight
+beta). That's the last step, once research on this page has told you what
+you want -- everything above it stays useful on its own for getting there.
+
+## Transaction costs
+
+```python
+from tam.portfolio.portfolio import Portfolio
+from tam.portfolio.costs import BpsCost
+
+portfolio = Portfolio("main", cash=10_000.0, cost_model=BpsCost(rate=0.0005))  # 5bps per fill
+```
+Applied on every fill, both sides -- a round trip (buy then sell, what an
+overnight strategy does daily) costs `2 * rate` of notional. Defaults to
+`ZeroCost` (today's behavior, unchanged) when omitted. Config-driven:
+`backtest.cost_model: {name: bps, rate: 0.0005}` (a `Registry(CostModel, ...)`
+entry, same pattern as everything else pluggable here — register your own
+for a more realistic model, e.g. spread- or size-dependent).
+
+## Walk-forward validation
+
+```python
+from datetime import date
+from tam.backtest.walk_forward import run_walk_forward
+
+report = run_walk_forward("config.yaml", windows=[
+    (date(2020, 1, 1), date(2020, 12, 31), date(2021, 1, 1), date(2021, 3, 31)),  # (train_start, train_end, test_start, test_end)
+    (date(2020, 4, 1), date(2021, 3, 31), date(2021, 4, 1), date(2021, 6, 30)),
+])
+report.summary_all()  # scored ONLY on each window's own test period, stitched together
+```
+Runs the same config once per window (over `[train_start, test_end]`, so the
+strategy has real trailing history by `test_start` rather than starting
+stone cold), keeps only each window's `[test_start, test_end]` slice, and
+chains those slices' own returns (not absolute dollar levels -- each window
+is a fresh harness with fresh starting cash) into one continuous
+out-of-sample curve. The whole point: a strategy is never scored on a period
+its own selection could have "seen" via the full history.
+
+## Stress testing
+
+```python
+from tam.backtest.stress import stress_test, flat_shock
+
+stress_test(weights, {"NVDA": -0.50})       # hypothetical portfolio return if NVDA gaps -50% overnight
+stress_test(weights, flat_shock(weights, -0.05))  # every current position gaps -5%
+```
+Pure function, no `Report`/`Harness` needed -- run directly against
+`BasketOvernightStrategy._target_weights` or any other `{ticker: weight}` you
+already have, to see concentration risk directly (the same shock hurts more
+against a 20%-weighted name than a 4%-weighted one).
+
 ## Live updates — redraw as new data arrives
 
 ```python
 from tam.backtest.live import live_render
+from tam.backtest.report import Report
 
 def next_frame():
     return Report.from_curves({"my_strategy": running_series})  # or None: "nothing new yet"
@@ -266,6 +384,10 @@ Selectable by name from config (`report.presenter: cli`) or Python
 (`run_backtest(..., render_mode="clear_output")`), or hand in your own
 instance directly — no registration required:
 ```python
+from tam.backtest.presenter import Presenter
+from tam.backtest.runner import run_backtest
+from tam.registry import Registry
+
 @Registry.register(Presenter, "my_presenter")   # optional -- only needed for name-based selection
 class MyPresenter(Presenter): ...
 
@@ -289,6 +411,10 @@ Example: fetch data yourself, run your own vectorized numpy backtest, and get
 the same live-updating chart a full config-driven run would produce:
 
 ```python
+from datetime import date
+
+import pandas as pd
+
 from tam.data.export import export_history
 from tam.backtest.report import Report
 from tam.backtest.live import live_render

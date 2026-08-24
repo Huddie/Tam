@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
+from .costs import CostModel, ZeroCost
 from .orders import Order, Side
 
 
@@ -26,9 +27,10 @@ class Trade(BaseModel):
 
 
 class Portfolio:
-    def __init__(self, portfolio_id: str, cash: float):
+    def __init__(self, portfolio_id: str, cash: float, cost_model: Optional[CostModel] = None):
         self.id = portfolio_id
         self.cash = cash
+        self._cost_model = cost_model or ZeroCost()
         self._positions: Dict[str, Position] = {}
         self._trades: List[Trade] = []
 
@@ -48,6 +50,7 @@ class Portfolio:
         order.qty (which may be a percentage spec); see TradeGateway for resolution."""
         position = self._positions.setdefault(order.ticker, Position(ticker=order.ticker))
         notional = price * qty
+        cost = self._cost_model.cost(order.side, qty, price)
 
         if order.side is Side.BUY:
             self.cash -= notional
@@ -59,6 +62,7 @@ class Portfolio:
         else:
             self.cash += notional
             position.qty -= qty
+        self.cash -= cost
 
         self._trades.append(
             Trade(date=as_of, ticker=order.ticker, side=order.side, qty=qty, price=price)
