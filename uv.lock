@@ -1096,6 +1096,19 @@ wheels = [
 ]
 
 [[package]]
+name = "loguru"
+version = "0.7.3"
+source = { registry = "https://pypi.apple.com/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "win32-setctime", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://pypi.apple.com/packages/packages/3a/05/a1dae3dffd1116099471c643b8924f5aa6524411dc6c63fdae648c4f1aca/loguru-0.7.3.tar.gz", hash = "sha256:19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6", size = 63559, upload-time = "2024-12-06T11:20:56.608Z" }
+wheels = [
+    { url = "https://pypi.apple.com/packages/packages/0c/29/0348de65b8cc732daa3e33e67806420b2ae89bdce2b04af740289c5c6c8c/loguru-0.7.3-py3-none-any.whl", hash = "sha256:31a33c10c8e1e10422bfd431aeb5d351c7cf7fa671e3c4df004162264b28220c", size = 61595, upload-time = "2024-12-06T11:20:54.538Z" },
+]
+
+[[package]]
 name = "lxml"
 version = "6.1.2"
 source = { registry = "https://pypi.apple.com/simple" }
@@ -2098,6 +2111,20 @@ wheels = [
     { url = "https://pypi.apple.com/packages/packages/bf/20/22fe9384b7949e25fb1293bcfc84fb82590ff4ea6b37c95b24d26d793d86/pillow-12.3.0-pp311-pypy311_pp73-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:fbd139c8447d25dd750ab79ee274cc5e1fe80fc56340ab10b18a195e1b6eca3e", size = 5237776, upload-time = "2026-07-01T11:56:30.263Z" },
     { url = "https://pypi.apple.com/packages/packages/08/14/f6ba68107680ffa74b39985f3f30884e41318fbc4250caa423c79b4788bb/pillow-12.3.0-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e7e480451b9fa137494bccd3a7d69adbe8ac65a87d97be61e11f1b1050a5bac3", size = 5860358, upload-time = "2026-07-01T11:56:32.68Z" },
     { url = "https://pypi.apple.com/packages/packages/36/54/0169bc772ec491108b62f644f8ecf1fe5d8ae5ebafde2ee2142210166903/pillow-12.3.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:04f01d28a6aaff387bf842a13be313df23ba0597a44f1a976c9feb3c6ff4711a", size = 7231786, upload-time = "2026-07-01T11:56:35.046Z" },
+]
+
+[[package]]
+name = "pitindex"
+version = "0.2.1"
+source = { registry = "https://pypi.apple.com/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "loguru" },
+    { name = "pandas", version = "3.0.5", source = { registry = "https://pypi.apple.com/simple" } },
+]
+sdist = { url = "https://pypi.apple.com/packages/packages/3d/03/3c1acbf970d353195ef6eba1a597c527ef5a8dc9857166ccec1f18aa237d/pitindex-0.2.1.tar.gz", hash = "sha256:23e24f4b5360f5aa6926d29e06b23f60d0c8df419de1f33f84c31153dd8daa17", size = 141197, upload-time = "2026-07-13T09:36:00.016Z" }
+wheels = [
+    { url = "https://pypi.apple.com/packages/packages/bb/f6/3e01960bc2ddca81e76fea8144bd51bdd56f579c8b43c99e21f33243d001/pitindex-0.2.1-py3-none-any.whl", hash = "sha256:00aa81ebd560cd1cd3026c7793958dd1c1cf2350ca9aa5c1501deb0474e1fed5", size = 120992, upload-time = "2026-07-13T09:35:58.653Z" },
 ]
 
 [[package]]
@@ -3157,7 +3184,7 @@ wheels = [
 
 [[package]]
 name = "tam-quant"
-version = "0.1.8"
+version = "0.1.14"
 source = { editable = "." }
 dependencies = [
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.apple.com/simple" }, marker = "python_full_version < '3.11'" },
@@ -3190,6 +3217,9 @@ notebook = [
     { name = "ipython", version = "8.39.0", source = { registry = "https://pypi.apple.com/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.16.1", source = { registry = "https://pypi.apple.com/simple" }, marker = "python_full_version >= '3.11'" },
 ]
+pitindex = [
+    { name = "pitindex", marker = "python_full_version >= '3.11'" },
+]
 quantstats = [
     { name = "quantstats" },
 ]
@@ -3201,6 +3231,7 @@ requires-dist = [
     { name = "ipython", marker = "extra == 'notebook'" },
     { name = "mlx-lm", marker = "extra == 'llm'", specifier = ">=0.31.3" },
     { name = "pandas", specifier = ">=2.0" },
+    { name = "pitindex", marker = "python_full_version >= '3.11' and extra == 'pitindex'" },
     { name = "plotly", specifier = ">=5.20" },
     { name = "pyarrow", specifier = ">=14.0" },
     { name = "pydantic", specifier = ">=2.6" },
@@ -3213,7 +3244,7 @@ requires-dist = [
     { name = "tulipy", specifier = ">=0.4.0" },
     { name = "yfinance", specifier = ">=0.2" },
 ]
-provides-extras = ["dev", "live", "llm", "notebook", "quantstats"]
+provides-extras = ["dev", "live", "llm", "notebook", "quantstats", "pitindex"]
 
 [[package]]
 name = "threadpoolctl"
@@ -3680,6 +3711,15 @@ dependencies = [
 sdist = { url = "https://pypi.apple.com/packages/packages/dd/b2/381be8cfdee792dd117872481b6e378f85c957dd7c5bca38897b08f765fd/werkzeug-3.1.8.tar.gz", hash = "sha256:9bad61a4268dac112f1c5cd4630a56ede601b6ed420300677a869083d70a4c44", size = 875852, upload-time = "2026-04-02T18:49:14.268Z" }
 wheels = [
     { url = "https://pypi.apple.com/packages/packages/93/8c/2e650f2afeb7ee576912636c23ddb621c91ac6a98e66dc8d29c3c69446e1/werkzeug-3.1.8-py3-none-any.whl", hash = "sha256:63a77fb8892bf28ebc3178683445222aa500e48ebad5ec77b0ad80f8726b1f50", size = 226459, upload-time = "2026-04-02T18:49:12.72Z" },
+]
+
+[[package]]
+name = "win32-setctime"
+version = "1.2.0"
+source = { registry = "https://pypi.apple.com/simple" }
+sdist = { url = "https://pypi.apple.com/packages/packages/b3/8f/705086c9d734d3b663af0e9bb3d4de6578d08f46b1b101c2442fd9aecaa2/win32_setctime-1.2.0.tar.gz", hash = "sha256:ae1fdf948f5640aae05c511ade119313fb6a30d7eabe25fef9764dca5873c4c0", size = 4867, upload-time = "2024-12-07T15:28:28.314Z" }
+wheels = [
+    { url = "https://pypi.apple.com/packages/packages/e1/07/c6fe3ad3e685340704d314d765b7912993bcb8dc198f0e7a89382d37974b/win32_setctime-1.2.0-py3-none-any.whl", hash = "sha256:95d644c4e708aba81dc3704a116d8cbc974d70b3bdb8be1d150e36be6e9d1390", size = 4083, upload-time = "2024-12-07T15:28:26.465Z" },
 ]
 
 [[package]]

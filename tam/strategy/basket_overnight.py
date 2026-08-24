@@ -28,13 +28,13 @@ from typing import Dict, Optional, Tuple
 import pandas as pd
 
 from ..basket.factors import Factor, OvernightBeta, compute_factors, score
-from ..basket.matrix import overnight_return_matrix
+from ..basket.matrix import price_matrix
 from ..basket.selection import cluster, select_diversified
 from ..basket.simulate import simulate_basket
 from ..basket.universe import UniverseProvider
 from ..basket.weighting import inverse_vol_weights
 from ..data.repository import DataRepository
-from ..data.schema import CLOSE
+from ..data.schema import CLOSE, OPEN
 from ..events.clock import EOD_TOPIC, OPEN_TOPIC
 from ..events.types import Event, State
 from ..portfolio.orders import Order, PriceBasis, Qty, QtyBasis, Side
@@ -42,6 +42,16 @@ from ..registry import Registry
 from .base import Strategy
 
 _TRADING_DAYS_PER_YEAR = 252
+
+
+def _overnight_returns(repository: DataRepository, tickers, start: date, end: date) -> pd.DataFrame:
+    """Open[t+1]/Close[t] - 1 -- this strategy's own return definition (buy
+    close, sell next open), built from the generic price_matrix() primitive
+    (tam/basket/matrix.py). Specific to basket_overnight, not part of the
+    generic toolkit -- see LIB.md's "tam.basket" section for why."""
+    opens = price_matrix(repository, tickers, start, end, column=OPEN)
+    closes = price_matrix(repository, tickers, start, end, column=CLOSE)
+    return opens.shift(-1) / closes - 1
 
 
 def _calendar_days_for(trading_days: int) -> int:
@@ -193,7 +203,7 @@ class BasketOvernightStrategy(Strategy):
         if self._target_vol is None or not self._target_weights:
             return 1.0
         lookback_start = as_of - timedelta(days=_calendar_days_for(self._vol_window_days))
-        returns = overnight_return_matrix(self._repository, list(self._target_weights), lookback_start, as_of)
+        returns = _overnight_returns(self._repository, list(self._target_weights), lookback_start, as_of)
         basket_returns = simulate_basket(returns, self._target_weights).tail(self._vol_window_days)
         if len(basket_returns) < 2:
             return 1.0
@@ -214,7 +224,7 @@ class BasketOvernightStrategy(Strategy):
         self._repository.ingest(all_tickers, lookback_start, as_of)
         self._ingested.update(all_tickers)
 
-        returns = overnight_return_matrix(self._repository, all_tickers, lookback_start, as_of)
+        returns = _overnight_returns(self._repository, all_tickers, lookback_start, as_of)
         present_universe = [t for t in universe_tickers if t in returns.columns]
         if not present_universe:
             self._target_weights = {}

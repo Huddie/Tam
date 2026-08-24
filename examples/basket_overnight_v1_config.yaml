@@ -1,0 +1,60 @@
+# V1 research design, as specified: point-in-time S&P 500 -> rolling 3-year
+# no-lookahead metrics -> z-scored composite score -> correlation-diversified
+# selection -> inverse-vol weighting with caps -> monthly rebalance, daily
+# buy-close/sell-open execution -> optional vol targeting + SPY-beta hedge.
+#
+# Universe comes from the `pitindex` package -- bundled, offline point-in-time
+# S&P 500 membership, no network needed at all (needs the `pitindex` extra,
+# Python >=3.11: `pip install "tam-quant[pitindex]"`). See LIB.md's "Getting
+# an S&P 500 ticker list" section for the Wikipedia-based alternative
+# (CsvUniverse/WikipediaUniverse) if you'd rather not add that extra.
+#
+# Run:
+#   python -m examples.backtest examples/basket_overnight_v1_config.yaml
+#
+# Sector caps are NOT wired in below: a 20% GICS-sector cap needs a
+# ticker->sector mapping tam.basket doesn't fetch yet. The 5% stock cap +
+# cluster-capped selection below already do most of the same diversification
+# work sector caps would add.
+data:
+  provider: yfinance
+  store: parquet
+  root: data/eod
+
+backtest:
+  tickers: [SPY]   # anchors the harness's trading calendar; the strategy ingests its own universe members itself
+  start: "2010-01-01"
+  end: "2026-01-01"
+  cash: 1000000
+  report_path: examples/output/basket_overnight_v1_report.html
+  cost_model: {name: bps, rate: 0.0005}   # 5bps per fill -- see the Colab sweep in LIB.md for 0/2/5/10bps
+  strategies:
+    - strategy: basket_overnight
+      portfolio_id: bcso_v1
+      params:
+        universe:
+          provider: pitindex
+          index: sp500
+        benchmark_ticker: SPY
+        rebalance: monthly
+        min_history_days: 756   # 3-year rolling window, per the doc's V1 diagram
+        beta_window_days: 756
+        factors:
+          # Score_i = 0.30 Sharpe_i + 0.20 Alpha_i + 0.20 Persistence_i
+          #         + 0.10 RecentStrength_i - 0.10 TailRisk_i - 0.10 Drawdown_i
+          sharpe_3y: {factor: sharpe, window_days: 756, weight: 0.30}
+          overnight_alpha: {factor: overnight_alpha, window_days: 756, benchmark: SPY, weight: 0.20}
+          persistence: {factor: persistence, period_days: 252, weight: 0.20}
+          sharpe_1y: {factor: sharpe, window_days: 252, weight: 0.10}       # "RecentStrength"
+          expected_shortfall: {factor: expected_shortfall, window_days: 756, confidence: 0.99, weight: -0.10}  # "TailRisk"
+          max_drawdown: {factor: max_drawdown, window_days: 756, weight: -0.10}
+        selection:
+          top_n: 50          # "~450 -> positive edge -> ~150 -> top score -> 40-60" collapses to: take the top 50 by score
+          n_clusters: 10
+          max_per_cluster: 3
+          final_n: 25        # "select ~20-30 diversified stocks"
+        weighting:
+          max_weight: 0.05   # "5% stock cap"
+        target_vol: 0.15
+        hedge_ticker: SPY
+        hedge_fraction: 0.5  # see the Colab sweep in LIB.md for 0/25/50/75/100%

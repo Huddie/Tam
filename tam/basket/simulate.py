@@ -29,8 +29,8 @@ def basket_wealth_curve(
     """simulate_basket(...), compounded into a wealth curve -- feed straight
     into Report.from_curves({"config_a": ...})/render_curves({...}) to
     compare candidate screeners/weightings against each other visually, or
-    into quantstats_report.metrics(Report.from_curves(...), "config_a") for
-    a numeric comparison table. Static weights only (this simulates holding
+    into quantstats.reports.metrics(quantstats_report.returns_for(...), ...)
+    for a numeric comparison table. Static weights only (this simulates holding
     ONE selection/weighting for the whole period) -- a rebalancing basket
     that re-selects periodically is tam.strategy.basket_overnight's job, not
     this function's."""

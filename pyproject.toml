@@ -1,6 +1,6 @@
 [project]
 name = "tam-quant"
-version = "0.1.9"
+version = "0.1.15"
 description = "Config, data ingestion, and event-driven backtesting for stocks/indices"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -44,6 +44,14 @@ llm = ["mlx-lm>=0.31.3"]
 notebook = ["ipython"]
 quantstats = [
     "quantstats>=0.0.81",
+]
+# pitindex needs Python >=3.11 -- stricter than this project's own floor
+# (>=3.10). The env marker means `pip install tam-quant[pitindex]` on 3.10
+# resolves to nothing installed rather than making the WHOLE project
+# uninstallable there (same reasoning as the `llm` extra's platform marker
+# above, just for a Python-version constraint instead of a platform one).
+pitindex = [
+    "pitindex; python_version >= '3.11'",
 ]
 
 [[tool.uv.index]]

@@ -39,6 +39,7 @@ class DataSettings:
     provider: str
     store: str
     root: str
+    provider_kwargs: dict = None
 
 
 class ReportSettings:
@@ -72,7 +73,11 @@ class BacktestSettings:
 
 
 def _build_repository(data_settings: DataSettings) -> DataRepository:
-    provider = Registry.get(DataProvider, data_settings.provider)
+    """`data.provider_kwargs: {...}` (e.g. `{adjust: true}` for
+    YFinanceProvider) passes straight through to the provider's own
+    constructor -- omitted (every config as of this writing) means a
+    zero-arg-constructed provider, unchanged from before this existed."""
+    provider = Registry.create(DataProvider, data_settings.provider, **(data_settings.provider_kwargs or {}))
     store = Registry.create(DataStore, data_settings.store, data_settings.root)
     return DataRepository(provider, store)
 

@@ -1,16 +1,16 @@
-"""Optional QuantStats integration (tam/backtest/quantstats_report.py).
-
-returns_for()/_resolve_benchmark() are pure pandas and run unconditionally;
-metrics()/write_html() need the real `quantstats` extra, guarded with
-pytest.importorskip so this file skips cleanly wherever that extra isn't
-installed instead of failing the whole suite.
+"""QuantStats adapter (tam/backtest/quantstats_report.py): returns_for()/
+resolve_benchmark() are pure pandas and run unconditionally -- the tests that
+actually call quantstats' own functions with their output need the real
+`quantstats` extra, guarded with pytest.importorskip so this file skips
+cleanly wherever that extra isn't installed instead of failing the whole
+suite.
 """
 from datetime import date, timedelta
 
 import pandas as pd
 import pytest
 
-from tam.backtest.quantstats_report import _resolve_benchmark, returns_for, write_html
+from tam.backtest.quantstats_report import resolve_benchmark, returns_for
 from tam.backtest.report import Report
 
 quantstats = pytest.importorskip("quantstats")
@@ -57,7 +57,7 @@ def test_returns_for_coerces_a_plain_date_index_to_datetime():
 def test_resolve_benchmark_uses_another_portfolio_in_the_same_report_with_no_network():
     report = _two_portfolio_report()
 
-    resolved = _resolve_benchmark(report, "alt")
+    resolved = resolve_benchmark(report, "alt")
 
     assert isinstance(resolved, pd.Series)
     assert list(resolved) == pytest.approx(list(returns_for(report, "alt")))
@@ -66,28 +66,28 @@ def test_resolve_benchmark_uses_another_portfolio_in_the_same_report_with_no_net
 def test_resolve_benchmark_passes_through_an_unmatched_string_ticker():
     report = _two_portfolio_report()
 
-    assert _resolve_benchmark(report, "SPY") == "SPY"
+    assert resolve_benchmark(report, "SPY") == "SPY"
 
 
 def test_resolve_benchmark_passes_through_none():
     report = _two_portfolio_report()
 
-    assert _resolve_benchmark(report, None) is None
+    assert resolve_benchmark(report, None) is None
 
 
-def test_metrics_has_far_more_rows_than_our_own_summary():
-    from tam.backtest.quantstats_report import metrics
-
+def test_native_quantstats_metrics_accepts_our_returns_and_resolved_benchmark():
     report = _two_portfolio_report()
 
-    qs_metrics = metrics(report, "main", benchmark="alt")
+    qs_metrics = quantstats.reports.metrics(
+        returns_for(report, "main"), benchmark=resolve_benchmark(report, "alt"), display=False
+    )
     our_summary = report.summary("main")
 
     assert qs_metrics.shape[1] == 2  # Strategy + Benchmark columns
     assert len(qs_metrics) > len(our_summary)
 
 
-def test_write_html_creates_a_nonempty_tearsheet_alongside_our_own_report(tmp_path):
+def test_native_quantstats_html_report_accepts_our_returns_and_resolved_benchmark(tmp_path):
     from tam.backtest.visualization import write_html as our_write_html
 
     report = _two_portfolio_report()
@@ -95,8 +95,42 @@ def test_write_html_creates_a_nonempty_tearsheet_alongside_our_own_report(tmp_pa
     tearsheet_path = tmp_path / "tearsheet.html"
 
     our_write_html(report, str(dashboard_path))
-    result = write_html(report, "main", str(tearsheet_path), benchmark="alt", title="Main vs Alt")
+    quantstats.reports.html(
+        returns_for(report, "main"),
+        benchmark=resolve_benchmark(report, "alt"),
+        output=str(tearsheet_path),
+        title="Main vs Alt",
+    )
 
-    assert result == tearsheet_path
     assert dashboard_path.exists() and dashboard_path.stat().st_size > 0
     assert tearsheet_path.exists() and tearsheet_path.stat().st_size > 0
+
+
+def test_native_quantstats_snapshot_plot_accepts_our_returns_with_no_benchmark():
+    import matplotlib
+    import matplotlib.pyplot as plt
+
+    matplotlib.use("Agg")
+    report = _two_portfolio_report()
+
+    try:
+        fig = quantstats.plots.snapshot(returns_for(report, "main"), show=False)
+        assert fig is not None
+    finally:
+        plt.close("all")
+
+
+def test_native_quantstats_rolling_sharpe_plot_accepts_our_resolved_benchmark():
+    import matplotlib
+    import matplotlib.pyplot as plt
+
+    matplotlib.use("Agg")
+    report = _two_portfolio_report()
+
+    try:
+        fig = quantstats.plots.rolling_sharpe(
+            returns_for(report, "main"), benchmark=resolve_benchmark(report, "alt"), show=False, period=3
+        )
+        assert fig is not None
+    finally:
+        plt.close("all")

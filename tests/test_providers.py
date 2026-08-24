@@ -72,3 +72,22 @@ def test_yfinance_end_date_is_treated_as_inclusive(monkeypatch):
 
     assert captured["end"] == requested_end + timedelta(days=1)
     assert list(df.index.date) == [date(2023, 1, 3), date(2023, 1, 4)]
+
+
+def test_yfinance_translates_dot_share_class_tickers_to_hyphenated_form(monkeypatch):
+    """Regression test: index/vendor data (Wikipedia's S&P 500 table, pitindex,
+    ...) spells share-class tickers with a dot ("BRK.B", "BF.B"), but yfinance's
+    own API only recognizes the hyphenated form ("BRK-B") -- querying it with the
+    dot form returns nothing, which used to make price_matrix() silently drop the
+    ticker's whole column and then blow up downstream with a confusing KeyError."""
+    captured = {}
+
+    def fake_download(symbol, **kwargs):
+        captured["symbol"] = symbol
+        return pd.DataFrame()
+
+    monkeypatch.setattr("yfinance.download", fake_download)
+
+    YFinanceProvider().fetch_eod("BRK.B", date(2023, 1, 3), date(2023, 1, 4))
+
+    assert captured["symbol"] == "BRK-B"
