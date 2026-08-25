@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import subprocess
 import sys
@@ -8,6 +9,11 @@ import yaml
 
 from tam import status
 from tam.strategy.mlx_lora_client import MLXLoRAClient
+
+requires_mlx_lm = pytest.mark.skipif(
+    importlib.util.find_spec("mlx_lm") is None,
+    reason="mlx_lm is Apple-Silicon-only and isn't installed on this runner",
+)
 
 
 class _FakeTokenizer:
@@ -45,6 +51,7 @@ def _fake_run_training_creating_adapter(self, args):
     (adapter_path / "adapters.safetensors").write_bytes(b"fake")
 
 
+@requires_mlx_lm
 def test_call_generates_via_templated_prompt(tmp_path, monkeypatch):
     client = MLXLoRAClient(adapter_root=str(tmp_path))
     _stub_ensure_loaded(monkeypatch)
@@ -422,6 +429,7 @@ def test_degenerate_adapter_is_discarded_and_prior_adapter_kept(tmp_path, monkey
     assert client._current_adapter == tmp_path / "gen_2"
 
 
+@requires_mlx_lm
 def test_diverged_validation_loss_fails_health_check_without_running_inference(tmp_path, monkeypatch):
     # A validation-loss blowup is a diagnosable-in-advance sign of the same
     # collapse the inference-sample check screens for -- catch it without
