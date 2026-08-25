@@ -35,7 +35,7 @@ backtest:
           sharpe_1y: {factor: sharpe, window_days: 252, weight: 0.4}
           persistence: {factor: persistence, period_days: 60, weight: 0.3}
           overnight_alpha: {factor: overnight_alpha, window_days: 252, benchmark: SPY, weight: 0.2}
-          expected_shortfall: {factor: expected_shortfall, window_days: 252, weight: -0.1}
+          expected_shortfall: {factor: expected_shortfall, window_days: 252, weight: 0.1}
         selection:
           top_n: 8
           n_clusters: 4

@@ -42,12 +42,23 @@ backtest:
         factors:
           # Score_i = 0.30 Sharpe_i + 0.20 Alpha_i + 0.20 Persistence_i
           #         + 0.10 RecentStrength_i - 0.10 TailRisk_i - 0.10 Drawdown_i
+          #
+          # The doc's own "- 0.10 TailRisk_i"/"- 0.10 Drawdown_i" assumes
+          # TailRisk_i/Drawdown_i are POSITIVE "how bad" magnitudes. Our
+          # actual expected_shortfall/max_drawdown factors return the raw,
+          # SIGNED value instead (e.g. -0.03, not +0.03) -- same
+          # higher-raw-value-is-better direction every other factor here
+          # already uses. score() z-scores whatever sign you give it, so
+          # penalizing a "more negative is worse" factor needs a POSITIVE
+          # weight, not negative (see ExpectedShortfall/MaxDrawdown's own
+          # docstrings in tam/basket/factors.py) -- the "-0.10" in the doc's
+          # formula becomes "+0.10" here for exactly that reason.
           sharpe_3y: {factor: sharpe, window_days: 756, weight: 0.30}
           overnight_alpha: {factor: overnight_alpha, window_days: 756, benchmark: SPY, weight: 0.20}
           persistence: {factor: persistence, period_days: 252, weight: 0.20}
           sharpe_1y: {factor: sharpe, window_days: 252, weight: 0.10}       # "RecentStrength"
-          expected_shortfall: {factor: expected_shortfall, window_days: 756, confidence: 0.99, weight: -0.10}  # "TailRisk"
-          max_drawdown: {factor: max_drawdown, window_days: 756, weight: -0.10}
+          expected_shortfall: {factor: expected_shortfall, window_days: 756, confidence: 0.99, weight: 0.10}  # "TailRisk" -- penalizes (see comment above)
+          max_drawdown: {factor: max_drawdown, window_days: 756, weight: 0.10}  # penalizes (see comment above)
         selection:
           top_n: 50          # "~450 -> positive edge -> ~150 -> top score -> 40-60" collapses to: take the top 50 by score
           n_clusters: 10

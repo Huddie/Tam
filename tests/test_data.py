@@ -1,3 +1,5 @@
+import time
+import warnings
 from datetime import date
 
 import pandas as pd
@@ -126,6 +128,42 @@ def test_ingest_warns_when_provider_returns_no_data_for_a_gap(tmp_path):
 
     with pytest.warns(UserWarning, match="no data returned for AAPL"):
         repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4))
+
+
+def test_ingest_does_not_re_fetch_or_re_warn_for_a_confirmed_empty_gap_in_the_same_session(tmp_path):
+    # Regression test: requesting today's bar before a provider has posted
+    # it fails the exact same way every time within the same day -- without
+    # remembering that, re-running ingest() for the same range would keep
+    # hitting the network and re-warning every single call.
+    provider = FakeProvider(_bars([], []))
+    repo = DataRepository(provider, CsvStore(tmp_path))
+
+    with pytest.warns(UserWarning, match="no data returned for AAPL"):
+        repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4))
+    assert len(provider.calls) == 1
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # any warning here fails the test
+        repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4))  # same gap again
+    assert len(provider.calls) == 1  # not re-fetched
+
+
+def test_ingest_fetches_multiple_symbols_concurrently_not_sequentially(tmp_path):
+    class SlowProvider(DataProvider):
+        def fetch_eod(self, symbol, start, end):
+            time.sleep(0.2)
+            return _bars(["2024-01-02"], [100.0])
+
+    repo = DataRepository(SlowProvider(), CsvStore(tmp_path))
+
+    started = time.monotonic()
+    repo.ingest([f"SYM{i}" for i in range(8)], date(2024, 1, 2), date(2024, 1, 2))
+    elapsed = time.monotonic() - started
+
+    # 8 symbols x 0.2s each: sequential would take >=1.6s; concurrent
+    # (default max_workers=8, one thread per symbol here) should take
+    # roughly one sleep's worth. Generous margin against slow CI hosts.
+    assert elapsed < 1.0
 
 
 @pytest.mark.parametrize("store_cls", [CsvStore, ParquetStore])

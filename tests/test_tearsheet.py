@@ -11,14 +11,22 @@ import pytest
 
 from tam.backtest.report import Report
 from tam.backtest.tearsheet import (
+    ALL_CHARTS,
+    ALL_METRICS,
     DEFAULT_CHARTS,
     DEFAULT_METRICS,
     CumulativeReturnsChart,
+    DrawdownChart,
+    MaxDrawdownByStartDateChart,
     MaxDrawdownMetric,
+    MonthlyReturnsHeatmapChart,
     RollingSharpeChart,
+    SharpeDifferenceByStartDateChart,
     SharpeMetric,
+    Tearsheet,
     TearsheetChart,
     TearsheetMetric,
+    WorstDrawdownPeriodsChart,
     build_tearsheet,
     metrics_table,
 )
@@ -40,8 +48,8 @@ def _report(n_portfolios=2):
 
 
 def test_builtin_charts_and_metrics_are_registered():
-    assert set(DEFAULT_CHARTS) <= set(Registry.names(TearsheetChart))
-    assert set(DEFAULT_METRICS) <= set(Registry.names(TearsheetMetric))
+    assert set(ALL_CHARTS) <= set(Registry.names(TearsheetChart))
+    assert set(ALL_METRICS) <= set(Registry.names(TearsheetMetric))
 
 
 @pytest.mark.parametrize("chart_id", DEFAULT_CHARTS)
@@ -52,6 +60,27 @@ def test_every_default_chart_renders_without_error(chart_id):
     fig = chart.render(report)
 
     assert fig.data  # at least one trace
+
+
+@pytest.mark.parametrize("chart_id", [c for c in ALL_CHARTS if c not in DEFAULT_CHARTS])
+def test_every_opt_in_chart_renders_without_error(chart_id):
+    report = _report(n_portfolios=2)
+    chart = Registry.get(TearsheetChart, chart_id)
+
+    fig = chart.render(report)
+
+    assert fig.data or fig.layout.annotations  # a real trace, or a graceful "nothing to show" annotation
+
+
+@pytest.mark.parametrize("metric_id", ALL_METRICS)
+def test_every_metric_computes_a_finite_number(metric_id):
+    report = _report(n_portfolios=1)
+    portfolio_id = report.portfolio_ids()[0]
+    metric = Registry.get(TearsheetMetric, metric_id)
+
+    value = metric.compute(report, portfolio_id)
+
+    assert np.isfinite(value)
 
 
 def test_cumulative_returns_chart_has_one_trace_per_portfolio():
@@ -235,6 +264,17 @@ def test_registering_a_custom_chart_makes_it_usable_by_id():
     assert "Flat Line" in html
 
 
+def _decoded_iframe_html(iframe) -> str:
+    """show()/Tearsheet.show() return an IFrame wrapping a data: URI (see
+    _display()'s own docstring for why, not a plain IPython.display.HTML) --
+    decode it back to the actual tearsheet HTML for comparison in tests."""
+    import base64
+
+    prefix = "data:text/html;base64,"
+    assert iframe.src.startswith(prefix)
+    return base64.b64decode(iframe.src[len(prefix) :]).decode("utf-8")
+
+
 def test_write_html_and_show_produce_the_same_content(tmp_path):
     from tam.backtest.tearsheet import show, write_html
 
@@ -242,4 +282,174 @@ def test_write_html_and_show_produce_the_same_content(tmp_path):
     path = write_html(report, str(tmp_path / "tearsheet.html"), charts=["cumulative_returns"], metrics=["sharpe"])
 
     assert path.exists() and path.stat().st_size > 0
-    assert show(report, charts=["cumulative_returns"], metrics=["sharpe"]).data == path.read_text()
+    iframe = show(report, charts=["cumulative_returns"], metrics=["sharpe"])
+    assert _decoded_iframe_html(iframe) == path.read_text()
+
+
+def test_show_returns_an_iframe_not_a_plain_html_object():
+    # Regression test: multiple Plotly figures concatenated into one HTML
+    # blob and shown via IPython.display.HTML(...) directly used to render
+    # only the first chart -- browsers don't reliably execute <script> tags
+    # inserted into a notebook cell's output beyond the first one. An
+    # iframe's own document always executes every chart's own script.
+    from IPython.display import IFrame
+
+    from tam.backtest.tearsheet import show
+
+    report = _report(n_portfolios=1)
+
+    result = show(report, charts=["cumulative_returns", "drawdown"], metrics=["sharpe"])
+
+    assert isinstance(result, IFrame)
+    html = _decoded_iframe_html(result)
+    assert "Cumulative Returns vs Benchmark" in html
+    assert "Underwater Plot" in html
+
+
+def test_tearsheet_class_defaults_to_default_charts_and_metrics():
+    ts = Tearsheet()
+
+    assert ts.charts == DEFAULT_CHARTS
+    assert ts.metrics == DEFAULT_METRICS
+
+
+def test_tearsheet_class_accepts_explicit_charts_and_metrics_in_the_constructor():
+    ts = Tearsheet(charts=["cumulative_returns"], metrics=["sharpe"], title="Custom")
+
+    assert ts.charts == ["cumulative_returns"]
+    assert ts.metrics == ["sharpe"]
+    assert ts.title == "Custom"
+
+
+def test_tearsheet_add_chart_and_add_metric_are_fluent_and_mutate_in_place():
+    ts = Tearsheet(charts=[], metrics=[])
+
+    result = ts.add_chart("cumulative_returns").add_metric("sharpe")
+
+    assert result is ts  # fluent -- returns self, not a copy
+    assert ts.charts == ["cumulative_returns"]
+    assert ts.metrics == ["sharpe"]
+
+
+def test_tearsheet_build_matches_build_tearsheet_with_the_same_args():
+    report = _report(n_portfolios=1)
+    ts = Tearsheet(charts=["cumulative_returns"], metrics=["sharpe"], title="Custom")
+
+    assert ts.build(report) == build_tearsheet(report, title="Custom", charts=["cumulative_returns"], metrics=["sharpe"])
+
+
+def test_tearsheet_show_and_write_reuse_the_same_configured_charts_and_metrics(tmp_path):
+    report = _report(n_portfolios=1)
+    ts = Tearsheet().add_chart("drawdown").add_metric("max_drawdown")
+
+    html_from_show = _decoded_iframe_html(ts.show(report))
+    path = ts.write(report, str(tmp_path / "tearsheet.html"))
+
+    assert html_from_show == path.read_text()
+    assert "Underwater Plot" in html_from_show  # drawdown chart's own title
+    assert "Max Drawdown" in html_from_show  # metric row label
+
+
+def test_tearsheet_constructor_does_not_share_mutable_state_between_instances():
+    # DEFAULT_CHARTS is a module-level list -- Tearsheet() must copy it, not
+    # alias, or add_chart() on one instance would leak into every other
+    # Tearsheet() (and into DEFAULT_CHARTS itself).
+    original_length = len(DEFAULT_CHARTS)
+    ts1 = Tearsheet()
+    ts1.add_chart("some_marker_chart_id_not_a_real_chart")
+
+    ts2 = Tearsheet()
+
+    assert "some_marker_chart_id_not_a_real_chart" not in ts2.charts
+    assert "some_marker_chart_id_not_a_real_chart" not in DEFAULT_CHARTS
+    assert len(DEFAULT_CHARTS) == original_length
+
+
+def test_max_drawdown_by_start_date_differs_from_the_underwater_plot():
+    # DrawdownChart (Underwater Plot) fixes ONE start (the data's own first
+    # date) and shows drawdown evolving over calendar time from there.
+    # MaxDrawdownByStartDateChart instead fixes the END and asks "what if I'd
+    # started on date X" for every possible X -- genuinely different series,
+    # not just a renamed duplicate.
+    report = _report(n_portfolios=1)
+    portfolio_id = report.portfolio_ids()[0]
+
+    underwater = DrawdownChart().render(report).data[0]
+    by_start_date = MaxDrawdownByStartDateChart().render(report).data[0]
+
+    assert list(underwater.y) != list(by_start_date.y)
+    # the LAST point of "by start date" (start = the very last observation)
+    # is the trivial 1-day drawdown -- 0, since a single point can't dip
+    # below its own starting wealth.
+    assert by_start_date.y[-1] == pytest.approx(0.0)
+
+
+def test_suffix_stats_final_value_matches_a_manual_calculation():
+    from tam.backtest.tearsheet import _suffix_stats
+
+    r = np.array([0.10, -0.05, 0.02])
+    dates = pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]).to_numpy(dtype="datetime64[ns]")
+
+    stats = _suffix_stats(r, dates, dates[-1])
+
+    # starting from index 0: 100_000 * 1.10 * 0.95 * 1.02
+    assert stats["final_value"][0] == pytest.approx(100_000 * 1.10 * 0.95 * 1.02)
+    # starting from the last index: just that one day's return
+    assert stats["final_value"][-1] == pytest.approx(100_000 * 1.02)
+    assert stats["trades"][0] == 3
+    assert stats["trades"][-1] == 1
+
+
+def test_sharpe_difference_by_start_date_defaults_to_the_last_portfolio_as_benchmark():
+    report = _report(n_portfolios=2)
+
+    fig = SharpeDifferenceByStartDateChart(min_trades=0).render(report)
+
+    assert len(fig.data) == 1  # 2 portfolios -> 1 non-benchmark series
+    assert report.portfolio_ids()[-1] in fig.data[0].name
+
+
+def test_sharpe_difference_by_start_date_accepts_an_explicit_benchmark():
+    report = _report(n_portfolios=2)
+    portfolio_ids = report.portfolio_ids()
+
+    fig = SharpeDifferenceByStartDateChart(benchmark_id=portfolio_ids[0], min_trades=0).render(report)
+
+    assert portfolio_ids[0] in fig.data[0].name
+    assert portfolio_ids[1] in fig.data[0].name
+
+
+def test_sharpe_difference_by_start_date_annotates_with_a_single_portfolio():
+    report = _report(n_portfolios=1)
+
+    fig = SharpeDifferenceByStartDateChart().render(report)
+
+    assert not fig.data
+    assert "at least 2 portfolios" in fig.layout.annotations[0].text
+
+
+def test_monthly_returns_heatmap_defaults_to_the_first_portfolio():
+    report = _report(n_portfolios=2)
+
+    fig = MonthlyReturnsHeatmapChart().render(report)
+
+    assert report.portfolio_ids()[0] in fig.layout.title.text
+
+
+def test_monthly_returns_heatmap_accepts_an_explicit_portfolio_id():
+    report = _report(n_portfolios=2)
+    portfolio_id = report.portfolio_ids()[1]
+
+    fig = MonthlyReturnsHeatmapChart(portfolio_id=portfolio_id).render(report)
+
+    assert portfolio_id in fig.layout.title.text
+
+
+def test_worst_drawdown_periods_chart_shades_the_deepest_synthetic_crash():
+    values = [100.0] * 20 + [70.0] * 20 + [100.0] * 20
+    report = Report.from_curves({"crashy": _series(values)})
+
+    fig = WorstDrawdownPeriodsChart(n_periods=1).render(report)
+
+    assert len(fig.layout.shapes) == 1  # one shaded vrect for the one crash
+

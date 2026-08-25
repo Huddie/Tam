@@ -1,6 +1,6 @@
 [project]
 name = "tam-quant"
-version = "0.1.15"
+version = "0.1.19"
 description = "Config, data ingestion, and event-driven backtesting for stocks/indices"
 readme = "README.md"
 requires-python = ">=3.10"

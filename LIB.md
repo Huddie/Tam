@@ -304,7 +304,19 @@ function should decide for you or lock you into.
 
 `RollingSharpe`/`Persistence`/`OvernightAlpha`/`OvernightBeta`/
 `ExpectedShortfall`/`MaxDrawdown` are all `Registry(Factor, ...)` entries --
-register your own the same way for anything not built in. Universe
+register your own the same way for anything not built in. Every one of them
+is signed so higher raw value = better (`ExpectedShortfall`/`MaxDrawdown`
+are negative-is-worse, so a LESS negative value is a HIGHER, still
+"better," raw value) -- `score()` never re-signs a column, so a POSITIVE
+weight always means "reward," a negative weight always means "reward the
+opposite" of what you probably want, for every factor here alike.
+
+`score()` itself is `Registry(ScoreFn, ...)`-backed (`method="zscore"`,
+the default -- cross-sectional z-score each column, weighted sum; or
+`method="rank"` -- centered percentile rank instead, more outlier-robust,
+less sensitive to magnitude) -- register your own `ScoreFn` for a different
+combination method and select it the same way, or via `basket_overnight`'s
+`scoring: <id>` config field. Universe
 membership (point-in-time, to avoid survivorship bias) is its own piece:
 `tam.basket.universe.{StaticUniverse,CsvUniverse,WikipediaUniverse,PitIndexUniverse}`
 (`Registry(UniverseProvider, ...)`) resolve `constituents(as_of)` from a fixed

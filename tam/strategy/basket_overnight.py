@@ -80,6 +80,7 @@ class BasketOvernightStrategy(Strategy):
         beta_window_days: int = 252,
         sectors: Optional[Dict[str, str]] = None,
         min_history_days: int = 252,
+        scoring_method: str = "zscore",
     ):
         super().__init__()
         self._repository = repository
@@ -97,6 +98,7 @@ class BasketOvernightStrategy(Strategy):
         self._beta_window_days = beta_window_days
         self._sectors = pd.Series(sectors) if sectors else None
         self._min_history_days = min_history_days
+        self._scoring_method = scoring_method
 
         lookback = max([min_history_days, beta_window_days, vol_window_days] + [0])
         self._lookback_calendar_days = _calendar_days_for(lookback)
@@ -239,7 +241,7 @@ class BasketOvernightStrategy(Strategy):
         # not a candidate to score/select/weight.
         factor_table = compute_factors(returns, as_of, factors).loc[present_universe]
         universe_returns = returns[present_universe]
-        scores = score(factor_table, weights_by_factor)
+        scores = score(factor_table, weights_by_factor, method=self._scoring_method)
 
         top_n = self._selection_params.get("top_n", len(scores))
         candidates = scores.sort_values(ascending=False).head(top_n)
@@ -321,4 +323,5 @@ def build_basket_overnight(repository: DataRepository, portfolio_id: str, params
         beta_window_days=params.get("beta_window_days", 252),
         sectors=params.get("sectors"),
         min_history_days=params.get("min_history_days", 252),
+        scoring_method=params.get("scoring", "zscore"),
     )

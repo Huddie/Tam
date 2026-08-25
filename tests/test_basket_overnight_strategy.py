@@ -214,3 +214,22 @@ def test_builtin_registration_resolves_from_config_params(tmp_path):
     strategy = Registry.create(Strategy, "basket_overnight", repo, "basket", params, 100_000.0)
 
     assert isinstance(strategy, BasketOvernightStrategy)
+
+
+def test_scoring_method_defaults_to_zscore_and_is_configurable(tmp_path):
+    repo, _idx = _build_repo(tmp_path, periods=200)
+    params = {
+        "universe": {"provider": "static", "tickers": ["A", "B"]},
+        "benchmark_ticker": "SPY",
+        "factors": {"sharpe": {"factor": "sharpe", "window_days": 60, "weight": 1.0}},
+        "selection": {"top_n": 2, "n_clusters": 1, "max_per_cluster": 2, "final_n": 2},
+        "weighting": {"max_weight": 1.0},
+    }
+
+    default_strategy = Registry.create(Strategy, "basket_overnight", repo, "basket", params, 100_000.0)
+    assert default_strategy._scoring_method == "zscore"
+
+    rank_strategy = Registry.create(
+        Strategy, "basket_overnight", repo, "basket", {**params, "scoring": "rank"}, 100_000.0
+    )
+    assert rank_strategy._scoring_method == "rank"

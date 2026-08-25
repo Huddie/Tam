@@ -85,6 +85,46 @@ class _FakeProvider(DataProvider):
         return df[(df.index >= pd.Timestamp(start)) & (df.index <= pd.Timestamp(end))]
 
 
+@Registry.register(DataProvider, "fake_kwargs_provider")
+class _FakeKwargsProvider(DataProvider):
+    """Records whatever constructor kwargs it was built with, so
+    _build_repository's provider_kwargs plumbing is verifiable directly."""
+
+    def __init__(self, flag=False):
+        self.flag = flag
+
+    def fetch_eod(self, symbol, start, end):
+        return _FAKE_PRICES
+
+
+def test_build_repository_passes_provider_kwargs_through_to_the_provider_constructor():
+    from tam.backtest.runner import DataSettings, _build_repository
+
+    settings = DataSettings()
+    settings.provider = "fake_kwargs_provider"
+    settings.store = "parquet"
+    settings.root = "unused"
+    settings.provider_kwargs = {"flag": True}
+
+    repository = _build_repository(settings)
+
+    assert repository._provider.flag is True
+
+
+def test_build_repository_defaults_provider_kwargs_to_empty():
+    from tam.backtest.runner import DataSettings, _build_repository
+
+    settings = DataSettings()
+    settings.provider = "fake_kwargs_provider"
+    settings.store = "parquet"
+    settings.root = "unused"
+    settings.provider_kwargs = None
+
+    repository = _build_repository(settings)
+
+    assert repository._provider.flag is False
+
+
 def test_run_ingests_every_declared_ticker(tmp_path):
     # Regression test: buy_and_hold trades SPY while the primary ticker is TQQQ.
     # Before tickers became an explicit declared list, run() only ingested one

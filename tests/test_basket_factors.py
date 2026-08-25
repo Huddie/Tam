@@ -146,3 +146,70 @@ def test_score_column_with_zero_variance_contributes_zero_not_nan():
     result = score(table, {"x": 1.0})
 
     assert (result == 0.0).all()
+
+
+def test_score_penalizes_worse_expected_shortfall_only_with_a_positive_weight():
+    # ExpectedShortfall/MaxDrawdown are signed (more negative = worse), the
+    # SAME higher-raw-value-is-better direction every other factor here
+    # uses -- score() z-scores whatever sign it's given, so a ticker with
+    # WORSE (more negative) expected_shortfall must score LOWER only when
+    # the weight is POSITIVE. A negative weight does the opposite: it
+    # rewards the worse ticker (see ExpectedShortfall's own docstring).
+    table = pd.DataFrame({"expected_shortfall": [-0.05, -0.01]}, index=["worse", "better"])
+
+    penalized = score(table, {"expected_shortfall": 0.10})
+    assert penalized["worse"] < penalized["better"]
+
+    rewarded = score(table, {"expected_shortfall": -0.10})
+    assert rewarded["worse"] > rewarded["better"]
+
+
+def test_score_fn_is_registered_and_zscore_is_the_default_method():
+    from tam.basket.factors import ScoreFn
+    from tam.registry import Registry
+
+    assert set(Registry.names(ScoreFn)) >= {"zscore", "rank"}
+
+    table = pd.DataFrame({"x": [1.0, 2.0, 3.0]}, index=["A", "B", "C"])
+    assert list(score(table, {"x": 1.0})) == pytest.approx(list(score(table, {"x": 1.0}, method="zscore")))
+
+
+def test_rank_score_fn_orders_tickers_the_same_as_zscore_for_monotonic_data():
+    table = pd.DataFrame({"x": [10.0, 1.0, 1000.0]}, index=["mid", "low", "high"])
+
+    zscore_result = score(table, {"x": 1.0}, method="zscore")
+    rank_result = score(table, {"x": 1.0}, method="rank")
+
+    # a single huge outlier dominates the z-score's scale but can only ever
+    # occupy the top rank position -- both methods agree on ORDER here...
+    assert zscore_result["low"] < zscore_result["mid"] < zscore_result["high"]
+    assert rank_result["low"] < rank_result["mid"] < rank_result["high"]
+    # ...but rank scores are always bounded to [-0.5, 0.5] regardless of
+    # outlier magnitude (rank(pct=True) ranges over (1/n, 1], so this bound
+    # is exact at the top and approached, never exceeded, at the bottom),
+    # unlike z-scores, which an outlier can stretch arbitrarily wide.
+    assert rank_result.max() <= 0.5
+    assert rank_result.min() > -0.5
+
+
+def test_rank_score_fn_centers_scores_around_zero():
+    from tam.basket.factors import RankScoreFn
+
+    table = pd.DataFrame({"x": [1.0, 2.0, 3.0]}, index=["A", "B", "C"])
+
+    result = RankScoreFn().compute(table, {"x": 1.0})
+
+    # rank(pct=True) for 3 ascending values is [1/3, 2/3, 1] -- centering by
+    # subtracting 0.5 gives an evenly-spaced, but not exactly zero-centered-
+    # at-the-median, sequence (that exact symmetry only holds asymptotically
+    # for large n): A=1/3-0.5, B=2/3-0.5, C=1-0.5.
+    assert result["A"] == pytest.approx(1 / 3 - 0.5)
+    assert result["B"] == pytest.approx(2 / 3 - 0.5)
+    assert result["C"] == pytest.approx(0.5)
+
+
+def test_score_raises_a_clear_error_for_an_unregistered_method():
+    table = pd.DataFrame({"x": [1.0, 2.0]}, index=["A", "B"])
+
+    with pytest.raises(KeyError, match="not_a_real_method"):
+        score(table, {"x": 1.0}, method="not_a_real_method")

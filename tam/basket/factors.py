@@ -80,8 +80,15 @@ class Persistence(Factor):
 @Registry.register(Factor, "expected_shortfall")
 class ExpectedShortfall(Factor):
     """Mean return in the worst `1 - confidence` tail -- more negative is
-    worse; a negative score `weight` (see `score()`) is how a caller expresses
-    "penalize tail risk," not a sign flip in here."""
+    worse, on the SAME scale/direction as every other Factor here (higher
+    raw value = better): a ticker with less-bad tail risk (e.g. -0.01) has a
+    HIGHER raw value than one with worse tail risk (e.g. -0.05), so its
+    cross-sectional z-score in score() is also higher, same as a better
+    Sharpe/persistence/alpha ticker's z-score is higher. A POSITIVE score
+    `weight` (see `score()`) is how a caller expresses "penalize tail risk"
+    -- a negative weight does the opposite (rewards worse tail risk), since
+    score() never re-signs a column based on which direction "good" happens
+    to point in; it only z-scores the raw values as given."""
 
     def __init__(self, window_days: int, confidence: float = 0.99):
         self._window_days = window_days
@@ -103,6 +110,10 @@ class ExpectedShortfall(Factor):
 
 @Registry.register(Factor, "max_drawdown")
 class MaxDrawdown(Factor):
+    """Worst peak-to-trough decline over the window, always <= 0 -- same
+    sign convention as ExpectedShortfall (higher/less-negative raw value =
+    better): use a POSITIVE score() weight to penalize deep drawdowns."""
+
     def __init__(self, window_days: int):
         self._window_days = window_days
 
@@ -178,15 +189,64 @@ def compute_factors(returns: pd.DataFrame, as_of: date, factors: Dict[str, Facto
     return pd.DataFrame({name: factor.compute(returns, as_of) for name, factor in factors.items()})
 
 
-def score(factor_table: pd.DataFrame, weights: Dict[str, float]) -> pd.Series:
+class ScoreFn(ABC):
+    """Turns a factor table (ticker x factor) + per-factor weights into one
+    composite score per ticker -- the pluggable interface behind score()
+    (Registry(ScoreFn, ...), the same "classic pattern" as Factor itself).
+    Register your own for a different combination method and select it via
+    basket_overnight's `scoring: <id>` config, or call
+    Registry.get(ScoreFn, "<id>").compute(...) directly -- score() itself
+    just calls Registry.get(ScoreFn, method) and stays the default entry
+    point so no existing caller needs to change.
+
+    Every weight's SIGN assumes "higher raw factor value = better" (see
+    ExpectedShortfall/MaxDrawdown's own docstrings for why their signed,
+    negative-is-worse values already satisfy this without re-signing) --
+    that convention lives in the caller's weights, not in any ScoreFn
+    implementation below."""
+
+    @abstractmethod
+    def compute(self, factor_table: pd.DataFrame, weights: Dict[str, float]) -> pd.Series: ...
+
+
+@Registry.register(ScoreFn, "zscore")
+class ZScoreScoreFn(ScoreFn):
     """Cross-sectional z-score each named column, weighted sum -- e.g.
-    weights={"sharpe_3y": 0.30, "overnight_alpha": 0.20, "expected_shortfall": -0.10}
+    weights={"sharpe_3y": 0.30, "overnight_alpha": 0.20, "expected_shortfall": 0.10}
     straight from config. A column with zero cross-sectional variance
-    contributes 0 (not NaN/inf) for every ticker."""
-    total = pd.Series(0.0, index=factor_table.index)
-    for name, weight in weights.items():
-        column = factor_table[name]
-        std = column.std()
-        z = (column - column.mean()) / std if std else pd.Series(0.0, index=column.index)
-        total = total + weight * z.fillna(0.0)
-    return total
+    contributes 0 (not NaN/inf) for every ticker. The default -- today's
+    exact (and only, before ScoreFn existed) behavior."""
+
+    def compute(self, factor_table: pd.DataFrame, weights: Dict[str, float]) -> pd.Series:
+        total = pd.Series(0.0, index=factor_table.index)
+        for name, weight in weights.items():
+            column = factor_table[name]
+            std = column.std()
+            z = (column - column.mean()) / std if std else pd.Series(0.0, index=column.index)
+            total = total + weight * z.fillna(0.0)
+        return total
+
+
+@Registry.register(ScoreFn, "rank")
+class RankScoreFn(ScoreFn):
+    """Cross-sectional PERCENTILE RANK (centered to [-0.5, 0.5]) each named
+    column instead of a z-score, weighted sum -- more robust to outliers
+    (one extreme value can dominate a z-score via the mean/std it shifts,
+    but can only ever occupy one rank position), at the cost of not
+    distinguishing "slightly above average" from "way above average" the
+    way a z-score does."""
+
+    def compute(self, factor_table: pd.DataFrame, weights: Dict[str, float]) -> pd.Series:
+        total = pd.Series(0.0, index=factor_table.index)
+        for name, weight in weights.items():
+            centered_rank = factor_table[name].rank(pct=True) - 0.5
+            total = total + weight * centered_rank.fillna(0.0)
+        return total
+
+
+def score(factor_table: pd.DataFrame, weights: Dict[str, float], method: str = "zscore") -> pd.Series:
+    """Registry.get(ScoreFn, method).compute(factor_table, weights) --
+    `method` defaults to "zscore" (today's exact behavior, unchanged), so
+    every existing caller keeps working as before. Pass method="rank" (or
+    your own registered ScoreFn id) to combine factors differently."""
+    return Registry.get(ScoreFn, method).compute(factor_table, weights)

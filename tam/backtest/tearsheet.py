@@ -40,7 +40,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from ..basket.factors import MaxDrawdown, RollingSharpe
+from ..basket.factors import ExpectedShortfall, MaxDrawdown, RollingSharpe
 from ..registry import Registry
 from .report import Report
 
@@ -336,6 +336,354 @@ class WorstDrawdownPathsChart(TearsheetChart):
         return fig
 
 
+def _suffix_stats(r: np.ndarray, dates: np.ndarray, final_exit_date) -> dict:
+    """Ported directly from the user's own validated suffix-stats algorithm:
+    for every possible start index i, the growth/final value/CAGR/monthly
+    return/Sharpe/max drawdown/win rate of holding from i through the end of
+    the series -- "what would the outcome be if I'd started here." O(n) via
+    cumulative sums/products walked from the end, not an O(n^2) double loop
+    over every (start, end) pair."""
+    r = np.asarray(r, dtype=float)
+    dates = np.asarray(dates, dtype="datetime64[ns]")
+    n_obs = len(r)
+    trades = np.arange(n_obs, 0, -1, dtype=int)
+
+    growth = np.cumprod((1.0 + r)[::-1])[::-1]
+    final_value = 100_000.0 * growth
+    total_return = growth - 1.0
+
+    elapsed_days = (np.datetime64(final_exit_date, "ns") - dates).astype("timedelta64[D]").astype(float)
+    years = elapsed_days / 365.25
+    months = years * 12.0
+
+    cagr = np.full(n_obs, np.nan)
+    valid = (years > 0) & (growth > 0)
+    cagr[valid] = growth[valid] ** (1.0 / years[valid]) - 1.0
+
+    monthly_return = np.full(n_obs, np.nan)
+    valid = (months > 0) & (growth > 0)
+    monthly_return[valid] = growth[valid] ** (1.0 / months[valid]) - 1.0
+
+    sum_r = np.cumsum(r[::-1])[::-1]
+    sum_r2 = np.cumsum((r**2)[::-1])[::-1]
+    mean_return = sum_r / trades
+    variance = np.full(n_obs, np.nan)
+    valid = trades > 1
+    variance[valid] = (sum_r2[valid] - (sum_r[valid] ** 2 / trades[valid])) / (trades[valid] - 1)
+    variance = np.where(np.isnan(variance), np.nan, np.maximum(variance, 0.0))
+    volatility = np.sqrt(variance)
+    sharpe = np.full(n_obs, np.nan)
+    valid = np.isfinite(volatility) & (volatility > 0)
+    sharpe[valid] = mean_return[valid] / volatility[valid] * np.sqrt(252)
+
+    wins = np.cumsum((r > 0)[::-1])[::-1]
+    win_rate = wins / trades
+
+    return {
+        "growth": growth,
+        "final_value": final_value,
+        "total_return": total_return,
+        "cagr": cagr,
+        "monthly_return": monthly_return,
+        "sharpe": sharpe,
+        "win_rate": win_rate,
+        "max_drawdown": _suffix_max_drawdown(r),
+        "trades": trades,
+        "years": years,
+    }
+
+
+def _by_start_date_series(report: Report, portfolio_id: str, field: str, min_trades: Optional[int] = None) -> pd.Series:
+    """One field of _suffix_stats(...), as a Series indexed by start date --
+    the shared plumbing behind every *ByStartDateChart below. `min_trades`
+    (the user's own MIN_TRADES_FOR_RATIO_CHARTS) drops start dates too close
+    to the end of history to produce a trustworthy annualized ratio (CAGR/
+    Sharpe/monthly return) -- irrelevant for max_drawdown/final_value, which
+    are meaningful even for a short remaining window."""
+    returns = _returns(report, portfolio_id)
+    dates = returns.index.to_numpy(dtype="datetime64[ns]")
+    stats = _suffix_stats(returns.to_numpy(), dates, dates[-1])
+    series = pd.Series(stats[field], index=returns.index)
+    if min_trades:
+        series = series[stats["trades"] >= min_trades]
+    return series
+
+
+@Registry.register(TearsheetChart, "max_drawdown_by_start_date")
+class MaxDrawdownByStartDateChart(TearsheetChart):
+    """"If I'd started on date X and held through the end of history, how
+    bad would my worst drawdown have been" -- one point per possible start
+    date, NOT the same thing as the Underwater Plot (which fixes ONE start
+    -- the actual first date in the data -- and shows drawdown evolving over
+    calendar time from there)."""
+
+    title = "Maximum Drawdown by Start Date"
+
+    def render(self, report: Report) -> go.Figure:
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            series = _by_start_date_series(report, portfolio_id, "max_drawdown")
+            fig.add_trace(go.Scatter(x=series.index, y=series.values, mode="lines", name=portfolio_id))
+        fig.add_hline(y=0, line_width=1)
+        fig.update_layout(title=self.title, xaxis_title="Start Date", yaxis_tickformat=".0%", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "cagr_by_start_date")
+class CagrByStartDateChart(TearsheetChart):
+    def __init__(self, min_trades: int = 252):
+        self._min_trades = min_trades
+        self.title = "CAGR by Start Date"
+
+    def render(self, report: Report) -> go.Figure:
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            series = _by_start_date_series(report, portfolio_id, "cagr", self._min_trades)
+            fig.add_trace(go.Scatter(x=series.index, y=series.values, mode="lines", name=portfolio_id))
+        fig.add_hline(y=0, line_width=1)
+        fig.update_layout(title=self.title, xaxis_title="Start Date", yaxis_tickformat=".0%", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "sharpe_by_start_date")
+class SharpeByStartDateChart(TearsheetChart):
+    def __init__(self, min_trades: int = 252):
+        self._min_trades = min_trades
+        self.title = "Sharpe by Start Date"
+
+    def render(self, report: Report) -> go.Figure:
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            series = _by_start_date_series(report, portfolio_id, "sharpe", self._min_trades)
+            fig.add_trace(go.Scatter(x=series.index, y=series.values, mode="lines", name=portfolio_id))
+        fig.add_hline(y=0, line_width=1)
+        fig.update_layout(title=self.title, xaxis_title="Start Date", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "monthly_return_by_start_date")
+class MonthlyReturnByStartDateChart(TearsheetChart):
+    def __init__(self, min_trades: int = 252):
+        self._min_trades = min_trades
+        self.title = "Geometric Monthly Return by Start Date"
+
+    def render(self, report: Report) -> go.Figure:
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            series = _by_start_date_series(report, portfolio_id, "monthly_return", self._min_trades)
+            fig.add_trace(go.Scatter(x=series.index, y=series.values, mode="lines", name=portfolio_id))
+        fig.add_hline(y=0, line_width=1)
+        fig.update_layout(title=self.title, xaxis_title="Start Date", yaxis_tickformat=".1%", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "final_value_by_start_date")
+class FinalValueByStartDateChart(TearsheetChart):
+    title = "Final Portfolio Value by Start Date"
+
+    def render(self, report: Report) -> go.Figure:
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            series = _by_start_date_series(report, portfolio_id, "final_value")
+            fig.add_trace(go.Scatter(x=series.index, y=series.values, mode="lines", name=portfolio_id))
+        fig.update_layout(title=self.title, xaxis_title="Start Date", yaxis_tickprefix="$", yaxis_tickformat=",", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "sharpe_difference_by_start_date")
+class SharpeDifferenceByStartDateChart(TearsheetChart):
+    """Every non-benchmark portfolio's Sharpe-by-start-date MINUS the
+    benchmark's own -- "is the strategy's edge over the benchmark stable
+    across start dates, or does it depend on when you happened to start."
+    `benchmark_id` defaults to the LAST portfolio id (alphabetically) when
+    omitted, which only makes sense for a simple 2-portfolio comparison --
+    pass it explicitly (SharpeDifferenceByStartDateChart(benchmark_id=...))
+    for anything else."""
+
+    def __init__(self, benchmark_id: Optional[str] = None, min_trades: int = 252):
+        self._benchmark_id = benchmark_id
+        self._min_trades = min_trades
+        self.title = "Sharpe Difference by Start Date"
+
+    def render(self, report: Report) -> go.Figure:
+        portfolio_ids = report.portfolio_ids()
+        benchmark_id = self._benchmark_id or (portfolio_ids[-1] if len(portfolio_ids) > 1 else None)
+
+        fig = go.Figure()
+        if benchmark_id is None:
+            fig.add_annotation(
+                text="Needs at least 2 portfolios (or an explicit benchmark_id)",
+                showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5,
+            )
+            fig.update_layout(title=self.title, template="plotly_white")
+            return fig
+
+        benchmark_sharpe = _by_start_date_series(report, benchmark_id, "sharpe", self._min_trades)
+        for portfolio_id in portfolio_ids:
+            if portfolio_id == benchmark_id:
+                continue
+            strategy_sharpe = _by_start_date_series(report, portfolio_id, "sharpe", self._min_trades)
+            diff = (strategy_sharpe - benchmark_sharpe).dropna()
+            fig.add_trace(go.Scatter(x=diff.index, y=diff.values, mode="lines", name=f"{portfolio_id} − {benchmark_id}"))
+        fig.add_hline(y=0, line_width=1)
+        fig.update_layout(title=self.title, xaxis_title="Start Date", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "rolling_sortino")
+class RollingSortinoChart(TearsheetChart):
+    """Same shape as RollingSharpeChart, but the denominator is downside
+    deviation (std of negative returns only in the window) instead of full
+    std -- doesn't penalize upside volatility the way Sharpe does."""
+
+    def __init__(self, window_days: int = 126):
+        self._window_days = window_days
+        self.title = f"Rolling Sortino ({window_days}d)"
+
+    def render(self, report: Report) -> go.Figure:
+        def sortino(window: pd.Series) -> float:
+            downside = window[window < 0]
+            downside_std = downside.std()
+            return window.mean() / downside_std * (252**0.5) if downside_std else 0.0
+
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            returns = _returns(report, portfolio_id)
+            rolling = returns.rolling(self._window_days).apply(sortino)
+            fig.add_trace(go.Scatter(x=rolling.index, y=rolling.values, mode="lines", name=portfolio_id))
+        fig.add_hline(y=0, line_width=1)
+        fig.update_layout(title=self.title, template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "monthly_returns_heatmap")
+class MonthlyReturnsHeatmapChart(TearsheetChart):
+    """Year x month grid of one portfolio's own monthly returns -- inherently
+    single-portfolio (a grid per portfolio would need its own subplot, not
+    just another trace on the same axes), so pick which one with
+    `portfolio_id` (defaults to the Report's first)."""
+
+    def __init__(self, portfolio_id: Optional[str] = None):
+        self._portfolio_id = portfolio_id
+        self.title = "Monthly Returns (%)"
+
+    def render(self, report: Report) -> go.Figure:
+        portfolio_id = self._portfolio_id or report.portfolio_ids()[0]
+        monthly = _returns(report, portfolio_id).add(1).resample("ME").prod().sub(1)
+
+        table = monthly.to_frame("return")
+        table["year"] = table.index.year
+        table["month"] = table.index.month
+        pivot = table.pivot(index="year", columns="month", values="return").reindex(columns=range(1, 13))
+        month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        values = pivot.to_numpy() * 100
+        text = [[f"{v:.1f}" if pd.notna(v) else "" for v in row] for row in values]
+
+        fig = go.Figure(
+            go.Heatmap(
+                z=values, x=month_labels, y=[str(y) for y in pivot.index],
+                colorscale="RdYlGn", zmid=0, text=text, texttemplate="%{text}",
+                hovertemplate="%{y} %{x}: %{z:.2f}%<extra></extra>",
+            )
+        )
+        fig.update_layout(title=f"{self.title} — {portfolio_id}", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "return_quantiles")
+class ReturnQuantilesChart(TearsheetChart):
+    """Box plot of each portfolio's own return distribution at 5 different
+    compounding frequencies (daily/weekly/monthly/quarterly/yearly) side by
+    side -- how much a strategy's apparent variability shrinks (or doesn't)
+    as you zoom out from daily to yearly returns."""
+
+    title = "Return Quantiles"
+    _FREQUENCIES = [("D", "Daily"), ("W", "Weekly"), ("ME", "Monthly"), ("QE", "Quarterly"), ("YE", "Yearly")]
+
+    def render(self, report: Report) -> go.Figure:
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            returns = _returns(report, portfolio_id)
+            for freq, label in self._FREQUENCIES:
+                resampled = returns if freq == "D" else returns.add(1).resample(freq).prod().sub(1)
+                fig.add_trace(
+                    go.Box(
+                        y=resampled.values * 100, name=label,
+                        legendgroup=portfolio_id, offsetgroup=portfolio_id,
+                        marker_color=None, hovertext=portfolio_id,
+                    )
+                )
+        fig.update_layout(title=self.title, yaxis_title="Return (%)", boxmode="group", template="plotly_white")
+        return fig
+
+
+@Registry.register(TearsheetChart, "worst_drawdown_periods")
+class WorstDrawdownPeriodsChart(TearsheetChart):
+    """One portfolio's own cumulative-return curve, with its `n_periods`
+    deepest contiguous underwater periods shaded -- where the Underwater
+    Plot shows drawdown magnitude over time, this shows those same worst
+    stretches directly against the equity curve they came from. Inherently
+    single-portfolio (shading is meaningless without a single curve to
+    shade against) -- pick which with `portfolio_id` (defaults to the
+    Report's first)."""
+
+    def __init__(self, portfolio_id: Optional[str] = None, n_periods: int = 5):
+        self._portfolio_id = portfolio_id
+        self._n_periods = n_periods
+        self.title = f"Worst {n_periods} Drawdown Periods"
+
+    def render(self, report: Report) -> go.Figure:
+        portfolio_id = self._portfolio_id or report.portfolio_ids()[0]
+        curve = report.equity_curve(portfolio_id)
+        curve = curve.set_axis(pd.to_datetime(curve.index))
+        drawdown = curve / curve.cummax() - 1.0
+
+        periods, start = [], None
+        for current_date, value in drawdown.items():
+            underwater = value < 0
+            if underwater and start is None:
+                start = current_date
+            elif not underwater and start is not None:
+                periods.append((start, current_date))
+                start = None
+        if start is not None:
+            periods.append((start, drawdown.index[-1]))
+
+        periods_with_depth = [(s, e, drawdown.loc[s:e].min()) for s, e in periods]
+        worst = sorted(periods_with_depth, key=lambda period: period[2])[: self._n_periods]
+
+        normalized = curve / curve.iloc[0] - 1.0
+        fig = go.Figure(go.Scatter(x=normalized.index, y=normalized.values, mode="lines", name=portfolio_id))
+        for s, e, _depth in worst:
+            fig.add_vrect(x0=s, x1=e, fillcolor="red", opacity=0.15, line_width=0)
+        fig.update_layout(title=f"{self.title} — {portfolio_id}", yaxis_tickformat=".0%", template="plotly_white")
+        return fig
+
+
+ALL_CHARTS = DEFAULT_CHARTS + [
+    "return_distribution_by_start_date",
+    "worst_drawdown_paths",
+    "max_drawdown_by_start_date",
+    "cagr_by_start_date",
+    "sharpe_by_start_date",
+    "monthly_return_by_start_date",
+    "final_value_by_start_date",
+    "sharpe_difference_by_start_date",
+    "rolling_sortino",
+    "monthly_returns_heatmap",
+    "return_quantiles",
+    "worst_drawdown_periods",
+]
+"""Every registered built-in chart, DEFAULT_CHARTS plus everything opt-in --
+convenience for `Tearsheet(charts=ALL_CHARTS)`/`charts=ALL_CHARTS + [...]`
+when you want the full built-in set rather than picking individually. A few
+of these (sharpe_difference_by_start_date, monthly_returns_heatmap,
+worst_drawdown_periods) pick a default portfolio/benchmark when there's more
+than 2 -- construct your own instance with an explicit portfolio_id/
+benchmark_id instead of the registered id if that default is wrong for your
+report."""
+
+
 # ---- metrics ----------------------------------------------------------------
 
 
@@ -406,7 +754,62 @@ class NumTradesMetric(TearsheetMetric):
         return report.summary(portfolio_id)["num_trades"]
 
 
+@Registry.register(TearsheetMetric, "sortino")
+class SortinoMetric(TearsheetMetric):
+    """Same shape as SharpeMetric, but the denominator is downside deviation
+    (std of negative returns only) instead of full std -- doesn't penalize
+    upside volatility."""
+
+    label, format = "Sortino", "ratio"
+
+    def compute(self, report: Report, portfolio_id: str) -> float:
+        returns = _returns(report, portfolio_id)
+        downside_std = returns[returns < 0].std()
+        if not downside_std:
+            return 0.0
+        return float(returns.mean() / downside_std * (252**0.5))
+
+
+@Registry.register(TearsheetMetric, "skew")
+class SkewMetric(TearsheetMetric):
+    label, format = "Skew", "ratio"
+
+    def compute(self, report: Report, portfolio_id: str) -> float:
+        return float(_returns(report, portfolio_id).skew())
+
+
+@Registry.register(TearsheetMetric, "kurtosis")
+class KurtosisMetric(TearsheetMetric):
+    label, format = "Kurtosis", "ratio"
+
+    def compute(self, report: Report, portfolio_id: str) -> float:
+        return float(_returns(report, portfolio_id).kurt())
+
+
+@Registry.register(TearsheetMetric, "value_at_risk")
+class ValueAtRiskMetric(TearsheetMetric):
+    label, format = "Daily VaR (95%)", "pct"
+
+    def compute(self, report: Report, portfolio_id: str) -> float:
+        return float(_returns(report, portfolio_id).quantile(0.05))
+
+
+@Registry.register(TearsheetMetric, "expected_shortfall")
+class ExpectedShortfallMetric(TearsheetMetric):
+    """Reuses tam.basket.factors.ExpectedShortfall's own computation."""
+
+    label, format = "Expected Shortfall (95%)", "pct"
+
+    def compute(self, report: Report, portfolio_id: str) -> float:
+        returns = _factor_input(report, portfolio_id)
+        as_of = returns.index[-1]
+        return float(ExpectedShortfall(window_days=len(returns), confidence=0.95).compute(returns, as_of)[portfolio_id])
+
+
 DEFAULT_METRICS = ["total_return", "cagr", "sharpe", "volatility", "max_drawdown", "calmar", "num_trades"]
+
+ALL_METRICS = DEFAULT_METRICS + ["sortino", "skew", "kurtosis", "value_at_risk", "expected_shortfall"]
+"""Every registered built-in metric -- see ALL_CHARTS's own docstring."""
 
 _FORMATTERS = {
     "pct": lambda v: f"{v:.2%}",
@@ -500,13 +903,32 @@ def write_html(report: Report, path: str, **kwargs) -> Path:
     return out_path
 
 
-def show(report: Report, **kwargs):
-    """Inline display in a notebook, e.g. `tearsheet.show(report)` as a cell's
-    last expression -- IPython.display.HTML(...) of the same build_tearsheet()
-    output write_html() saves to a file."""
-    from IPython.display import HTML
+def _display(html: str, height: int):
+    """An <iframe>, not IPython.display.HTML(html) directly -- a tearsheet
+    embeds MULTIPLE Plotly figures, each its own <script>Plotly.newPlot(...)
+    </script> call; browsers generally don't execute <script> tags inserted
+    into a notebook cell's output via raw HTML display beyond (unreliably)
+    the first one, so most charts after the first would silently never
+    render. An iframe's own document has its own independent script-
+    execution context, so every chart renders correctly regardless of the
+    outer notebook frontend's HTML-injection quirks."""
+    import base64
 
-    return HTML(build_tearsheet(report, **kwargs))
+    from IPython.display import IFrame
+
+    encoded = base64.b64encode(html.encode("utf-8")).decode("ascii")
+    return IFrame(src=f"data:text/html;base64,{encoded}", width="100%", height=height)
+
+
+def show(report: Report, height: int = 1200, **kwargs):
+    """Inline display in a notebook, e.g. `tearsheet.show(report)` as a cell's
+    last expression -- an <iframe> (see _display()'s docstring for why, not a
+    plain IPython.display.HTML) of the same build_tearsheet() output
+    write_html() saves to a file. `height` sets the iframe's own height in
+    pixels (it scrolls internally, same as any other iframe) -- a tall
+    charts-stacked-in-a-column layout usually wants more than the default
+    1200 if you've added several extra charts."""
+    return _display(build_tearsheet(report, **kwargs), height)
 
 
 class Tearsheet:
@@ -546,10 +968,8 @@ class Tearsheet:
     def build(self, report: Report) -> str:
         return build_tearsheet(report, title=self.title, charts=self.charts, metrics=self.metrics)
 
-    def show(self, report: Report):
-        from IPython.display import HTML
-
-        return HTML(self.build(report))
+    def show(self, report: Report, height: int = 1200):
+        return _display(self.build(report), height)
 
     def write(self, report: Report, path: str) -> Path:
         out_path = Path(path)

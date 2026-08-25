@@ -91,3 +91,58 @@ def test_yfinance_translates_dot_share_class_tickers_to_hyphenated_form(monkeypa
     YFinanceProvider().fetch_eod("BRK.B", date(2023, 1, 3), date(2023, 1, 4))
 
     assert captured["symbol"] == "BRK-B"
+
+
+def test_yfinance_defaults_to_unadjusted_ohlc(monkeypatch):
+    captured = {}
+    monkeypatch.setattr("yfinance.download", lambda *a, **kw: captured.update(auto_adjust=kw["auto_adjust"]) or pd.DataFrame())
+
+    YFinanceProvider().fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
+
+    assert captured["auto_adjust"] is False
+
+
+def test_yfinance_adjust_true_requests_auto_adjusted_ohlc_from_yfinance(monkeypatch):
+    captured = {}
+    monkeypatch.setattr("yfinance.download", lambda *a, **kw: captured.update(auto_adjust=kw["auto_adjust"]) or pd.DataFrame())
+
+    YFinanceProvider(adjust=True).fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
+
+    assert captured["auto_adjust"] is True
+
+
+def test_yfinance_adjust_true_fills_adj_close_from_close_when_yfinance_omits_it(monkeypatch):
+    # yfinance's own auto_adjust=True response has no separate "Adj Close"
+    # column at all -- "Close" IS already the adjusted close.
+    dates = pd.to_datetime(["2023-01-03", "2023-01-04"])
+    raw = pd.DataFrame(
+        {"Open": [10.0, 11.0], "High": [10.5, 11.5], "Low": [9.5, 10.5], "Close": [10.2, 11.2], "Volume": [100, 200]},
+        index=dates,
+    )
+    monkeypatch.setattr("yfinance.download", lambda *a, **kw: raw)
+
+    df = YFinanceProvider(adjust=True).fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
+
+    assert list(df["adj_close"]) == list(df["close"])
+
+
+def test_yfinance_adjusted_provider_is_registered_and_zero_arg_constructible():
+    from tam.data.providers import DataProvider, YFinanceAdjustedProvider
+    from tam.registry import Registry
+
+    provider = Registry.get(DataProvider, "yfinance_adjusted")
+
+    assert isinstance(provider, YFinanceAdjustedProvider)
+    assert provider._adjust is True
+
+
+def test_importing_providers_quiets_yfinances_own_noisy_error_logging():
+    # yfinance logs its own ERROR-level "possibly delisted; no price data
+    # found" for the exact case DataRepository.ingest() already surfaces as
+    # one clear UserWarning -- quieted at import time so that duplicate,
+    # noisier signal doesn't drown out our own.
+    import logging
+
+    import tam.data.providers  # noqa: F401 -- already imported; explicit for clarity
+
+    assert logging.getLogger("yfinance").level == logging.CRITICAL
