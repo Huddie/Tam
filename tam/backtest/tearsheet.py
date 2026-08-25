@@ -52,11 +52,18 @@ _SIDE_BY_SIDE_MAX_PORTFOLIOS = 3
 # NOT Plotly's built-in "RdYlGn": its middle color is yellow, which reads as
 # neither clearly positive nor clearly negative -- shades of a single hue per
 # sign are easier to reason about at a glance.
+# Shared diverging colorscale for every return-valued heatmap in this module
+# -- red for negative, green for positive, shading dark (far from zero) to
+# light (near zero) WITHIN each side, but with a hard, immediate jump from
+# red to green exactly at zero (two stops at ~the same position, one red one
+# green) -- no washed-out neutral color anywhere near the middle, unlike
+# Plotly's built-in "RdYlGn" (yellow midpoint) or a naive red-white-green
+# fade (a near-zero cell looks pale/ambiguous either way). Every value, even
+# barely off zero, should read as unambiguously red or green at a glance.
 RETURN_COLORSCALE = [
     [0.0, "rgb(120,0,0)"],
-    [0.25, "rgb(200,60,60)"],
-    [0.5, "rgb(245,245,245)"],
-    [0.75, "rgb(60,140,60)"],
+    [0.499999, "rgb(255,140,140)"],
+    [0.5, "rgb(140,225,140)"],
     [1.0, "rgb(0,90,0)"],
 ]
 

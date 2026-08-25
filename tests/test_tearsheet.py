@@ -15,6 +15,7 @@ from tam.backtest.tearsheet import (
     ALL_METRICS,
     DEFAULT_CHARTS,
     DEFAULT_METRICS,
+    RETURN_COLORSCALE,
     CumulativeReturnsChart,
     DrawdownChart,
     MaxDrawdownByStartDateChart,
@@ -646,6 +647,46 @@ def test_monthly_returns_heatmap_accepts_an_explicit_portfolio_id():
     fig = MonthlyReturnsHeatmapChart(portfolio_id=portfolio_id).render(report)
 
     assert portfolio_id in fig.layout.title.text
+
+
+def test_return_colorscale_has_no_yellow_only_red_and_green_shades():
+    # RdYlGn's middle color is yellow, which reads as neither clearly
+    # positive nor clearly negative -- the default here must stick to
+    # shades of red (negative) and green (positive) only.
+    for _position, color in RETURN_COLORSCALE:
+        r, g, b = (int(c) for c in color.removeprefix("rgb(").removesuffix(")").split(","))
+        assert not (r > 150 and g > 150 and b < 120), f"{color} looks yellow-ish"
+
+
+def test_monthly_returns_heatmap_accepts_a_custom_colorscale():
+    report = _report(n_portfolios=1)
+
+    fig = MonthlyReturnsHeatmapChart(colorscale="Viridis").render(report)
+
+    assert fig.data[0].colorscale is not None
+    assert fig.data[0].colorscale != tuple(tuple(x) for x in RETURN_COLORSCALE)
+
+
+def test_rolling_return_heatmap_accepts_a_custom_colorscale():
+    from tam.backtest.tearsheet import RollingReturnHeatmapChart
+
+    report = _report(n_portfolios=1)
+
+    fig = RollingReturnHeatmapChart(colorscale="Viridis").render(report)
+
+    assert fig.data[0].colorscale is not None
+    assert fig.data[0].colorscale != tuple(tuple(x) for x in RETURN_COLORSCALE)
+
+
+def test_return_matrix_chart_accepts_a_custom_colorscale():
+    from tam.backtest.tearsheet import ReturnMatrixChart
+
+    report = _report(n_portfolios=1)
+
+    fig = ReturnMatrixChart(colorscale="Viridis").render(report)
+
+    assert fig.data[0].colorscale is not None
+    assert fig.data[0].colorscale != tuple(tuple(x) for x in RETURN_COLORSCALE)
 
 
 def test_worst_drawdown_periods_chart_shades_the_deepest_synthetic_crash():
