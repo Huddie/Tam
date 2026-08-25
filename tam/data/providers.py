@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from abc import ABC, abstractmethod
 from datetime import date, timedelta
 
@@ -11,6 +12,19 @@ import requests
 
 from ..registry import Registry
 from .schema import ADJ_CLOSE, CLOSE, DATE, HIGH, LOW, OHLCV_COLUMNS, OPEN, VOLUME, empty_ohlcv_frame
+
+# yfinance is well documented to NOT be safe to call concurrently from
+# multiple threads for different tickers -- it keeps shared, ticker-keyed
+# global state internally (yfinance.shared._DFS, used by its own "threads="
+# multi-ticker batching) that a caller doing its OWN external concurrency
+# (DataRepository.ingest()'s thread pool, fetching several DIFFERENT symbols
+# at once) can race on, observed in practice as one symbol's fetch silently
+# coming back with a DIFFERENT symbol's data -- no exception, no warning,
+# just wrong numbers written straight into that symbol's cache. Serializing
+# every yf.download() call process-wide behind one lock costs nothing when
+# ingest() is only fetching yfinance data sequentially anyway, and keeps the
+# thread pool free to still parallelize disk I/O / other providers.
+_YFINANCE_LOCK = threading.Lock()
 
 # yfinance logs its OWN "possibly delisted; no price data found" ERROR
 # (via Python's logging module, independent of anything we raise) for the
@@ -118,7 +132,8 @@ class YFinanceProvider(DataProvider):
         # provider's contract (like FMPProvider's) treats `end` as inclusive -- pad
         # by one day and then defensively re-clip, rather than trust the exact
         # off-by-one behavior of whatever yfinance version is installed.
-        df = yf.download(yf_symbol, start=start, end=end + timedelta(days=1), progress=False, auto_adjust=self._adjust)
+        with _YFINANCE_LOCK:
+            df = yf.download(yf_symbol, start=start, end=end + timedelta(days=1), progress=False, auto_adjust=self._adjust)
         if df.empty:
             return empty_ohlcv_frame()
 

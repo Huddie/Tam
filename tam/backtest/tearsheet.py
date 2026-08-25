@@ -38,6 +38,7 @@ from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import plotly.colors
 import plotly.graph_objects as go
 
 from ..basket.factors import ExpectedShortfall, MaxDrawdown, RollingSharpe
@@ -45,6 +46,17 @@ from ..registry import Registry
 from .report import Report
 
 _SIDE_BY_SIDE_MAX_PORTFOLIOS = 3
+_PALETTE = plotly.colors.qualitative.Plotly
+
+
+def _fill_rgba(hex_color: str, alpha: float = 0.2) -> str:
+    """`hex_color` as a semi-transparent rgba() string, for a fill that
+    matches a trace's own line color instead of a fixed one -- same helper
+    as visualization.py's own (not imported from there to avoid a
+    plotting-module-importing-plotting-module dependency for one function)."""
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
 
 # Shared diverging colorscale for every return-valued heatmap in this module
 # -- red for negative, green for positive, shading from dark (further from
@@ -231,7 +243,8 @@ class RollingReturnChart(TearsheetChart):
 
     def render(self, report: Report) -> go.Figure:
         fig = go.Figure()
-        for portfolio_id in report.portfolio_ids():
+        for i, portfolio_id in enumerate(report.portfolio_ids()):
+            color = _PALETTE[i % len(_PALETTE)]
             returns = _returns(report, portfolio_id)
             # sum of log(1+r) over the window == log of the product of
             # (1+r) over the window -- exp of that back out is the exact
@@ -239,7 +252,21 @@ class RollingReturnChart(TearsheetChart):
             log_growth = np.log1p(returns)
             rolling_log_sum = log_growth.rolling(self._window_days).sum()
             rolling = np.expm1(rolling_log_sum)
-            fig.add_trace(go.Scatter(x=rolling.index, y=rolling.values, mode="lines", name=portfolio_id))
+
+            # Shade only the stretches that dipped below zero -- above zero
+            # is the expected/normal case and doesn't need visual emphasis.
+            # Clipping the positive values to exactly 0 makes that portion of
+            # the filled trace flush with the zero line (invisible), while
+            # the negative portion fills down to the real value.
+            below_zero = rolling.clip(upper=0.0)
+            fig.add_trace(
+                go.Scatter(
+                    x=below_zero.index, y=below_zero.values, mode="lines",
+                    line=dict(width=0, color=color), fill="tozeroy", fillcolor=_fill_rgba(color),
+                    showlegend=False, hoverinfo="skip",
+                )
+            )
+            fig.add_trace(go.Scatter(x=rolling.index, y=rolling.values, mode="lines", name=portfolio_id, line=dict(color=color)))
         fig.add_hline(y=0, line_width=1)
         fig.update_layout(title=self.title, yaxis_tickformat=".0%", template="plotly_white")
         return fig

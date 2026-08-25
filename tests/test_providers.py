@@ -167,3 +167,37 @@ def test_importing_providers_quiets_yfinances_own_noisy_error_logging():
     import tam.data.providers  # noqa: F401 -- already imported; explicit for clarity
 
     assert logging.getLogger("yfinance").level == logging.CRITICAL
+
+
+def test_yfinance_fetch_eod_calls_never_overlap_across_threads(monkeypatch):
+    # Regression test: a real corrupted cache was traced back to
+    # DataRepository.ingest()'s thread pool calling fetch_eod() for
+    # DIFFERENT symbols concurrently -- yfinance keeps shared, ticker-keyed
+    # global state internally that isn't safe under that. The provider-level
+    # lock must serialize every yf.download() call, regardless of how many
+    # threads call fetch_eod() at once.
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    in_flight = 0
+    max_observed = 0
+    lock = threading.Lock()
+
+    def fake_download(symbol, **kwargs):
+        nonlocal in_flight, max_observed
+        with lock:
+            in_flight += 1
+            max_observed = max(max_observed, in_flight)
+        time.sleep(0.05)
+        with lock:
+            in_flight -= 1
+        return pd.DataFrame()
+
+    monkeypatch.setattr("yfinance.download", fake_download)
+
+    provider = YFinanceProvider()
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(lambda s: provider.fetch_eod(s, date(2023, 1, 3), date(2023, 1, 4)), [f"SYM{i}" for i in range(8)]))
+
+    assert max_observed == 1

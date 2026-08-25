@@ -1,0 +1,30 @@
+name: Tests
+
+# Runs on every PR targeting main, so a broken PR fails its check BEFORE
+# merge -- separate from publish.yml's own test job (which gates the actual
+# PyPI publish on push to main). This workflow never publishes anything.
+#
+# For this to actually BLOCK merging (not just show a red X), mark "Tests"
+# as a required status check under the repo's branch protection rules for
+# main (Settings -> Branches -> Branch protection rules).
+"on":
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  UV_DEFAULT_INDEX: https://pypi.org/simple
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.11"
+
+      - run: uv sync --extra dev --extra live --extra notebook --extra quantstats --extra pitindex
+
+      - run: uv run pytest tests/ -q -W ignore::UserWarning

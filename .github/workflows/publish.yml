@@ -1,0 +1,49 @@
+name: Publish to PyPI
+
+# Runs on every push to main (a direct commit or a merged PR). Tests must
+# pass before publish runs at all -- see the `needs: test` dependency below.
+#
+# pyproject.toml's own [[tool.uv.index]] defaults dependency resolution to
+# pypi.apple.com (an internal Apple mirror) -- unreachable from GitHub's
+# hosted runners, so both jobs override it to public PyPI via
+# UV_DEFAULT_INDEX. The publish step itself still explicitly targets
+# https://upload.pypi.org/legacy/ (see Makefile's own `publish` target),
+# independent of this override.
+"on":
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  UV_DEFAULT_INDEX: https://pypi.org/simple
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.11"
+
+      - run: uv sync --extra dev --extra live --extra notebook --extra quantstats --extra pitindex
+
+      - run: uv run pytest tests/ -q -W ignore::UserWarning
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      # scripts/bump_version.py (run via `make version`) asks PyPI what's
+      # actually live and bumps the patch number from there -- no git-side
+      # version bookkeeping needed, safe to run on every commit.
+      UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.11"
+
+      - run: make publish

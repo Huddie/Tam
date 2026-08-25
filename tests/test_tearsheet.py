@@ -142,7 +142,27 @@ def test_rolling_return_chart_matches_a_manual_compounding_over_the_window():
 
     returns = _returns(report, portfolio_id)
     expected = returns.rolling(window_days).apply(lambda w: (1 + w).prod() - 1.0)
-    assert list(fig.data[0].y) == pytest.approx(list(expected.values), nan_ok=True)
+    # data[0] is the below-zero fill trace, data[1] is the actual line --
+    # the line carries the real (unclipped) values.
+    assert list(fig.data[1].y) == pytest.approx(list(expected.values), nan_ok=True)
+
+
+def test_rolling_return_chart_fills_only_below_zero():
+    from tam.backtest.tearsheet import RollingReturnChart
+
+    values = [100.0 * (0.99**i) for i in range(30)] + [1.0 * (1.02**i) for i in range(30)]  # sharp drop then recovery
+    report = Report.from_curves({"only": _series(values)})
+
+    fig = RollingReturnChart(days=5).render(report)
+
+    fill_trace, line_trace = fig.data[0], fig.data[1]
+    for y_fill, y_line in zip(fill_trace.y, line_trace.y):
+        if pd.isna(y_line):
+            continue
+        if y_line >= 0:
+            assert y_fill == pytest.approx(0.0)  # flush with the zero line -- no visible fill
+        else:
+            assert y_fill == pytest.approx(y_line)  # fills all the way down to the real (negative) value
 
 
 def test_rolling_return_heatmap_defaults_to_1_2_5_10_year_windows():
