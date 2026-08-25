@@ -46,6 +46,20 @@ from .report import Report
 
 _SIDE_BY_SIDE_MAX_PORTFOLIOS = 3
 
+# Shared diverging colorscale for every return-valued heatmap in this module
+# -- red for negative, green for positive, shading from dark (further from
+# zero) to pale (near zero), meeting at a light neutral midpoint. Deliberately
+# NOT Plotly's built-in "RdYlGn": its middle color is yellow, which reads as
+# neither clearly positive nor clearly negative -- shades of a single hue per
+# sign are easier to reason about at a glance.
+RETURN_COLORSCALE = [
+    [0.0, "rgb(120,0,0)"],
+    [0.25, "rgb(200,60,60)"],
+    [0.5, "rgb(245,245,245)"],
+    [0.75, "rgb(60,140,60)"],
+    [1.0, "rgb(0,90,0)"],
+]
+
 
 class TearsheetChart(ABC):
     """One chart panel -- a standalone go.Figure built from a Report. Every
@@ -282,6 +296,7 @@ class RollingReturnHeatmapChart(TearsheetChart):
         days: Optional[List[int]] = None,
         start_freq: str = "MS",
         portfolio_id: Optional[str] = None,
+        colorscale=RETURN_COLORSCALE,
     ):
         if days is not None:
             self._windows = [(f"{d}D", d) for d in days]
@@ -293,6 +308,7 @@ class RollingReturnHeatmapChart(TearsheetChart):
             self._windows = [(f"{y}Y", y * self._TRADING_DAYS_PER_YEAR) for y in (1, 2, 5, 10)]
         self._start_freq = start_freq
         self._portfolio_id = portfolio_id
+        self._colorscale = colorscale
         self.title = "Rolling Return Heatmap"
 
     def render(self, report: Report) -> go.Figure:
@@ -310,7 +326,7 @@ class RollingReturnHeatmapChart(TearsheetChart):
                 z=values,
                 x=[d.strftime("%Y-%m") for d in grid.index],
                 y=labels,
-                colorscale="RdYlGn",
+                colorscale=self._colorscale,
                 zmid=0,
                 text=text,
                 texttemplate="%{text}",
@@ -383,11 +399,13 @@ class ReturnMatrixChart(TearsheetChart):
         end_dates: Optional[list] = None,
         freq: str = "YE",
         portfolio_id: Optional[str] = None,
+        colorscale=RETURN_COLORSCALE,
     ):
         self._start_dates = start_dates
         self._end_dates = end_dates
         self._freq = freq
         self._portfolio_id = portfolio_id
+        self._colorscale = colorscale
         self.title = "Return Matrix"
 
     def render(self, report: Report) -> go.Figure:
@@ -411,7 +429,7 @@ class ReturnMatrixChart(TearsheetChart):
                 z=values,
                 x=start_labels,
                 y=end_labels,
-                colorscale="RdYlGn",
+                colorscale=self._colorscale,
                 zmid=0,
                 text=text,
                 texttemplate="%{text}",
@@ -834,8 +852,9 @@ class MonthlyReturnsHeatmapChart(TearsheetChart):
     just another trace on the same axes), so pick which one with
     `portfolio_id` (defaults to the Report's first)."""
 
-    def __init__(self, portfolio_id: Optional[str] = None):
+    def __init__(self, portfolio_id: Optional[str] = None, colorscale=RETURN_COLORSCALE):
         self._portfolio_id = portfolio_id
+        self._colorscale = colorscale
         self.title = "Monthly Returns (%)"
 
     def render(self, report: Report) -> go.Figure:
@@ -853,7 +872,7 @@ class MonthlyReturnsHeatmapChart(TearsheetChart):
         fig = go.Figure(
             go.Heatmap(
                 z=values, x=month_labels, y=[str(y) for y in pivot.index],
-                colorscale="RdYlGn", zmid=0, text=text, texttemplate="%{text}",
+                colorscale=self._colorscale, zmid=0, text=text, texttemplate="%{text}",
                 hovertemplate="%{y} %{x}: %{z:.2f}%<extra></extra>",
             )
         )
