@@ -102,6 +102,184 @@ def test_rolling_sharpe_chart_accepts_a_custom_window_and_labels_its_own_title()
     assert fig.data
 
 
+def test_rolling_return_chart_defaults_to_a_one_year_window():
+    from tam.backtest.tearsheet import RollingReturnChart
+
+    chart = RollingReturnChart()
+
+    assert chart._window_days == 252
+    assert "1-Year" in chart.title
+
+
+def test_rolling_return_chart_accepts_years_months_or_days():
+    from tam.backtest.tearsheet import RollingReturnChart
+
+    assert RollingReturnChart(years=5)._window_days == 5 * 252
+    assert RollingReturnChart(months=6)._window_days == 6 * 21
+    assert RollingReturnChart(days=10)._window_days == 10
+    assert "5-Year" in RollingReturnChart(years=5).title
+    assert "6-Month" in RollingReturnChart(months=6).title
+    assert "10-Day" in RollingReturnChart(days=10).title
+
+
+def test_rolling_return_chart_days_wins_when_multiple_units_are_given():
+    from tam.backtest.tearsheet import RollingReturnChart
+
+    chart = RollingReturnChart(years=5, months=6, days=10)
+
+    assert chart._window_days == 10
+
+
+def test_rolling_return_chart_matches_a_manual_compounding_over_the_window():
+    from tam.backtest.tearsheet import RollingReturnChart, _returns
+
+    report = _report(n_portfolios=1)
+    portfolio_id = report.portfolio_ids()[0]
+    window_days = 10
+
+    fig = RollingReturnChart(days=window_days).render(report)
+
+    returns = _returns(report, portfolio_id)
+    expected = returns.rolling(window_days).apply(lambda w: (1 + w).prod() - 1.0)
+    assert list(fig.data[0].y) == pytest.approx(list(expected.values), nan_ok=True)
+
+
+def test_rolling_return_heatmap_defaults_to_1_2_5_10_year_windows():
+    from tam.backtest.tearsheet import RollingReturnHeatmapChart
+
+    chart = RollingReturnHeatmapChart()
+
+    assert [label for label, _ in chart._windows] == ["1Y", "2Y", "5Y", "10Y"]
+    assert [days for _, days in chart._windows] == [252, 504, 1260, 2520]
+
+
+def test_rolling_return_heatmap_accepts_a_list_of_years_months_or_days():
+    from tam.backtest.tearsheet import RollingReturnHeatmapChart
+
+    years_chart = RollingReturnHeatmapChart(years=[1, 3])
+    assert [label for label, _ in years_chart._windows] == ["1Y", "3Y"]
+    assert [days for _, days in years_chart._windows] == [252, 756]
+
+    months_chart = RollingReturnHeatmapChart(months=[1, 6])
+    assert [days for _, days in months_chart._windows] == [21, 126]
+
+    days_chart = RollingReturnHeatmapChart(days=[5, 20])
+    assert [days for _, days in days_chart._windows] == [5, 20]
+
+
+def test_rolling_return_heatmap_renders_a_grid_shaped_z_matching_x_and_y():
+    from tam.backtest.tearsheet import RollingReturnHeatmapChart
+
+    # 3 years of daily data -- enough for the default 1Y/2Y windows to
+    # produce real (non-NaN) cells, even though 5Y/10Y can't.
+    values = [100.0 * (1.0002**i) for i in range(3 * 252)]
+    report = Report.from_curves({"only": _series(values)})
+
+    fig = RollingReturnHeatmapChart(years=[1, 2]).render(report)
+
+    heatmap = fig.data[0]
+    assert heatmap.type == "heatmap"
+    assert list(heatmap.y) == ["1Y", "2Y"]
+    assert heatmap.z.shape == (2, len(heatmap.x))
+    # some 1-year windows near the start of the 3-year history have enough
+    # room to compute a real return -- not every cell should be NaN.
+    assert not all(pd.isna(v) for v in heatmap.z[0])
+
+
+def test_rolling_return_heatmap_matches_a_manual_brute_force_computation():
+    from tam.backtest.tearsheet import _rolling_return_matrix
+
+    idx = pd.date_range("2020-01-01", periods=400, freq="D")
+    rng_values = [0.001 * ((i % 7) - 3) for i in range(400)]  # deterministic, no real randomness needed
+    returns = pd.Series(rng_values, index=idx)
+
+    grid = _rolling_return_matrix(returns, [("10D", 10)], start_freq="MS")
+
+    for start_date, row in grid.iterrows():
+        i = returns.index.searchsorted(start_date)
+        window = returns.iloc[i : i + 10]
+        if len(window) < 10:
+            assert pd.isna(row["10D"])
+        else:
+            expected = float((1 + window).prod() - 1.0)
+            assert row["10D"] == pytest.approx(expected)
+
+
+def test_return_matrix_with_explicit_start_and_end_dates_matches_a_manual_computation():
+    from tam.backtest.tearsheet import _return_matrix
+
+    idx = pd.date_range("2020-01-01", periods=100, freq="D")
+    values = [0.001 * ((i % 5) - 2) for i in range(100)]
+    returns = pd.Series(values, index=idx)
+
+    start_dates = [idx[0], idx[10], idx[50]]
+    end_dates = [idx[20], idx[60], idx[90]]
+
+    matrix = _return_matrix(returns, start_dates, end_dates)
+
+    for start_date in start_dates:
+        s = returns.index.searchsorted(start_date)
+        for end_date in end_dates:
+            e = returns.index.searchsorted(end_date, side="right") - 1
+            cell = matrix.loc[start_date, end_date]
+            if e < s:
+                assert pd.isna(cell)
+            else:
+                expected = float((1 + returns.iloc[s : e + 1]).prod() - 1.0)
+                assert cell == pytest.approx(expected)
+
+
+def test_return_matrix_is_nan_below_the_diagonal_when_end_is_before_start():
+    from tam.backtest.tearsheet import _return_matrix
+
+    idx = pd.date_range("2020-01-01", periods=30, freq="D")
+    returns = pd.Series([0.001] * 30, index=idx)
+
+    matrix = _return_matrix(returns, [idx[20]], [idx[5]])  # start AFTER end
+
+    assert pd.isna(matrix.loc[idx[20], idx[5]])
+
+
+def test_return_matrix_chart_accepts_explicit_start_and_end_dates():
+    from tam.backtest.tearsheet import ReturnMatrixChart
+
+    idx = pd.date_range("2020-01-01", periods=100, freq="D")
+    report = Report.from_curves({"only": _series([100.0 * (1.0005**i) for i in range(100)], start=idx[0].date())})
+
+    start_dates = [idx[0], idx[30]]
+    end_dates = [idx[50], idx[99]]
+    fig = ReturnMatrixChart(start_dates=start_dates, end_dates=end_dates).render(report)
+
+    heatmap = fig.data[0]
+    assert list(heatmap.x) == [d.strftime("%Y-%m-%d") for d in start_dates]
+    assert list(heatmap.y) == [d.strftime("%Y-%m-%d") for d in end_dates]
+    assert heatmap.z.shape == (len(end_dates), len(start_dates))
+
+
+def test_return_matrix_chart_defaults_to_annual_period_boundaries():
+    from tam.backtest.tearsheet import ReturnMatrixChart
+
+    idx = pd.date_range("2019-06-01", periods=3 * 252, freq="D")
+    report = Report.from_curves({"only": _series([100.0 * (1.0002**i) for i in range(3 * 252)], start=idx[0].date())})
+
+    fig = ReturnMatrixChart().render(report)
+
+    heatmap = fig.data[0]
+    years_covered = {2019, 2020, 2021, 2022}
+    assert {int(x[:4]) for x in heatmap.x} <= years_covered
+    assert {int(y[:4]) for y in heatmap.y} <= years_covered
+
+
+def test_return_matrix_chart_defaults_to_the_first_portfolio():
+    from tam.backtest.tearsheet import ReturnMatrixChart
+
+    report = _report(n_portfolios=2)
+
+    fig = ReturnMatrixChart().render(report)
+
+    assert report.portfolio_ids()[0] in fig.layout.title.text
+
+
 def test_return_distribution_by_start_date_chart_has_four_traces_per_portfolio():
     from tam.backtest.tearsheet import ReturnDistributionByStartDateChart
 
@@ -426,6 +604,31 @@ def test_sharpe_difference_by_start_date_annotates_with_a_single_portfolio():
 
     assert not fig.data
     assert "at least 2 portfolios" in fig.layout.annotations[0].text
+
+
+def test_monthly_returns_chart_has_one_bar_trace_per_portfolio_in_chronological_order():
+    from tam.backtest.tearsheet import MonthlyReturnsChart
+
+    report = _report(n_portfolios=2)
+
+    fig = MonthlyReturnsChart().render(report)
+
+    assert len(fig.data) == 2
+    for trace in fig.data:
+        assert trace.type == "bar"
+        assert list(trace.x) == sorted(trace.x)  # chronological, not shuffled/binned
+
+
+def test_monthly_returns_chart_matches_a_manual_monthly_compounding():
+    report = _report(n_portfolios=1)
+    portfolio_id = report.portfolio_ids()[0]
+
+    from tam.backtest.tearsheet import MonthlyReturnsChart, _returns
+
+    fig = MonthlyReturnsChart().render(report)
+
+    expected = _returns(report, portfolio_id).add(1).resample("ME").prod().sub(1)
+    assert list(fig.data[0].y) == pytest.approx(list(expected.values))
 
 
 def test_monthly_returns_heatmap_defaults_to_the_first_portfolio():
