@@ -3184,7 +3184,7 @@ wheels = [
 
 [[package]]
 name = "tam-quant"
-version = "0.1.21"
+version = "0.1.22"
 source = { editable = "." }
 dependencies = [
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.apple.com/simple" }, marker = "python_full_version < '3.11'" },

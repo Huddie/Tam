@@ -126,6 +126,27 @@ def test_yfinance_adjust_true_fills_adj_close_from_close_when_yfinance_omits_it(
     assert list(df["adj_close"]) == list(df["close"])
 
 
+def test_yfinance_handles_a_duplicate_close_column_without_crashing(monkeypatch):
+    # Regression test: a real Colab traceback hit "ValueError: Cannot set a
+    # DataFrame with multiple columns to the single column adj_close" --
+    # some yfinance version/auto_adjust combination returned two columns
+    # both named "Close", making df[CLOSE] a DataFrame instead of a Series
+    # by the time `df[ADJ_CLOSE] = df[CLOSE]` ran.
+    dates = pd.to_datetime(["2023-01-03", "2023-01-04"])
+    raw = pd.DataFrame(
+        [[10.0, 10.5, 9.5, 10.2, 10.2, 100], [11.0, 11.5, 10.5, 11.2, 11.2, 200]],
+        index=dates,
+        columns=["Open", "High", "Low", "Close", "Close", "Volume"],
+    )
+    monkeypatch.setattr("yfinance.download", lambda *a, **kw: raw)
+
+    df = YFinanceProvider(adjust=True).fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
+
+    assert isinstance(df["close"], pd.Series)
+    assert list(df["close"]) == [10.2, 11.2]
+    assert list(df["adj_close"]) == [10.2, 11.2]
+
+
 def test_yfinance_adjusted_provider_is_registered_and_zero_arg_constructible():
     from tam.data.providers import DataProvider, YFinanceAdjustedProvider
     from tam.registry import Registry
