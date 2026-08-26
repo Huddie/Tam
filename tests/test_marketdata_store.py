@@ -101,9 +101,14 @@ def test_local_and_r2_stores_are_registered_under_expected_names():
     assert "r2_parquet" in Registry.names(MinuteBarStore)
 
 
-def test_r2_store_construction_raises_actionable_error_without_credentials(monkeypatch):
+def test_r2_store_construction_raises_actionable_error_without_credentials(monkeypatch, tmp_path):
     for var in ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"]:
         monkeypatch.delenv(var, raising=False)
+    # resolve_r2_credentials() also checks a .env file found by walking UP
+    # from the current directory -- without this chdir, this test would
+    # run from the repo root and pick up ITS real .env file's real R2_*
+    # values, defeating the whole "raises without credentials" premise.
+    monkeypatch.chdir(tmp_path)
 
     with pytest.raises(RuntimeError, match="Missing R2 credential"):
         Registry.create(MinuteBarStore, "r2_parquet")
@@ -127,9 +132,24 @@ class _FakePaginator:
     def __init__(self, objects: Dict[str, bytes]):
         self._objects = objects
 
-    def paginate(self, Bucket, Prefix):
-        contents = [{"Key": key} for key in self._objects if key.startswith(Prefix)]
-        yield {"Contents": contents}
+    def paginate(self, Bucket, Prefix, Delimiter=None):
+        matching = [key for key in self._objects if key.startswith(Prefix)]
+        if not Delimiter:
+            yield {"Contents": [{"Key": key} for key in matching]}
+            return
+
+        # Real S3 delimiter semantics: group everything after Prefix up to
+        # the next Delimiter into CommonPrefixes (like "directories"), and
+        # only keys with NO further Delimiter go into Contents directly.
+        common_prefixes = set()
+        contents = []
+        for key in matching:
+            rest = key[len(Prefix) :]
+            if Delimiter in rest:
+                common_prefixes.add(Prefix + rest.split(Delimiter, 1)[0] + Delimiter)
+            else:
+                contents.append({"Key": key})
+        yield {"Contents": contents, "CommonPrefixes": [{"Prefix": p} for p in sorted(common_prefixes)]}
 
 
 class _FakeS3Client:
@@ -189,7 +209,7 @@ def test_r2_store_write_then_read_roundtrip():
     assert store.exists("aapl")  # case-insensitive, matching LocalMinuteBarStore
     result = store.read("AAPL")
     assert list(result["close"]) == [100.0, 101.0]
-    assert client.put_calls == 1  # one plain put_object for the whole year-partition, not one per row
+    assert client.put_calls == 2  # one plain put_object for the year-partition, one for its completeness sidecar
 
 
 def test_r2_store_write_is_upsert_overwriting_overlapping_timestamps():
@@ -212,8 +232,25 @@ def test_r2_store_write_splits_across_year_partitions():
 
     store.write("AAPL", df)
 
-    assert sorted(client.objects.keys()) == ["minute/AAPL/2020.parquet", "minute/AAPL/2021.parquet", "minute/AAPL/2022.parquet"]
+    assert sorted(client.objects.keys()) == [
+        "minute/AAPL/2020.completeness.json",
+        "minute/AAPL/2020.parquet",
+        "minute/AAPL/2021.completeness.json",
+        "minute/AAPL/2021.parquet",
+        "minute/AAPL/2022.completeness.json",
+        "minute/AAPL/2022.parquet",
+    ]
     assert list(store.read("AAPL")["close"]) == [1.0, 2.0, 3.0]
+
+
+def test_r2_store_list_symbols_enumerates_every_symbol_prefix_not_every_object():
+    client = _FakeS3Client()
+    store = R2MinuteBarStore(credentials=_FAKE_CREDS, client=client)
+    store.write("AAPL", _bars(["2024-01-02 14:30"], [1.0], symbol="AAPL"))
+    store.write("MSFT", _bars(["2024-01-02 14:30"], [1.0], symbol="MSFT"))
+    store.write("AAPL", _bars(["2023-01-03 14:30"], [1.0], symbol="AAPL"))  # a second year for AAPL
+
+    assert store.list_symbols() == ["AAPL", "MSFT"]  # not duplicated per year/file
 
 
 def test_r2_store_manifest_bytes_roundtrip():

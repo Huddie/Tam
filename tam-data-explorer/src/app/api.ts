@@ -22,6 +22,28 @@ export interface DateIndex {
   months: { month: number; days: number[] }[];
 }
 
+export interface DayCompleteness {
+  day: number;
+  actual_minutes: number;
+  expected_minutes: number;
+}
+
+export interface MonthCompleteness {
+  month: number;
+  actual_minutes: number;
+  expected_minutes: number;
+  days: DayCompleteness[];
+}
+
+export interface CompletenessIndex {
+  symbol: string;
+  year: number;
+  calendar: string;
+  actual_minutes: number;
+  expected_minutes: number;
+  months: MonthCompleteness[];
+}
+
 export interface TokenSummary {
   id: string;
   name: string;
@@ -76,6 +98,16 @@ export function viewFile(
  * day-partitioned storage (see the Worker's readParquetDateIndex). */
 export function fileDates(key: string): Promise<DateIndex> {
   return api(`/api/file/dates?key=${encodeURIComponent(key)}`);
+}
+
+/** The actual/expected-minutes completeness index tam.marketdata computed
+ * at ingest time (see tam.marketdata.completeness), for the year/month/day/
+ * range status indicator. Resolves to null (not a thrown error) when the
+ * sidecar doesn't exist -- a file ingested before this feature existed, or
+ * without pandas_market_calendars installed -- so callers can just omit
+ * the badge rather than surface an error for something that isn't one. */
+export function fileCompleteness(key: string): Promise<CompletenessIndex | null> {
+  return api<CompletenessIndex>(`/api/file/completeness?key=${encodeURIComponent(key)}`).catch(() => null);
 }
 
 export function csvDownloadUrl(key: string): string {

@@ -29,16 +29,29 @@ marketdata:
   extra_symbols: [SPY]
   start: "2021-08-25"
   end: "2026-08-24"
-  # Smaller than the default (20) -- caps how much is held in memory/lost on
-  # interruption before the next flush.
-  flush_every_days: 5
+  # Confirmed in production: a flush writes roughly the FULL point-in-time
+  # universe (~500-800 symbols, since nearly all of them trade every day),
+  # so a bigger flush_every_days means fewer TOTAL flush events across the
+  # whole backfill (each one still touches ~the same symbol count either
+  # way) -- worth the larger loss-on-crash now that flushes are both
+  # meaningfully faster (see flush_workers below) and retries are more
+  # robust (see tam/marketdata/store.py's _with_retries).
+  flush_every_days: 20
   # The actual crash (NO_SUCH_UPLOAD during CompleteMultipartUpload) happened
   # while this was still max_workers=1 -- proof it was never a concurrency
   # bug, just pyarrow.fs.S3FileSystem always doing a multipart upload
   # internally and R2 occasionally failing to complete it. Now fixed at the
   # root (R2MinuteBarStore uses boto3's plain put_object() instead -- no
-  # multipart at all), so raised back up from 1. Still a moderate 4, not the
-  # default 8, since this specific number hasn't been run against real R2
-  # for a full backfill yet -- watch the first few minutes of output before
-  # trusting it for the full multi-hour run.
+  # multipart at all), so raised back up from 1. This only governs FETCH
+  # concurrency now -- see flush_workers below for the (separate, much
+  # bigger) write-side bottleneck that was actually confirmed in production.
   max_workers: 4
+  # Confirmed in production to matter, not just theoretical: with this tied
+  # to max_workers (4), one flush of the ~full universe took over a minute
+  # (500-800 small independent R2 PUTs at only 4-way concurrency), while
+  # fetching kept racing ahead unblocked in its own threads -- looked like
+  # the backfill had stalled or lost years of data, when it had actually
+  # just fallen far behind on WRITES specifically. boto3 PUTs to different
+  # keys are cheap and independent, so this is safe to run much higher than
+  # fetch concurrency.
+  flush_workers: 16

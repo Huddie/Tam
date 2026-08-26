@@ -39,6 +39,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, TypeVar
 import pandas as pd
 
 from ..registry import Registry
+from .completeness import compute_completeness, completeness_sidecar_suffix
 from .credentials import R2Credentials, resolve_r2_credentials
 from .schema import MINUTE_BAR_COLUMNS, TS, empty_minute_bar_frame, ensure_utc_index
 
@@ -83,6 +84,14 @@ class MinuteBarStore(ABC):
     def write_manifest_bytes(self, data: bytes) -> None:
         """Persist `data` as this store's manifest. Default: a no-op,
         matching read_manifest_bytes()'s "no manifest support" default."""
+        return None
+
+    def write_completeness_bytes(self, symbol: str, year: int, data: bytes) -> None:
+        """Persist a completeness-index JSON sidecar (see
+        tam.marketdata.completeness) for one symbol-year. Default: a no-op
+        -- a custom third-party MinuteBarStore that doesn't override this
+        just doesn't get a completeness sidecar written, same "opt-in via
+        override" pattern as the manifest methods above."""
         return None
 
 
@@ -170,6 +179,18 @@ class ParquetFileSystemStore(MinuteBarStore):
         else:
             merged = group.sort_index()
         self._write_file(path, merged)
+        self._write_completeness(symbol, year, merged)
+
+    def _write_completeness(self, symbol: str, year: int, merged: pd.DataFrame) -> None:
+        index = compute_completeness(symbol, year, merged)
+        if index is not None:
+            self.write_completeness_bytes(symbol, year, index.to_json().encode("utf-8"))
+
+    def write_completeness_bytes(self, symbol: str, year: int, data: bytes) -> None:
+        path = f"{self._symbol_dir(symbol)}/{year}{completeness_sidecar_suffix()}"
+        self._fs.create_dir(path.rsplit("/", 1)[0], recursive=True)
+        with self._fs.open_output_stream(path) as handle:
+            handle.write(data)
 
     def _file_exists(self, path: str) -> bool:
         import pyarrow.fs as fs
@@ -300,6 +321,26 @@ class R2MinuteBarStore(MinuteBarStore):
         years = _with_retries(_list)
         return sorted(years)
 
+    def list_symbols(self) -> List[str]:
+        """Every symbol currently in this store, via an S3 delimiter
+        listing (one "directory level" under the prefix, not scanning
+        every object) -- used by scripts/backfill_completeness.py to
+        enumerate what to backfill without the caller already knowing
+        every symbol in the bucket."""
+        root = f"{self._prefix}/"
+
+        def _list() -> List[str]:
+            found = []
+            paginator = self._client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=root, Delimiter="/"):
+                for entry in page.get("CommonPrefixes", []):
+                    name = entry["Prefix"][len(root) :].rstrip("/")
+                    if name:
+                        found.append(name)
+            return found
+
+        return sorted(_with_retries(_list))
+
     def exists(self, symbol: str) -> bool:
         return bool(self._partition_years(symbol))
 
@@ -326,6 +367,20 @@ class R2MinuteBarStore(MinuteBarStore):
         else:
             merged = group.sort_index()
         self._write_object(key, merged)
+        self._write_completeness(symbol, year, merged)
+
+    def _write_completeness(self, symbol: str, year: int, merged: pd.DataFrame) -> None:
+        index = compute_completeness(symbol, year, merged)
+        if index is not None:
+            self.write_completeness_bytes(symbol, year, index.to_json().encode("utf-8"))
+
+    def write_completeness_bytes(self, symbol: str, year: int, data: bytes) -> None:
+        key = f"{self._symbol_prefix(symbol)}{year}{completeness_sidecar_suffix()}"
+
+        def _put() -> None:
+            self._client.put_object(Bucket=self._credentials.bucket, Key=key, Body=data)
+
+        _with_retries(_put)
 
     def _object_exists(self, key: str) -> bool:
         from botocore.exceptions import ClientError

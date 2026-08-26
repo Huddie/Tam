@@ -203,6 +203,7 @@ def ingest(
     extra_symbols: Sequence[str] = ("SPY",),
     flush_every_days: int = 20,
     max_workers: int = 8,
+    flush_workers: int = 16,
     force_recheck: bool = False,
 ) -> IngestResult:
     """Backfills every calendar day in [start, end]. `extra_symbols`
@@ -224,6 +225,20 @@ def ingest(
     check, filtering, validation, batching) is per-day-independent, and
     MinuteBarStore.write() sorts by timestamp on write regardless of the
     order rows were appended in.
+
+    `flush_workers` is DELIBERATELY a separate, higher-by-default knob than
+    `max_workers` -- confirmed in production to matter, not just a
+    theoretical distinction: one flush writes roughly the ENTIRE point-in-
+    time universe (~500-800 symbols, since nearly all of them trade every
+    day), while `max_workers` only ever needs to cover fetching one day at
+    a time. At `max_workers`-many flush workers, one flush of the full
+    universe took over a minute (500-800 small, independent, cheap R2 PUTs,
+    bottlenecked on worker count alone), while fetching -- unblocked in its
+    own threads the whole time -- kept racing ahead by YEARS, making it look
+    like the backfill had stalled or lost data when it had actually just
+    fallen far behind on writes specifically. boto3 clients are documented
+    thread-safe and each write hits a different key, so there's no
+    correctness reason to keep this tied to fetch concurrency.
 
     Deliberately does NOT call ingest_day() per day here, even though that
     would be simpler: MinuteBarStore.write() reads, merges, and rewrites a
@@ -256,7 +271,7 @@ def ingest(
             # bottleneck even though fetching is already concurrent above;
             # different symbols write to different paths, so there's
             # nothing to race on running these concurrently too.
-            with ThreadPoolExecutor(max_workers=max_workers) as write_pool:
+            with ThreadPoolExecutor(max_workers=flush_workers) as write_pool:
                 list(write_pool.map(_write_one, pending_by_symbol.items()))
         pending_by_symbol.clear()
         manifest.flush()
@@ -319,6 +334,7 @@ class MarketDataSettings:
     extra_symbols: Optional[List[str]] = None
     flush_every_days: Optional[int] = None
     max_workers: Optional[int] = None
+    flush_workers: Optional[int] = None
     force_recheck: Optional[bool] = None
     start: str
     end: str
@@ -350,6 +366,8 @@ def run_ingest(config_path: str | Path) -> IngestResult:
         ingest_kwargs["flush_every_days"] = settings.flush_every_days
     if settings.max_workers is not None:
         ingest_kwargs["max_workers"] = settings.max_workers
+    if settings.flush_workers is not None:
+        ingest_kwargs["flush_workers"] = settings.flush_workers
     if settings.force_recheck is not None:
         ingest_kwargs["force_recheck"] = settings.force_recheck
 

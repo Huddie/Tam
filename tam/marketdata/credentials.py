@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from dotenv import dotenv_values, find_dotenv
+
 _FIELD_ENV_VARS = {
     "account_id": "R2_ACCOUNT_ID",
     "access_key_id": "R2_ACCESS_KEY_ID",
@@ -67,6 +69,22 @@ def _from_file(field: str) -> Optional[str]:
     return value or None
 
 
+def _from_dotenv(env_var: str) -> Optional[str]:
+    """python-dotenv's own find_dotenv() walks up from the current working
+    directory looking for a .env file (so this works whether a script runs
+    from the repo root or one of its subdirectories); dotenv_values() just
+    parses it into a dict without touching os.environ, since loading the
+    WHOLE file into the process environment is a bigger behavior change
+    than "find this one credential" calls for. Same pattern as
+    tam.discovery.auth._from_dotenv / tam.marketdata.explorer_client's own
+    copy -- kept as its own copy here too rather than shared, per this
+    module's own docstring on staying independent of tam.discovery.auth."""
+    path = find_dotenv(usecwd=True)
+    if not path:
+        return None
+    return dotenv_values(path).get(env_var) or None
+
+
 def _resolve_field(field: str, explicit: Optional[str]) -> Optional[str]:
     if explicit:
         return explicit
@@ -74,6 +92,9 @@ def _resolve_field(field: str, explicit: Optional[str]) -> Optional[str]:
     env_value = os.environ.get(env_var)
     if env_value:
         return env_value
+    dotenv_value = _from_dotenv(env_var)
+    if dotenv_value:
+        return dotenv_value
     colab_value = _from_colab(env_var)
     if colab_value:
         return colab_value
@@ -103,10 +124,11 @@ def resolve_r2_credentials(
     bucket: Optional[str] = None,
 ) -> R2Credentials:
     """Resolution order per field: the matching keyword argument here, then
-    its R2_* env var, then (if running in Colab) that same env var's name as
-    a Colab secret, then whatever save_r2_credentials() last wrote to
-    ~/.config/tam-marketdata/r2_credentials.json. Raises one clear,
-    actionable RuntimeError naming every field still missing after all four
+    its R2_* env var (directly, or via a .env file found by walking up from
+    the current directory), then (if running in Colab) that same env var's
+    name as a Colab secret, then whatever save_r2_credentials() last wrote
+    to ~/.config/tam-marketdata/r2_credentials.json. Raises one clear,
+    actionable RuntimeError naming every field still missing after all
     sources, rather than a bare KeyError on the first one it happens to hit."""
     explicit = {"account_id": account_id, "access_key_id": access_key_id, "secret_access_key": secret_access_key, "bucket": bucket}
     resolved = {field: _resolve_field(field, explicit[field]) for field in _FIELD_ENV_VARS}
@@ -117,7 +139,7 @@ def resolve_r2_credentials(
         raise RuntimeError(
             f"Missing R2 credential field(s): {', '.join(missing)}. Pick one:\n"
             "  1. Pass them directly as keyword arguments.\n"
-            f"  2. Set the corresponding environment variable(s):\n{env_hints}\n"
+            f"  2. Set the corresponding environment variable(s) (directly, or via a .env file):\n{env_hints}\n"
             "  3. In Colab: add secrets with those exact names via the key-icon panel "
             "in the left sidebar, and grant this notebook access to them.\n"
             "  4. Call save_r2_credentials(...) once to save them to "

@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { type DateIndex, type FilePage, csvDownloadUrl, fileDates, rawDownloadUrl, viewFile } from "../api";
+import {
+  type CompletenessIndex,
+  type DateIndex,
+  type FilePage,
+  csvDownloadUrl,
+  fileCompleteness,
+  fileDates,
+  rawDownloadUrl,
+  viewFile,
+} from "../api";
 import { useSort } from "../useSort";
 
 const PAGE_SIZE = 50;
@@ -8,6 +17,95 @@ const YEAR_KEY_RE = /\/(\d{4})\.parquet$/;
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
+}
+
+/** green/amber/red on the same rough thresholds tam.marketdata.validate
+ * uses to decide "worth a warning" (50% -- below that is a red flag, not
+ * just imperfect) plus a tighter top band, since "basically every minute
+ * present" and "most of the session present" are both worth distinguishing
+ * from "badly incomplete" at a glance. */
+function completenessColor(ratio: number): string {
+  if (ratio >= 0.98) return "#1a7f5a";
+  if (ratio >= 0.5) return "#b45309";
+  return "#b42318";
+}
+
+/** Sums actual/expected minutes across every day in `index` for which
+ * `include(dateStr)` (an "YYYY-MM-DD" string) returns true -- the one
+ * piece of aggregation logic CompletenessBadge needs for all four scopes
+ * (year/month/day/range), since a custom range can span multiple months
+ * within the same year file. */
+function sumCompleteness(index: CompletenessIndex, include: (dateStr: string) => boolean): { actual: number; expected: number } {
+  let actual = 0;
+  let expected = 0;
+  for (const month of index.months) {
+    for (const d of month.days) {
+      const dateStr = `${index.year}-${pad2(month.month)}-${pad2(d.day)}`;
+      if (include(dateStr)) {
+        actual += d.actual_minutes;
+        expected += d.expected_minutes;
+      }
+    }
+  }
+  return { actual, expected };
+}
+
+/** A minimal actual-vs-expected status indicator -- a colored dot plus a
+ * percentage, scoped to whichever of year/month/day/custom-range is
+ * currently being viewed. Hover for the exact counts and date range;
+ * intentionally not more than that (a fuller breakdown belongs in the
+ * "Browse dates" panel's own per-day list, not cluttering this line). */
+function CompletenessBadge({
+  index,
+  month,
+  day,
+  rangeStart,
+  rangeEnd,
+}: {
+  index: CompletenessIndex | null;
+  month?: number;
+  day?: number;
+  rangeStart?: string;
+  rangeEnd?: string;
+}) {
+  if (!index) return null;
+
+  let actual: number;
+  let expected: number;
+  let label: string;
+
+  if (rangeStart) {
+    const end = rangeEnd || rangeStart;
+    ({ actual, expected } = sumCompleteness(index, (d) => d >= rangeStart && d <= end));
+    label = end !== rangeStart ? `${rangeStart} → ${end}` : rangeStart;
+  } else if (month != null && day != null) {
+    const dateStr = `${index.year}-${pad2(month)}-${pad2(day)}`;
+    ({ actual, expected } = sumCompleteness(index, (d) => d === dateStr));
+    label = `${index.year}-${pad2(month)}-${pad2(day)}`;
+  } else if (month != null) {
+    const m = index.months.find((mo) => mo.month === month);
+    actual = m?.actual_minutes ?? 0;
+    expected = m?.expected_minutes ?? 0;
+    label = `${index.year}-${pad2(month)}`;
+  } else {
+    actual = index.actual_minutes;
+    expected = index.expected_minutes;
+    label = String(index.year);
+  }
+
+  if (expected === 0) return null; // no trading days at all in this scope -- nothing meaningful to show
+  const ratio = actual / expected;
+  const pct = Math.round(ratio * 100);
+
+  return (
+    <span
+      className="completeness-badge"
+      title={`${label}: ${actual.toLocaleString()} / ${expected.toLocaleString()} expected minutes present (${pct}%)`}
+    >
+      <span className="completeness-dot" style={{ background: completenessColor(ratio) }} />
+      {pct}% complete
+    </span>
+  );
 }
 
 /** A single "Download" button that opens CSV/Parquet as a small dropdown --
@@ -141,6 +239,7 @@ export function FileViewPage() {
   const [error, setError] = useState<string | null>(null);
   const [browsing, setBrowsing] = useState(false);
   const [dateIndex, setDateIndex] = useState<DateIndex | null>(null);
+  const [completeness, setCompleteness] = useState<CompletenessIndex | null>(null);
   const [pageInput, setPageInput] = useState(String(page));
 
   const yearMatch = YEAR_KEY_RE.exec(key);
@@ -153,6 +252,12 @@ export function FileViewPage() {
       .then(setData)
       .catch((e) => setError(String(e)));
   }, [key, page, month, day, rangeStart, rangeEnd]);
+
+  useEffect(() => {
+    if (!key) return;
+    setCompleteness(null);
+    fileCompleteness(key).then(setCompleteness);
+  }, [key]);
 
   useEffect(() => {
     setPageInput(String(page));
@@ -252,6 +357,7 @@ export function FileViewPage() {
         &larr; Back to browse
       </Link>
       <h1>{key}</h1>
+      <CompletenessBadge index={completeness} month={month} day={day} rangeStart={rangeStart} rangeEnd={rangeEnd} />
 
       {(hasFilter || browsing) && (
         <p className="breadcrumb">

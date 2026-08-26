@@ -36,7 +36,19 @@ Massive flat files  -->  filter to universe  -->  validate  -->  R2 (Parquet)
   `<root>/<SYMBOL>/<year>.parquet`, over any `pyarrow.fs.FileSystem` --
   `local_parquet` (plain disk, what tests/dev use) and `r2_parquet`
   (Cloudflare R2) are the same class, just pointed at a different
-  filesystem.
+  filesystem. Every write also (re)computes and persists a completeness
+  sidecar -- see `tam.marketdata.completeness` below.
+- **`tam.marketdata.completeness`** -- actual-vs-expected trading-session
+  minutes per day/month/year for one symbol-year, computed from the NYSE
+  calendar (`pandas_market_calendars`, the same optional dependency
+  `tam.marketdata.validate`'s own session-coverage check uses). Written as
+  `<root>/<SYMBOL>/<year>.completeness.json` next to that year's own
+  `.parquet` file every time `MinuteBarStore.write()` touches it -- tam-
+  data-explorer's Worker reads this back verbatim (never recomputes it) to
+  drive the year/month/day/range completeness badge on the file-viewer
+  page. Data ingested before this existed (or without the `marketdata`
+  extra installed at ingest time) has no sidecar until backfilled --
+  see `scripts/backfill_completeness.py`.
 - **`tam.marketdata.ingest`** -- wires the above into a resumable,
   idempotent backfill (a JSON manifest tracks which days are already done).
 - **`tam.marketdata.duckdb_query.open_duckdb()`** -- the query entry point;
@@ -69,6 +81,26 @@ scale (SPY + ~600-800 point-in-time tickers x 20 years of 1-minute bars) are
 small: on the order of tens of GB, a few dollars a month in R2 storage, with
 **zero R2 egress fees** -- the main recurring cost is your Massive
 subscription itself, not infrastructure.
+
+### Backfilling completeness sidecars for already-ingested data
+
+Every new write produces a completeness sidecar automatically (see
+`tam.marketdata.completeness` above), but symbol-years ingested before that
+existed don't have one yet. Run once, from a machine with real R2
+read-write credentials configured:
+
+```bash
+uv run python scripts/backfill_completeness.py            # every symbol currently in the bucket
+uv run python scripts/backfill_completeness.py --symbol AAPL --symbol MSFT
+uv run python scripts/backfill_completeness.py --force    # recompute even where a sidecar already exists
+uv run python scripts/backfill_completeness.py --workers 16  # default: 8 -- I/O-bound, safe to raise
+```
+
+Safe to re-run: without `--force` it skips any symbol-year that already
+has a sidecar, so an interrupted run only redoes the remaining work next
+time. Runs symbol-years concurrently (a thread pool -- see the script's own
+docstring); one failure is reported at the end without aborting the rest.
+
 
 ## Backfilling data
 

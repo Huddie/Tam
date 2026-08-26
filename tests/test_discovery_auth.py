@@ -5,6 +5,16 @@ import pytest
 from tam.discovery.auth import resolve_token, token_file_path
 
 
+@pytest.fixture(autouse=True)
+def _isolate_from_the_real_dotenv_file(monkeypatch, tmp_path):
+    # resolve_token() checks a .env file, found by walking UP from the
+    # current directory (see auth.py's own _from_dotenv) -- without this,
+    # every test here would run from the repo root and could pick up ITS
+    # real .env file if it ever defines TAM_PAT. tmp_path is always
+    # outside the repo, so walking up from there finds nothing.
+    monkeypatch.chdir(tmp_path)
+
+
 def test_token_file_path_is_under_home_config():
     assert token_file_path() == Path.home() / ".config" / "upload-discovery" / "token"
 

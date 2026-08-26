@@ -100,6 +100,25 @@ export async function viewFileDates(env: Env, key: string): Promise<Response> {
   return Response.json(await readParquetDateIndex(buffer));
 }
 
+/** GET /api/file/completeness?key= -- the actual/expected-minutes index
+ * tam.marketdata.completeness computed and wrote at ingest time, next to
+ * this same year's parquet file (see MinuteBarStore._upsert_partition on
+ * the Python side) -- this route just reads that JSON sidecar back
+ * verbatim. Never recomputed here: porting a full NYSE trading calendar
+ * into a Cloudflare Worker isn't worth it for something already computed
+ * correctly in Python at write time. 404s (not a 200 with nulls) for a
+ * file ingested before this feature existed, or ingested without the
+ * `marketdata` extra's pandas_market_calendars installed -- the frontend
+ * just omits the completeness badge in that case rather than showing
+ * misleading zeros. */
+export async function viewFileCompleteness(env: Env, key: string): Promise<Response> {
+  if (!key.endsWith(".parquet")) throw new ApiError(400, `${key} is not a .parquet file`);
+  const sidecarKey = key.replace(/\.parquet$/, ".completeness.json");
+  const object = await env.DATA.get(sidecarKey);
+  if (!object) throw new ApiError(404, `no completeness index at ${sidecarKey}`);
+  return new Response(object.body, { headers: { "Content-Type": "application/json" } });
+}
+
 /** GET /api/file/csv?key= -- every row (not just the current page), as a
  * downloadable CSV -- deliberately unpaginated so exporting isn't
  * artificially truncated to the table view's own page size. */
