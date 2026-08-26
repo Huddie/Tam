@@ -29,17 +29,38 @@ Layout: `charts` stacked in a left column, the metrics table in a right
 column, when 3 or fewer portfolios are being compared -- more than that and
 a fixed-width side table gets cramped with that many per-portfolio columns,
 so it switches to charts on top (full width), table below (full width).
+
+Standalone / chained chart API
+--------------------------------
+Every TearsheetChart is callable -- pass a series directly and get back a
+ChartCall that renders inline in a Jupyter cell or via .show():
+
+    c = CumulativeReturnsChart()
+    c(my_series)           # auto-displays in Jupyter (last cell expression)
+    c(my_series).show()    # explicit .show()
+
+Chain multiple charts with | to produce a single composite Plotly figure:
+
+    c1(series) | c2(series) | c3(series)
+
+`series` accepted by __call__ may be any of:
+    - pd.Series             (one portfolio, name used as portfolio id)
+    - Dict[str, pd.Series]  (explicit {name: curve} mapping)
+    - pd.DataFrame          (one named curve per column)
+
+All three are automatically wrapped into a Report via Report.from_curves().
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import plotly.colors
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from ..basket.factors import ExpectedShortfall, MaxDrawdown, RollingSharpe
 from ..registry import Registry
@@ -84,12 +105,28 @@ class TearsheetChart(ABC):
     """One chart panel -- a standalone go.Figure built from a Report. Every
     registered chart gets its own figure (not one shared subplot grid), so
     adding/removing charts from a tearsheet never means rewiring row/col
-    indices elsewhere."""
+    indices elsewhere.
+
+    Every chart is also directly callable: pass a series/curves and get back
+    a ChartCall that renders inline in Jupyter or via .show(). Chain multiple
+    calls with | to produce a single composite figure:
+
+        DrawdownChart()(my_series) | RollingSharpeChart()(my_series)
+    """
 
     title: str = ""
 
     @abstractmethod
     def render(self, report: Report) -> go.Figure: ...
+
+    def __call__(
+        self,
+        series: Union[pd.Series, Dict[str, pd.Series], pd.DataFrame],
+    ) -> ChartCall:
+        """Wrap `series` + this chart into a ChartCall. `series` may be a
+        pd.Series (one portfolio, name preserved as portfolio id), a
+        {name: series} dict, or a DataFrame (one column per portfolio)."""
+        return ChartCall(self, series)
 
 
 class TearsheetMetric(ABC):
@@ -100,6 +137,131 @@ class TearsheetMetric(ABC):
 
     @abstractmethod
     def compute(self, report: Report, portfolio_id: str) -> float: ...
+
+
+# ---------------------------------------------------------------------------
+# Standalone / chained rendering helpers
+# ---------------------------------------------------------------------------
+
+_SeriesInput = Union[pd.Series, Dict[str, pd.Series], pd.DataFrame]
+
+
+def _to_report(series: _SeriesInput) -> Report:
+    """Convert any accepted series shape into a Report for chart.render()."""
+    if isinstance(series, pd.Series):
+        name = series.name or "portfolio"
+        return Report.from_curves({str(name): series})
+    return Report.from_curves(series)
+
+
+class ChartCall:
+    """A (chart, series) pair -- the result of calling a TearsheetChart with
+    data. Renders as a standalone Plotly figure via .show() or as a Jupyter
+    rich display (last-expression in a cell). Chain with | to produce a
+    ChartPipeline that renders all charts as one composite figure."""
+
+    def __init__(self, chart: TearsheetChart, series: _SeriesInput) -> None:
+        self._chart = chart
+        self._series = series
+
+    def render(self) -> go.Figure:
+        """Build and return the Plotly figure for this chart."""
+        return self._chart.render(_to_report(self._series))
+
+    def show(self) -> None:
+        """Display the figure (calls fig.show(), works in notebooks + scripts)."""
+        self.render().show()
+
+    def __or__(self, other: Union[ChartCall, ChartPipeline]) -> ChartPipeline:
+        if isinstance(other, ChartPipeline):
+            return ChartPipeline([self] + other._calls)
+        return ChartPipeline([self, other])
+
+    # Jupyter rich display protocol ----------------------------------------
+
+    def _build_mimebundle(self, **kwargs):
+        return self.render()._repr_mimebundle_(**kwargs)  # type: ignore[attr-defined]
+
+    def _repr_mimebundle_(self, **kwargs):
+        return self._build_mimebundle(**kwargs)
+
+
+class ChartPipeline:
+    """An ordered sequence of ChartCalls rendered as one composite Plotly
+    figure (one subplot row per chart). Created by chaining ChartCalls with |:
+
+        c1(series) | c2(series) | c3(series)
+
+    Each chart's own traces are copied into the composite figure at its own
+    row, so every layout knob (yaxis title, yaxis type, etc.) is preserved
+    per-panel. Charts that already use Heatmap/Bar/Table traces copy faithfully
+    -- only axis *domain* keys in the per-trace layout are rewritten; the
+    traces themselves are untouched."""
+
+    def __init__(self, calls: List[ChartCall]) -> None:
+        self._calls = list(calls)
+
+    def __or__(self, other: Union[ChartCall, ChartPipeline]) -> ChartPipeline:
+        if isinstance(other, ChartPipeline):
+            return ChartPipeline(self._calls + other._calls)
+        return ChartPipeline(self._calls + [other])
+
+    def render(self) -> go.Figure:
+        """Build a single composite figure with one subplot row per chart."""
+        n = len(self._calls)
+        if n == 0:
+            return go.Figure()
+        if n == 1:
+            return self._calls[0].render()
+
+        titles = [c._chart.title or "" for c in self._calls]
+        # Determine specs: use "table" type for any chart whose sub-figure
+        # contains a go.Table trace, otherwise "xy". We render each sub-figure
+        # first to inspect its trace types.
+        sub_figs = [call.render() for call in self._calls]
+        specs = []
+        for sub in sub_figs:
+            has_table = any(isinstance(t, go.Table) for t in sub.data)
+            specs.append([{"type": "table" if has_table else "xy"}])
+
+        composite = make_subplots(
+            rows=n,
+            cols=1,
+            subplot_titles=titles,
+            specs=specs,
+            vertical_spacing=0.06,
+        )
+
+        for row_idx, sub in enumerate(sub_figs, start=1):
+            for trace in sub.data:
+                composite.add_trace(trace, row=row_idx, col=1)
+
+            # Copy per-subplot layout props (yaxis titles, types, tick formats)
+            # from the source figure's single-panel layout into the right slot
+            # of the composite.  The source figure always has xaxis/yaxis (the
+            # first pair); composite rows use xaxis{i}/yaxis{i}.
+            src_layout = sub.layout.to_plotly_json()
+            suffix = "" if row_idx == 1 else str(row_idx)
+            for axis_base in ("xaxis", "yaxis"):
+                src_axis = src_layout.get(axis_base, {})
+                if src_axis:
+                    # Drop domain/anchor keys -- make_subplots owns those.
+                    src_axis = {k: v for k, v in src_axis.items() if k not in ("domain", "anchor")}
+                    getattr(composite.layout, f"{axis_base}{suffix}").update(src_axis)
+
+        composite.update_layout(
+            template="plotly_white",
+            height=max(350 * n, 600),
+            showlegend=True,
+        )
+        return composite
+
+    def show(self) -> None:
+        """Display the composite figure."""
+        self.render().show()
+
+    def _repr_mimebundle_(self, **kwargs):
+        return self.render()._repr_mimebundle_(**kwargs)  # type: ignore[attr-defined]
 
 
 def _returns(report: Report, portfolio_id: str) -> pd.Series:

@@ -717,3 +717,193 @@ def test_worst_drawdown_periods_chart_shades_the_deepest_synthetic_crash():
 
     assert len(fig.layout.shapes) == 1  # one shaded vrect for the one crash
 
+
+# ---------------------------------------------------------------------------
+# Standalone ChartCall / ChartPipeline / tam.get() API
+# ---------------------------------------------------------------------------
+
+def _equity_series(name="strat"):
+    values = [100.0, 101.0, 99.0, 103.0, 105.0, 104.0, 108.0, 110.0, 107.0, 112.0] * 30
+    idx = [date(2022, 1, 1) + timedelta(days=i) for i in range(len(values))]
+    return pd.Series(values, index=idx, name=name)
+
+
+def test_tearsheet_chart_is_callable_returns_chart_call():
+    from tam.backtest.tearsheet import ChartCall
+
+    chart = CumulativeReturnsChart()
+    result = chart(_equity_series())
+
+    assert isinstance(result, ChartCall)
+
+
+def test_chart_call_render_returns_plotly_figure():
+    import plotly.graph_objects as go
+
+    chart = CumulativeReturnsChart()
+    call = chart(_equity_series())
+
+    fig = call.render()
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+
+
+def test_chart_call_accepts_dict_of_series():
+    import plotly.graph_objects as go
+
+    s1 = _equity_series("a")
+    s2 = _equity_series("b")
+    chart = CumulativeReturnsChart()
+    call = chart({"a": s1, "b": s2})
+
+    fig = call.render()
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 2
+
+
+def test_chart_call_accepts_dataframe():
+    import plotly.graph_objects as go
+
+    s1 = _equity_series("a")
+    s2 = _equity_series("b")
+    df = pd.DataFrame({"a": s1, "b": s2})
+    chart = CumulativeReturnsChart()
+
+    fig = chart(df).render()
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 2
+
+
+def test_chart_call_pipe_returns_chart_pipeline():
+    from tam.backtest.tearsheet import ChartPipeline
+
+    series = _equity_series()
+    c1 = CumulativeReturnsChart()(series)
+    c2 = DrawdownChart()(series)
+
+    pipeline = c1 | c2
+
+    assert isinstance(pipeline, ChartPipeline)
+
+
+def test_chart_pipeline_render_has_one_subplot_per_chart():
+    series = _equity_series()
+    pipeline = CumulativeReturnsChart()(series) | DrawdownChart()(series) | RollingSharpeChart()(series)
+
+    fig = pipeline.render()
+
+    # Three subplot rows means three yaxis domains
+    assert hasattr(fig.layout, "yaxis3")
+
+
+def test_chart_pipeline_chaining_with_or():
+    from tam.backtest.tearsheet import ChartPipeline
+
+    series = _equity_series()
+    p = CumulativeReturnsChart()(series) | DrawdownChart()(series) | RollingSharpeChart()(series)
+
+    assert isinstance(p, ChartPipeline)
+    assert len(p._calls) == 3
+
+
+def test_pipeline_or_pipeline():
+    from tam.backtest.tearsheet import ChartPipeline
+
+    series = _equity_series()
+    p1 = CumulativeReturnsChart()(series) | DrawdownChart()(series)
+    p2 = RollingSharpeChart()(series) | DrawdownChart()(series)
+
+    combined = p1 | p2
+
+    assert isinstance(combined, ChartPipeline)
+    assert len(combined._calls) == 4
+
+
+def test_chart_call_or_pipeline():
+    from tam.backtest.tearsheet import ChartCall, ChartPipeline
+
+    series = _equity_series()
+    single = CumulativeReturnsChart()(series)
+    pipeline = DrawdownChart()(series) | RollingSharpeChart()(series)
+
+    result = single | pipeline
+
+    assert isinstance(result, ChartPipeline)
+    assert len(result._calls) == 3
+
+
+def test_tam_get_by_base_type_and_name():
+    import tam
+
+    chart = tam.get(TearsheetChart, "cumulative_returns")
+
+    assert isinstance(chart, CumulativeReturnsChart)
+
+
+def test_tam_get_by_class_instantiates():
+    import tam
+
+    chart = tam.get(DrawdownChart)
+
+    assert isinstance(chart, DrawdownChart)
+
+
+def test_tam_get_chart_is_callable_and_renderable():
+    import tam
+
+    chart = tam.get(TearsheetChart, "drawdown")
+    call = chart(_equity_series())
+    fig = call.render()
+
+    assert len(fig.data) > 0
+
+
+def test_chart_call_repr_mimebundle_returns_dict():
+    # _repr_mimebundle_ must return a dict so Jupyter can pick the right renderer.
+    # Outside a real Jupyter kernel plotly returns an empty dict (no renderers
+    # registered) -- the protocol itself (returning a dict) is what matters here.
+    chart = CumulativeReturnsChart()
+    call = chart(_equity_series())
+
+    bundle = call._repr_mimebundle_()
+
+    assert isinstance(bundle, dict)
+
+
+def test_chart_pipeline_repr_mimebundle_returns_dict():
+    series = _equity_series()
+    pipeline = CumulativeReturnsChart()(series) | DrawdownChart()(series)
+
+    bundle = pipeline._repr_mimebundle_()
+
+    assert isinstance(bundle, dict)
+
+
+def test_single_call_pipeline_returns_direct_figure():
+    """A pipeline with one chart should return its own figure unchanged."""
+    from tam.backtest.tearsheet import ChartPipeline
+
+    series = _equity_series()
+    call = CumulativeReturnsChart()(series)
+    pipeline = ChartPipeline([call])
+
+    fig = pipeline.render()
+
+    # Same figure as the direct render
+    assert len(fig.data) == len(call.render().data)
+
+
+def test_chart_series_name_used_as_portfolio_id():
+    """pd.Series.name is preserved as the portfolio id in the rendered figure."""
+    chart = CumulativeReturnsChart()
+    s = _equity_series(name="my_strategy")
+
+    fig = chart(s).render()
+
+    trace_names = [t.name for t in fig.data]
+    assert "my_strategy" in trace_names
+
+
