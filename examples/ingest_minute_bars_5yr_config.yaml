@@ -29,3 +29,14 @@ marketdata:
   extra_symbols: [SPY]
   start: "2021-08-25"
   end: "2026-08-24"
+  # Smaller than the default (20) -- caps how much is held in memory/lost on
+  # interruption before the next flush.
+  flush_every_days: 5
+  # max_workers=1 -- concurrency (8 fetch + up to 8 write threads hitting two
+  # different S3-compatible endpoints at once) is a real suspect for why this
+  # backfill worked briefly then stalled entirely, not just ran slow. Rather
+  # than guess at a concurrency fix blind, this removes concurrency as a
+  # variable so the backfill actually completes reliably; revisit speeding
+  # it up separately once there's a reliable baseline and proper tools to
+  # diagnose the stall (root access for py-spy, etc.).
+  max_workers: 1

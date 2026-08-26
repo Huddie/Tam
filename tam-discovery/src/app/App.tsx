@@ -6,15 +6,13 @@ import { TokensPage } from "./pages/TokensPage";
 
 export function App() {
   return (
-    <div className="app-shell">
+    <>
       <NavBar current="discovery" />
-      <main className="app-main">
-        <Routes>
-          <Route path="/" element={<CatalogPage />} />
-          <Route path="/d/:id" element={<DetailPage />} />
-          <Route path="/settings/tokens" element={<TokensPage />} />
-        </Routes>
-      </main>
-    </div>
+      <Routes>
+        <Route path="/" element={<CatalogPage />} />
+        <Route path="/d/:id" element={<DetailPage />} />
+        <Route path="/settings/tokens" element={<TokensPage />} />
+      </Routes>
+    </>
   );
 }

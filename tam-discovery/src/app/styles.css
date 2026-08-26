@@ -38,7 +38,6 @@ h1 {
 }
 
 h2 {
-  font-size: 1.1rem;
   margin: 1.5rem 0 0.75rem;
   color: var(--muted);
   text-transform: uppercase;
@@ -148,6 +147,11 @@ td {
   padding: 0.65rem 0.9rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  font-family: var(--mono);
+  font-size: 0.9rem;
 }
 th {
   color: var(--muted);
@@ -174,18 +178,6 @@ tbody tr:hover td {
 
 /* Layout helpers */
 
-.app-shell {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-.app-main {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
 .topnav {
   display: flex;
   align-items: center;
@@ -211,6 +203,7 @@ tbody tr:hover td {
 }
 
 .page {
+  width: 100%;
   max-width: 960px;
   margin: 2.5rem auto;
   padding: 0 1.25rem 3rem;
@@ -286,25 +279,28 @@ tbody tr:hover td {
    than running edge-to-edge. Metadata/versions sit in a header strip ABOVE
    the iframe (pushing it down when expanded), never floating on top of it
    -- an overlay covering part of the chart would just get in the way. */
+/* height:80vh (a plain viewport-relative unit) rather than a flex/percentage
+   chain -- percentage heights on <iframe> specifically (a "replaced
+   element" with its own nested document, not a plain box) need every
+   single ancestor up the chain to have a definite, non-flex-computed
+   height for the percentage to resolve correctly, and that chain broke in
+   practice (rendered short, well before actually filling the remaining
+   viewport) even though the flex math looked right on paper. A vh unit
+   sidesteps that entirely -- it's resolved directly against the viewport,
+   no ancestor chain involved. */
 .viewer-page {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  gap: 0.75rem;
   padding: 1.25rem 1.25rem 1.5rem;
 }
 
 .viewer-frame-wrap {
-  flex: 1;
-  min-height: 0;
+  margin-top: 0.75rem;
   border: 1px solid var(--border);
 }
 
 .viewer-frame-full {
   display: block;
   width: 100%;
-  height: 100%;
+  height: 80vh;
   border: none;
   background: var(--bg);
 }

@@ -132,8 +132,24 @@ class ParquetFileSystemStore(MinuteBarStore):
 
         self._fs.create_dir(path.rsplit("/", 1)[0], recursive=True)
         table = pa.Table.from_pandas(df.reset_index(), preserve_index=False)
+
+        # Serialize to an in-memory buffer FIRST, then write it to the
+        # filesystem in one shot -- writing incrementally straight into
+        # open_output_stream() (pq.write_table() issues several small writes
+        # as it emits the header/row-groups/footer) triggers a streaming
+        # multipart upload on S3-compatible backends regardless of file size.
+        # Observed against R2 in practice: multipart uploads that never
+        # completed (visible in the R2 dashboard as dangling "Ongoing
+        # Multipart Upload" entries) while the write call hung indefinitely
+        # waiting on a completion response that never arrived -- no
+        # exception, just a silent stall. A single complete write() avoids
+        # that upload path entirely.
+        buffer = pa.BufferOutputStream()
+        pq.write_table(table, buffer)
+        data = buffer.getvalue()
+
         with self._fs.open_output_stream(path) as handle:
-            pq.write_table(table, handle)
+            handle.write(data)
 
 
 @Registry.register(MinuteBarStore, "local_parquet")
