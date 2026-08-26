@@ -338,7 +338,7 @@ export function FileViewPage() {
                 )}
               </div>
 
-              <div style={{ overflowX: "auto" }}>
+              <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>

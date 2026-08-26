@@ -93,7 +93,8 @@ export function TokensPage() {
 
       {error && <p className="error">{error}</p>}
 
-      <table style={{ marginTop: "1.25rem" }}>
+      <div className="table-wrap" style={{ marginTop: "1.25rem" }}>
+      <table>
         <thead>
           <tr>
             <th className="sortable" onClick={() => toggleSort("name")}>
@@ -123,6 +124,7 @@ export function TokensPage() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

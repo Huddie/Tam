@@ -132,6 +132,7 @@ export function CatalogPage() {
 
       {error && <p className="error">{error}</p>}
 
+      <div className="table-wrap">
       <table>
         <thead>
           <tr>
@@ -195,6 +196,7 @@ export function CatalogPage() {
           ))}
         </tbody>
       </table>
+      </div>
       {discoveries.length === 0 && !error && <p className="muted">No discoveries match these filters.</p>}
       {(page > 1 || hasMore) && (
         <div className="pagination">
