@@ -10,6 +10,34 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+/** A single "Download" button that opens CSV/Parquet as a small dropdown --
+ * same pattern as BrowsePage's ExportDropdown ("Export this folder"), kept
+ * as its own copy here rather than shared since it points at this page's
+ * own /api/file/csv + /api/download routes instead of BrowsePage's
+ * /api/export. Two separate top-level buttons for "download as CSV" and
+ * "download original .parquet" was one button too many on an already
+ * button-heavy toolbar. */
+function DownloadDropdown({ fileKey }: { fileKey: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="export-dropdown">
+      <button className="secondary" onClick={() => setOpen((value) => !value)}>
+        Download &#9662;
+      </button>
+      {open && (
+        <div className="export-dropdown-menu">
+          <a href={csvDownloadUrl(fileKey)} onClick={() => setOpen(false)}>
+            CSV (all rows)
+          </a>
+          <a href={rawDownloadUrl(fileKey)} onClick={() => setOpen(false)}>
+            Original .parquet
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** The "browse by month/day" folder view -- NOT a different physical
  * storage layout (tam.marketdata only ever writes one Parquet file per
  * symbol per year, see MARKETDATA.md), just a query-time grouping of the
@@ -46,7 +74,7 @@ function DateBrowser({
                 {m.days.length} day{m.days.length === 1 ? "" : "s"}
               </span>
               <button className="secondary" onClick={() => onSelectMonth(m.month)}>
-                View month
+                View
               </button>
             </div>
             {expandedMonth === m.month &&
@@ -161,12 +189,7 @@ export function FileViewPage() {
       )}
 
       <div className="actions">
-        <a href={csvDownloadUrl(key)}>
-          <button className="secondary">Download as CSV (all rows)</button>
-        </a>
-        <a href={rawDownloadUrl(key)}>
-          <button className="secondary">Download original .parquet</button>
-        </a>
+        <DownloadDropdown fileKey={key} />
         <button className="secondary" onClick={() => setBrowsing((v) => !v)}>
           {browsing ? "Cancel" : "Browse by month/day"}
         </button>

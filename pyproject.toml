@@ -60,9 +60,22 @@ pitindex = [
 # market-data lake (tam.marketdata) -- irrelevant to running a backtest, so
 # gated behind their own extra like every other specialty dependency here
 # rather than made a hard dependency of the whole package.
+#
+# boto3: R2MinuteBarStore's read/write path uses it directly instead of
+# pyarrow.fs.S3FileSystem -- pyarrow's S3FileSystem ALWAYS performs a
+# multipart upload for open_output_stream() writes, not something
+# controllable via its public API, and R2 has been observed in production
+# failing to reliably complete that multipart handshake ("NO_SUCH_UPLOAD
+# during CompleteMultipartUpload" / an internal-error response on an
+# otherwise-successful upload), crashing the whole backfill outright.
+# boto3's plain put_object()/get_object() do a single-request PUT/GET for
+# objects this small (a few hundred KB), never touching multipart -- the
+# same approach Massive's own "Flat Files Quickstart" docs demonstrate for
+# their side of this pipeline.
 marketdata = [
     "duckdb>=1.0",
     "pandas_market_calendars>=4.0",
+    "boto3>=1.34",
 ]
 
 [build-system]

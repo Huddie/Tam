@@ -50,8 +50,6 @@ from .schema import SYMBOL
 from .store import MinuteBarStore
 from .validate import validate_day
 
-_MANIFEST_NAME = "_manifest.json"
-
 
 def _calendar_days(start: date, end: date) -> List[date]:
     """Every calendar day in [start, end] -- weekends/holidays fall out
@@ -76,12 +74,10 @@ def _content_hash(frame: pd.DataFrame) -> str:
 
 
 class _Manifest:
-    """`<store root>/_manifest.json` -- `{day_iso: content_hash}`. Lives
-    alongside the data it describes (same filesystem/root the store itself
-    uses, local or R2 alike) via the two private attributes every
-    ParquetFileSystemStore subclass exposes. NOT written with the atomic
-    tempfile-rename dance tam.backtest.harness's own checkpoint uses -- a
-    corrupt/partial manifest is harmless here (worst case a day gets
+    """`{day_iso: content_hash}`, persisted via the store's own
+    read_manifest_bytes()/write_manifest_bytes() -- NOT written with the
+    atomic tempfile-rename dance tam.backtest.harness's own checkpoint uses;
+    a corrupt/partial manifest is harmless here (worst case a day gets
     redundantly re-ingested, which MinuteBarStore.write's UPSERT semantics
     make safe, not a correctness bug), so the extra mechanism isn't worth
     it.
@@ -93,18 +89,14 @@ class _Manifest:
     rewriting it after literally every single day."""
 
     def __init__(self, store: MinuteBarStore):
-        self._fs = getattr(store, "_fs", None)
-        self._root = getattr(store, "_root", None)
+        self._store = store
         self._data = self._read()
 
     def _read(self) -> dict:
-        if self._fs is None:
+        raw = self._store.read_manifest_bytes()
+        if raw is None:
             return {}
-        try:
-            with self._fs.open_input_file(f"{self._root}/{_MANIFEST_NAME}") as handle:
-                return json.loads(handle.readall())
-        except FileNotFoundError:
-            return {}
+        return json.loads(raw)
 
     def hash_for(self, day: date) -> Optional[str]:
         return self._data.get(day.isoformat())
@@ -113,14 +105,7 @@ class _Manifest:
         self._data[day.isoformat()] = content_hash
 
     def flush(self) -> None:
-        if self._fs is None:
-            # A custom MinuteBarStore with no exposed filesystem/root simply
-            # gets no manifest -- every day is always re-ingested on a
-            # re-run, still correct (UPSERT), just not fast to resume.
-            return
-        self._fs.create_dir(self._root, recursive=True)
-        with self._fs.open_output_stream(f"{self._root}/{_MANIFEST_NAME}") as handle:
-            handle.write(json.dumps(self._data, indent=2).encode("utf-8"))
+        self._store.write_manifest_bytes(json.dumps(self._data, indent=2).encode("utf-8"))
 
 
 @dataclass
@@ -377,3 +362,49 @@ def run_ingest(config_path: str | Path) -> IngestResult:
         extra_symbols=settings.extra_symbols or ["SPY"],
         **ingest_kwargs,
     )
+
+
+@dataclass
+class CoverageReport:
+    expected: List[date]
+    ingested: List[date]
+    missing: List[date]
+
+    @property
+    def is_complete(self) -> bool:
+        return not self.missing
+
+
+def coverage_report(store: MinuteBarStore, start: date, end: date, calendar: str = "NYSE") -> CoverageReport:
+    """Which expected NYSE trading days in [start, end] are actually
+    recorded as ingested in `store`'s manifest.
+
+    Answers "are all days properly ingested" WITHOUT needing day-partitioned
+    storage: the resumability manifest ingest() already writes tracks
+    completion at day granularity regardless of how the underlying Parquet
+    itself is partitioned (year files here) -- this just reads that back and
+    compares it against the real NYSE trading calendar (the same source
+    tam.marketdata.validate uses) instead of assuming every weekday should
+    have data. `missing` is exactly the set of days re-running ingest() over
+    this same range will pick up -- its own resumability means already-good
+    days aren't touched, only these."""
+    import pandas_market_calendars as mcal
+
+    manifest = _Manifest(store)
+    schedule = mcal.get_calendar(calendar).schedule(start_date=start, end_date=end)
+    expected = [ts.date() for ts in schedule.index]
+    ingested = [day for day in expected if manifest.hash_for(day) is not None]
+    missing = [day for day in expected if manifest.hash_for(day) is None]
+    return CoverageReport(expected=expected, ingested=ingested, missing=missing)
+
+
+def run_coverage_report(config_path: str | Path) -> CoverageReport:
+    """Config-driven counterpart to coverage_report() -- reads the same
+    `marketdata:` section run_ingest() does (only `store`/`store_kwargs`/
+    `start`/`end` matter here; `provider`/`universe` are ignored), so this
+    can point at the exact same config file a backfill used. See
+    examples/check_ingest_coverage.py for the CLI wrapper."""
+    cfg = Config(Path(config_path))
+    settings = cfg.marketdata(MarketDataSettings)
+    store = Registry.create(MinuteBarStore, settings.store, **_plain_kwargs(settings.store_kwargs))
+    return coverage_report(store, date.fromisoformat(settings.start), date.fromisoformat(settings.end))

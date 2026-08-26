@@ -32,11 +32,13 @@ marketdata:
   # Smaller than the default (20) -- caps how much is held in memory/lost on
   # interruption before the next flush.
   flush_every_days: 5
-  # max_workers=1 -- concurrency (8 fetch + up to 8 write threads hitting two
-  # different S3-compatible endpoints at once) is a real suspect for why this
-  # backfill worked briefly then stalled entirely, not just ran slow. Rather
-  # than guess at a concurrency fix blind, this removes concurrency as a
-  # variable so the backfill actually completes reliably; revisit speeding
-  # it up separately once there's a reliable baseline and proper tools to
-  # diagnose the stall (root access for py-spy, etc.).
-  max_workers: 1
+  # The actual crash (NO_SUCH_UPLOAD during CompleteMultipartUpload) happened
+  # while this was still max_workers=1 -- proof it was never a concurrency
+  # bug, just pyarrow.fs.S3FileSystem always doing a multipart upload
+  # internally and R2 occasionally failing to complete it. Now fixed at the
+  # root (R2MinuteBarStore uses boto3's plain put_object() instead -- no
+  # multipart at all), so raised back up from 1. Still a moderate 4, not the
+  # default 8, since this specific number hasn't been run against real R2
+  # for a full backfill yet -- watch the first few minutes of output before
+  # trusting it for the full multi-hour run.
+  max_workers: 4
