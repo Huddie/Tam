@@ -76,13 +76,24 @@ mint short-lived, read-only credentials per personal-token holder, instead
 of ever handing out real R2 account credentials. See
 `src/worker/lib/r2-credentials.ts` for exactly how it's used.
 
+Credentials are minted via LOCAL client-side JWT signing (Cloudflare's own
+"Authenticate against R2 with temporary credentials" doc, "Locally
+(client-side signing)" method) rather than calling Cloudflare's Temporary
+Credentials REST API -- that API endpoint consistently rejected every
+R2-dashboard-issued parent token we tried with a bare "Authentication
+error" (code 10000), reproduced via direct curl across three separate
+freshly-created tokens, account ID confirmed correct each time. Local
+signing only needs the parent token's S3 **secret access key** (which we
+proved works, since it's the same pair used for live R2 ingestion
+elsewhere) and never touches `api.cloudflare.com` at all.
+
 A temporary credential can never exceed its parent's own permissions, so
 **any existing R2 API token already scoped to Object Read only on
 `tam-data`** works as-is -- e.g. the "Tam-Data-R" token already created for
-`tam.marketdata` (see root `.env`'s `R2_READONLY_CLOUDFLARE_API_TOKEN` /
-`R2_READONLY_ACCESS_KEY_ID`). Reuse that pair; no need to create a new
-token. (You do NOT need its Secret Access Key for this -- only the
-Cloudflare-style token value and the S3-style Access Key ID are used here.)
+`tam.marketdata` (see root `.env`'s `R2_READONLY_ACCESS_KEY_ID` /
+`R2_READONLY_SECRET_ACCESS_KEY`). Reuse that pair; no need to create a new
+token. (Here, unlike the REST-API approach, you DO need its Secret Access
+Key -- that's the whole point, it's the HMAC-signing key.)
 
 If you'd rather use a dedicated token instead: Cloudflare dashboard ->
 **R2** -> **Manage API Tokens** -> **Create API Token** -> **Object Read
@@ -102,8 +113,8 @@ npx wrangler deploy
 npx wrangler secret put ACCESS_TEAM_DOMAIN         # tam-data-users.cloudflareaccess.com (same as Discovery's)
 npx wrangler secret put ACCESS_AUD                 # the "data" app's own AUD tag from step 1
 npx wrangler secret put TOKEN_HMAC_SECRET          # MUST be the EXACT SAME value as tam-discovery's own TOKEN_HMAC_SECRET -- both Workers hash against the one shared "tokens" table, so a mismatched secret here means every token created on either site fails to verify on the other (or, if it's also wrong there, everywhere)
-npx wrangler secret put R2_PARENT_API_TOKEN         # the "Token value" (cfat_...) from step 4
-npx wrangler secret put R2_PARENT_ACCESS_KEY_ID     # the "Access Key ID" from step 4
+npx wrangler secret put R2_PARENT_ACCESS_KEY_ID       # the "Access Key ID" from step 4
+npx wrangler secret put R2_PARENT_SECRET_ACCESS_KEY   # the "Secret Access Key" from step 4
 ```
 
 ### 7. Attach the custom domain

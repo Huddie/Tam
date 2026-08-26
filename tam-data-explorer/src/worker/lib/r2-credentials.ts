@@ -1,4 +1,4 @@
-import { ApiError } from "./errors";
+import { SignJWT } from "jose";
 import type { Env } from "../types";
 
 const BUCKET_NAME = "tam-data";
@@ -15,50 +15,54 @@ export interface TempCredentials {
 }
 
 /** Mints a short-lived, READ-ONLY, real R2-native S3 credential scoped to
- * the tam-data bucket via Cloudflare's own Temporary Credentials API
- * (POST /accounts/:id/r2/temp-access-credentials) -- this is what lets a
- * personal-token holder run FULL DuckDB glob/multi-file S3 queries (not
- * just single-file HTTP downloads via routes/file.ts's downloadRaw), all
- * without the real, permanent R2 account credentials ever leaving this
- * Worker. Every mint requires an already-verified, currently-valid personal
- * token (lib/bearer.ts, checked by the caller before this runs) -- revoking
- * that token stops NEW credentials from being minted; anything already
- * minted still works until its own short TTL naturally expires (R2 has no
- * separate revocation for already-issued temporary credentials). */
+ * the tam-data bucket via LOCAL client-side JWT signing (Cloudflare's
+ * "Locally (client-side signing)" method, see R2's own "Authenticate
+ * against R2 with temporary credentials" doc) rather than calling
+ * Cloudflare's Temporary Credentials API (POST /accounts/:id/r2/
+ * temp-access-credentials) -- that REST endpoint consistently rejected
+ * every R2-dashboard-issued parent token we tried with a bare
+ * "Authentication error" (code 10000), reproduced identically via direct
+ * curl across three separate freshly-created tokens, so we sidestepped it
+ * entirely. Local signing only needs the parent's S3 secret access key
+ * (proven working -- it's the same pair already used for live R2
+ * ingestion), never touches api.cloudflare.com, and avoids a per-mint
+ * network round-trip. This is what lets a personal-token holder run FULL
+ * DuckDB glob/multi-file S3 queries (not just single-file HTTP downloads
+ * via routes/file.ts's downloadRaw), all without the real, permanent R2
+ * account credentials ever leaving this Worker. Every mint requires an
+ * already-verified, currently-valid personal token (lib/bearer.ts, checked
+ * by the caller before this runs) -- revoking that token stops NEW
+ * credentials from being minted; anything already minted still works
+ * until its own short TTL naturally expires (R2 has no separate
+ * revocation for already-issued temporary credentials). */
 export async function mintTemporaryCredentials(env: Env, requestedTtlSeconds?: number): Promise<TempCredentials> {
   const ttlSeconds = Math.min(Math.max(60, requestedTtlSeconds || DEFAULT_TTL_SECONDS), MAX_TTL_SECONDS);
+  const endpoint = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
-  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.R2_ACCOUNT_ID}/r2/temp-access-credentials`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.R2_PARENT_API_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      bucket: BUCKET_NAME,
-      parentAccessKeyId: env.R2_PARENT_ACCESS_KEY_ID,
-      permission: "object-read-only",
-      ttlSeconds,
-    }),
-  });
+  const jwt = await new SignJWT({ bucket: BUCKET_NAME, scope: "object-read-only" })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setSubject(env.R2_ACCOUNT_ID)
+    .setIssuer(env.R2_PARENT_ACCESS_KEY_ID)
+    .setAudience(new URL(endpoint).host)
+    .setIssuedAt()
+    .setExpirationTime(`${ttlSeconds}s`)
+    .sign(new TextEncoder().encode(env.R2_PARENT_SECRET_ACCESS_KEY));
 
-  const body = await response.json<{
-    success: boolean;
-    result?: { accessKeyId: string; secretAccessKey: string; sessionToken: string };
-    errors?: Array<{ message: string }>;
-  }>();
-
-  if (!response.ok || !body.success || !body.result) {
-    const message = body.errors?.map((e) => e.message).join("; ") || `Cloudflare API returned ${response.status}`;
-    throw new ApiError(502, `failed to mint temporary R2 credentials: ${message}`);
-  }
+  // The temporary secret access key is the SHA-256 hex digest of the signed
+  // JWT; the session token is base64("jwt/" + signed JWT) -- both exact
+  // formulas from Cloudflare's own local-signing example, not ours to
+  // choose (R2 validates the JWT signature server-side on every request).
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(jwt));
+  const secretAccessKey = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 
   return {
-    accessKeyId: body.result.accessKeyId,
-    secretAccessKey: body.result.secretAccessKey,
-    sessionToken: body.result.sessionToken,
+    accessKeyId: env.R2_PARENT_ACCESS_KEY_ID,
+    secretAccessKey,
+    sessionToken: btoa(`jwt/${jwt}`),
     expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
-    endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    endpoint,
     bucket: BUCKET_NAME,
   };
 }

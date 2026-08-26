@@ -113,6 +113,24 @@ def _resolve_api_url(explicit: Optional[str]) -> str:
     return explicit or os.environ.get(_API_URL_ENV_VAR) or _DEFAULT_API_URL
 
 
+def _raise_for_status(response: requests.Response) -> None:
+    """Same as response.raise_for_status(), but surfaces the Worker's own
+    `{"error": "..."}` JSON body (see tam-data-explorer's lib/errors.ts)
+    in the exception message -- plain raise_for_status() only reports the
+    status code/reason phrase, discarding exactly the detail that explains
+    *why* (e.g. "failed to mint temporary R2 credentials: ...")."""
+    if response.ok:
+        return
+    try:
+        detail = response.json().get("error")
+    except Exception:
+        detail = None
+    message = f"{response.status_code} {response.reason} for {response.url}"
+    if detail:
+        message += f" -- {detail}"
+    raise requests.exceptions.HTTPError(message, response=response)
+
+
 def fetch_dataframe(
     symbol: str,
     year: int,
@@ -132,7 +150,7 @@ def fetch_dataframe(
         headers=_headers(token),
         timeout=timeout,
     )
-    response.raise_for_status()
+    _raise_for_status(response)
     return pd.read_parquet(io.BytesIO(response.content))
 
 
@@ -153,7 +171,7 @@ def download_csv(
         headers=_headers(token),
         timeout=timeout,
     )
-    response.raise_for_status()
+    _raise_for_status(response)
     dest = Path(dest_path)
     dest.write_bytes(response.content)
     return dest
@@ -167,7 +185,7 @@ def _mint_credentials(token: Optional[str], api_url: Optional[str], ttl_seconds:
         headers=_headers(token),
         timeout=timeout,
     )
-    response.raise_for_status()
+    _raise_for_status(response)
     return response.json()
 
 

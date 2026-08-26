@@ -16,18 +16,21 @@ export interface Env {
   ACCESS_AUD: string;
   TOKEN_HMAC_SECRET: string;
   /** Cloudflare account ID -- not secret (same value as root .env's
-   * R2_ACCOUNT_ID), needed to call the Temp Credentials API (lib/
-   * r2-credentials.ts). */
+   * R2_ACCOUNT_ID), used as the JWT's audience host + subject when minting
+   * temp credentials locally (lib/r2-credentials.ts). */
   R2_ACCOUNT_ID: string;
-  /** A "parent" R2 API token (Cloudflare-style Bearer token, NOT the S3
-   * access-key/secret pair) with permission to mint temporary credentials
-   * on the tam-data bucket -- see README.md's runbook for exactly how to
-   * create it. Only ever used server-side to mint short-lived, read-only,
-   * per-request credentials (lib/r2-credentials.ts); never handed to a
-   * client directly. */
-  R2_PARENT_API_TOKEN: string;
-  /** The S3-style access key ID of that SAME parent token -- required as
-   * the `parentAccessKeyId` field when minting (Cloudflare's API signs the
-   * temporary credential against this specific parent). */
+  /** The S3-style access key ID of a "parent" R2 API token scoped to
+   * object-read-only on tam-data -- see README.md's runbook for exactly how
+   * to create it. Reused as-is as the temp credential's own access key ID
+   * (Cloudflare's local-signing scheme, not ours to choose). */
   R2_PARENT_ACCESS_KEY_ID: string;
+  /** That SAME parent token's S3 secret access key -- used ONLY as the
+   * HMAC-signing key for the locally-signed JWT that becomes the temp
+   * credential's session token (lib/r2-credentials.ts); never handed to a
+   * client directly. We use local signing (not Cloudflare's Temporary
+   * Credentials REST API) because that API endpoint consistently rejected
+   * every R2-dashboard-issued Bearer token we tried with a bare
+   * "Authentication error" -- this secret access key is proven to work
+   * since it's the same pair used for live R2 ingestion elsewhere. */
+  R2_PARENT_SECRET_ACCESS_KEY: string;
 }

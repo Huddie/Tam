@@ -1,7 +1,7 @@
 // See README.md's deployment runbook for exactly how to fill in the
 // remaining placeholders below. Secrets (ACCESS_TEAM_DOMAIN, ACCESS_AUD,
-// TOKEN_HMAC_SECRET, R2_PARENT_API_TOKEN, R2_PARENT_ACCESS_KEY_ID) are set
-// via `wrangler secret put`, never written here.
+// TOKEN_HMAC_SECRET, R2_PARENT_ACCESS_KEY_ID, R2_PARENT_SECRET_ACCESS_KEY)
+// are set via `wrangler secret put`, never written here.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tam-data-explorer",
@@ -33,8 +33,9 @@
   ],
   "vars": {
     // Not secret -- same Cloudflare account as everything else in this
-    // repo (see root .env's R2_ACCOUNT_ID). Needed to call the Temp
-    // Credentials API (src/worker/lib/r2-credentials.ts).
+    // repo (see root .env's R2_ACCOUNT_ID). Used as the JWT audience/
+    // subject when locally minting temp credentials (src/worker/lib/
+    // r2-credentials.ts).
     "R2_ACCOUNT_ID": "65c76cd478aba6575ed57de7d93480ad"
   }
 }

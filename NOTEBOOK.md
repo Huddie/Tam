@@ -264,7 +264,7 @@ con.sql("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day").df()
 ```
 
 `connect()` mints a short-lived, **read-only** R2 credential scoped to just this
-bucket behind the scenes (Cloudflare's own Temporary Credentials API), refreshes
+bucket behind the scenes (Cloudflare's own R2 temporary-credentials scheme), refreshes
 it automatically as it approaches expiry, and gives you the same macros as
 `tam.marketdata.duckdb_query.open_duckdb()` below (`daily_bars`, `weekly_bars`,
 `rollup_bars`, `daily_returns`, `rolling_volatility`) -- full glob/multi-file SQL,
