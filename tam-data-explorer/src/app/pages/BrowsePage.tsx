@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { type BrowseResult, type ExportSelection, type YearEntry, browse, exportUrl, listSymbols, listYears } from "../api";
+import { Spinner } from "../Spinner";
 import { useClickOutside } from "../useClickOutside";
 
 /** A small hand-drawn "table" glyph (a grid, not a real icon library) --
@@ -176,7 +177,7 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
   }
 
   if (error) return <p className="error">{error}</p>;
-  if (!result) return <p className="muted">Loading...</p>;
+  if (!result) return <Spinner label="Loading..." />;
 
   // Folder entries are stored with their trailing "/" (from the API), so
   // they're distinguishable from file keys without a separate flag.

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { type DiscoveryDetail, type VersionSummary, getDiscovery, getVersions, hideDiscovery, renameDiscovery } from "../api";
 import { ManageMenu } from "../ManageMenu";
+import { Spinner } from "../Spinner";
 
 export function DetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +49,12 @@ export function DetailPage() {
   }
 
   if (error) return <p className="error page">{error}</p>;
-  if (!discovery) return <p className="muted page">Loading...</p>;
+  if (!discovery)
+    return (
+      <div className="page">
+        <Spinner />
+      </div>
+    );
 
   return (
     <div className="viewer-page">

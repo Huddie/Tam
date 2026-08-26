@@ -1,5 +1,5 @@
 import { zipSync } from "fflate";
-import { arrayBufferSource, readParquetAll } from "../lib/parquet";
+import { readParquetAll } from "../lib/parquet";
 import { rowsToCsv } from "../lib/csv";
 import { ApiError } from "../lib/errors";
 import { listAllKeysUnderPrefix } from "./browse";
@@ -84,7 +84,7 @@ export async function exportFiles(env: Env, prefixes: string[], keys: string[], 
   for (const key of resolvedKeys) {
     const object = await env.DATA.get(key);
     if (!object) continue;
-    const result = await readParquetAll(arrayBufferSource(await object.arrayBuffer()));
+    const result = await readParquetAll(await object.arrayBuffer());
     if (!columns.length) columns = result.columns;
     rows.push(...result.rows);
   }

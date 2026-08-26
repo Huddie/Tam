@@ -1,4 +1,4 @@
-import { cachedAsyncBuffer, parquetMetadataAsync, parquetReadObjects } from "hyparquet";
+import { parquetMetadataAsync, parquetReadObjects } from "hyparquet";
 import type { AsyncBuffer } from "hyparquet";
 
 export interface ParquetPage {
@@ -8,33 +8,17 @@ export interface ParquetPage {
 }
 
 /** Wraps an already-fully-fetched ArrayBuffer as the AsyncBuffer interface
- * hyparquet expects -- for callers (CSV/zip export) that need every row
- * anyway, so downloading the whole object upfront costs nothing extra. */
-export function arrayBufferSource(buffer: ArrayBuffer): AsyncBuffer {
+ * hyparquet expects. The minute-bar files this Worker reads are small
+ * (~98k rows/symbol/year per tam/marketdata/store.py's own docstring, so a
+ * few MB compressed at most) -- simple enough to hold the whole object in
+ * memory rather than implementing real byte-range fetching against R2. */
+function bufferSource(buffer: ArrayBuffer): AsyncBuffer {
   return {
     byteLength: buffer.byteLength,
     async slice(start: number, end?: number) {
       return buffer.slice(start, end ?? buffer.byteLength);
     },
   };
-}
-
-/** Wraps a byte-range getter (an R2 range-GET per call -- see routes/file.ts's
- * construction of this via env.DATA.get(key, {range})) as an AsyncBuffer, so
- * hyparquet only fetches the footer + whichever row groups a page/filtered
- * read actually touches instead of the whole object. Wrapped in hyparquet's
- * own cachedAsyncBuffer so (a) files under its 512kb threshold -- true for
- * most single-year minute-bar files -- still cost exactly one request, same
- * as the old eager-download behavior, and (b) a byte range fetched once
- * (e.g. the footer, read by both parquetMetadataAsync and the actual row
- * read that follows it) isn't fetched twice within the same request. */
-export function r2AsyncBuffer(byteLength: number, getRange: (offset: number, length: number) => Promise<ArrayBuffer>): AsyncBuffer {
-  return cachedAsyncBuffer({
-    byteLength,
-    async slice(start: number, end?: number) {
-      return getRange(start, (end ?? byteLength) - start);
-    },
-  });
 }
 
 /** JSON.stringify (and therefore Response.json()) throws on bigint --
@@ -53,9 +37,10 @@ function sanitizeForJson(rows: Record<string, unknown>[]): Record<string, unknow
 }
 
 /** One page of rows (rowStart/rowEnd, 0-indexed half-open range) from a
- * Parquet file, plus the total row count so the caller can render
- * pagination controls. */
-export async function readParquetPage(file: AsyncBuffer, page: number, pageSize: number): Promise<ParquetPage> {
+ * Parquet file already fully read into memory, plus the total row count so
+ * the caller can render pagination controls. */
+export async function readParquetPage(buffer: ArrayBuffer, page: number, pageSize: number): Promise<ParquetPage> {
+  const file = bufferSource(buffer);
   const metadata = await parquetMetadataAsync(file);
   const totalRows = Number(metadata.num_rows);
 
@@ -71,7 +56,8 @@ export async function readParquetPage(file: AsyncBuffer, page: number, pageSize:
 /** Every row, unpaginated -- used for "download as CSV" so the export isn't
  * artificially truncated to whatever page size the table view happens to
  * be showing. */
-export async function readParquetAll(file: AsyncBuffer): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
+export async function readParquetAll(buffer: ArrayBuffer): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
+  const file = bufferSource(buffer);
   const rows = await parquetReadObjects({ file });
   const columns = rows.length ? Object.keys(rows[0]) : [];
   return { columns, rows: sanitizeForJson(rows) };
@@ -92,7 +78,8 @@ function toDate(value: unknown): Date {
  * year-file tam.marketdata already writes (minute/<SYMBOL>/<year>.parquet)
  * -- no day-partitioned storage needed, and only months/days that genuinely
  * have rows show up (not a blind 1-12/1-31 grid). */
-export async function readParquetDateIndex(file: AsyncBuffer): Promise<DateIndex> {
+export async function readParquetDateIndex(buffer: ArrayBuffer): Promise<DateIndex> {
+  const file = bufferSource(buffer);
   const rows = await parquetReadObjects({ file, columns: ["ts"] });
 
   const byMonth = new Map<number, Set<number>>();
@@ -121,13 +108,14 @@ export async function readParquetDateIndex(file: AsyncBuffer): Promise<DateIndex
  * selected -- a month, a day, or an explicit start/end date -- this
  * function only cares about the resulting two Dates. */
 export async function readParquetFiltered(
-  file: AsyncBuffer,
+  buffer: ArrayBuffer,
   range: { start: Date; end: Date },
   page: number,
   pageSize: number,
 ): Promise<ParquetPage> {
   const { start, end } = range;
 
+  const file = bufferSource(buffer);
   const rows = await parquetReadObjects({ file, filter: { ts: { $gte: start, $lt: end } } });
 
   const totalRows = rows.length;

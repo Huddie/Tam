@@ -109,8 +109,20 @@ export function fileDates(key: string): Promise<DateIndex> {
  * sidecar doesn't exist -- a file ingested before this feature existed, or
  * without pandas_market_calendars installed -- so callers can just omit
  * the badge rather than surface an error for something that isn't one. */
-export function fileCompleteness(key: string): Promise<CompletenessIndex | null> {
-  return api<CompletenessIndex>(`/api/file/completeness?key=${encodeURIComponent(key)}`).catch(() => null);
+export async function fileCompleteness(key: string): Promise<CompletenessIndex | null> {
+  try {
+    const index = await api<CompletenessIndex>(`/api/file/completeness?key=${encodeURIComponent(key)}`);
+    // An old-schema sidecar (written before the actual_minutes/expected_minutes
+    // -> actual_bars/expected_bars rename, before scripts/backfill_completeness.py
+    // rewrites it) has no actual_bars/expected_bars fields at all -- rendering a
+    // badge computed from `undefined` crashes the whole page (a bare property
+    // read, not a NaN), not just this one widget. Treat it the same as a 404:
+    // no badge, not a crash.
+    if (typeof index.actual_bars !== "number" || typeof index.expected_bars !== "number") return null;
+    return index;
+  } catch {
+    return null;
+  }
 }
 
 export function csvDownloadUrl(key: string): string {

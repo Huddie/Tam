@@ -10,6 +10,7 @@ import {
   rawDownloadUrl,
   viewFile,
 } from "../api";
+import { Spinner } from "../Spinner";
 import { useClickOutside } from "../useClickOutside";
 import { useSort } from "../useSort";
 
@@ -250,7 +251,7 @@ function DateBrowser({
         <small>Or pick a month/day below -- grouped from the single year file (no separate day/month files are stored).</small>
       </p>
       <div className="browse-list">
-        {!dateIndex && <p className="browse-row muted">Loading...</p>}
+        {!dateIndex && <Spinner label="Loading dates..." />}
         {dateIndex && !dateIndex.months.length && <p className="browse-row muted">No data.</p>}
         {dateIndex?.months.map((m) => (
           <div key={m.month}>
@@ -460,7 +461,7 @@ export function FileViewPage() {
 
       {!browsing && (
         <>
-          {!data && !error && <p className="muted">Loading...</p>}
+          {!data && !error && <Spinner label="Loading table..." />}
 
           {data && (
             <>
