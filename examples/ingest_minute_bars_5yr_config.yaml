@@ -1,0 +1,31 @@
+# One-off 5-year backfill into R2 (starting scope -- widen later by editing
+# `start` once this range is validated) -- NOT for GitHub Actions (see
+# .github/workflows/ingest_minute_bars.yml's own comments: it's scoped to a
+# single day's catch-up and would very likely exceed GitHub-hosted runners'
+# 6-hour job limit for a range this size). Run this locally instead:
+#
+#   python -m examples.ingest_minute_bars examples/ingest_minute_bars_5yr_config.yaml
+#
+# This will take a while (order of hours, not minutes -- one whole-market
+# flat file is downloaded/parsed per trading day regardless of how few
+# symbols you keep, ~1250 trading days over 5 years). It's safe to
+# interrupt (Ctrl-C, terminal closed, laptop sleeps) and re-run the exact
+# same command later -- already-flushed days are skipped, not re-fetched
+# (see MARKETDATA.md's "Resumability" section). Consider running it under
+# `nohup ... &` or inside `tmux`/`screen` so it survives a closed terminal.
+#
+# Needs (see .env): R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET,
+# MASSIVE_S3_ACCESS_KEY_ID/MASSIVE_S3_SECRET_ACCESS_KEY, and the `pitindex`
+# extra (Python >=3.11) for point-in-time S&P 500 membership.
+#
+# Adjust `end` to a date you know Massive has already published (per their
+# docs: a trading day's data is available by ~11:00 AM ET the FOLLOWING
+# day) -- this defaults to "yesterday" relative to when this file was
+# written; update it before running if that's stale by the time you run this.
+marketdata:
+  provider: massive_flatfiles
+  store: r2_parquet
+  universe: pitindex
+  extra_symbols: [SPY]
+  start: "2021-08-25"
+  end: "2026-08-24"

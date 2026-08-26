@@ -1,0 +1,55 @@
+name: Deploy Data Explorer
+
+# Runs on every push to main that touches tam-data-explorer/** -- a
+# typecheck must pass before deploy runs at all, via the `needs: typecheck`
+# dependency below (same gating pattern as deploy-discovery.yml/publish.yml).
+# No vitest suite here (unlike tam-discovery) -- this Worker has no D1/test
+# harness of its own, just a typecheck as the pre-deploy gate.
+"on":
+  push:
+    branches: [main]
+    paths:
+      - "tam-data-explorer/**"
+  workflow_dispatch: {}
+
+defaults:
+  run:
+    working-directory: tam-data-explorer
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  deploy:
+    needs: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm ci
+      - run: npm run build
+
+      # Reuses the SAME CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID repo
+      # secrets as deploy-discovery.yml -- one account-scoped "Workers
+      # Scripts: Edit" token covers deploying every Worker in the account,
+      # no separate secret needed per site.
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: tam-data-explorer
+          command: deploy

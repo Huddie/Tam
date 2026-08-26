@@ -1,4 +1,4 @@
-.PHONY: build publish version clean
+.PHONY: build publish version clean publish-discovery publish-data-explorer publish-sites
 
 # Bumps pyproject.toml's version to the next patch release above whatever's
 # currently live on PyPI (queries the index; falls back to the existing
@@ -24,3 +24,17 @@ build: clean
 
 clean:
 	rm -rf dist build *.egg-info
+
+# Manual, local equivalent of .github/workflows/deploy-discovery.yml/
+# deploy-data-explorer.yml's own deploy step -- same `npm run deploy`
+# (vite build && wrangler deploy) either one runs in CI, just triggered by
+# hand instead of a push to main. Needs `npx wrangler login` done at least
+# once on this machine (see each site's own README.md for the full
+# Cloudflare setup runbook).
+publish-discovery:
+	cd tam-discovery && npm run deploy
+
+publish-data-explorer:
+	cd tam-data-explorer && npm run deploy
+
+publish-sites: publish-discovery publish-data-explorer

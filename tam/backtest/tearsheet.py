@@ -263,10 +263,15 @@ class RollingReturnChart(TearsheetChart):
                 go.Scatter(
                     x=below_zero.index, y=below_zero.values, mode="lines",
                     line=dict(width=0, color=color), fill="tozeroy", fillcolor=_fill_rgba(color),
-                    showlegend=False, hoverinfo="skip",
+                    legendgroup=portfolio_id, showlegend=False, hoverinfo="skip",
                 )
             )
-            fig.add_trace(go.Scatter(x=rolling.index, y=rolling.values, mode="lines", name=portfolio_id, line=dict(color=color)))
+            fig.add_trace(
+                go.Scatter(
+                    x=rolling.index, y=rolling.values, mode="lines", name=portfolio_id,
+                    line=dict(color=color), legendgroup=portfolio_id,
+                )
+            )
         fig.add_hline(y=0, line_width=1)
         fig.update_layout(title=self.title, yaxis_tickformat=".0%", template="plotly_white")
         return fig

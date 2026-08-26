@@ -1,0 +1,41 @@
+// See README.md's deployment runbook (Cloudflare/GitHub setup) for exactly
+// how to fill in the remaining placeholders below (`<...>`) -- database_id
+// after `wrangler d1 create`, the custom domain route after Access is
+// configured. Secrets (ACCESS_TEAM_DOMAIN, ACCESS_AUD, TOKEN_HMAC_SECRET,
+// R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) are set via `wrangler secret put`,
+// never written here.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tam-discovery",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tam-discovery-db",
+      "database_id": "d7d0a787-4b7c-41a2-91b7-83c7204965ee",
+      "migrations_dir": "src/worker/migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "tam-discovery-artifacts"
+    }
+  ],
+  "vars": {
+    // The R2 S3-compatible endpoint used to sign presigned PUT URLs -- account
+    // ID is not a secret; the actual credentials (R2_ACCESS_KEY_ID/
+    // R2_SECRET_ACCESS_KEY) are Worker secrets, set separately (see README.md
+    // step 7). Filled in from the same Cloudflare account already used by
+    // tam.marketdata's R2 bucket (see root .env's R2_ACCOUNT_ID) -- Discovery
+    // uses its own separate bucket/credentials within that same account.
+    "R2_S3_ENDPOINT": "https://65c76cd478aba6575ed57de7d93480ad.r2.cloudflarestorage.com",
+    "R2_BUCKET_NAME": "tam-discovery-artifacts"
+  }
+}

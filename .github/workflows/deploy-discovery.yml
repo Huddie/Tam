@@ -1,0 +1,53 @@
+name: Deploy Discovery
+
+# Runs on every push to main that touches tam-discovery/** -- vitest (real
+# D1/R2 via Miniflare, no live Cloudflare account needed) must pass before
+# deploy runs at all, via the `needs: test` dependency below -- same gating
+# pattern as publish.yml's own PyPI publish job.
+"on":
+  push:
+    branches: [main]
+    paths:
+      - "tam-discovery/**"
+  workflow_dispatch: {}
+
+defaults:
+  run:
+    working-directory: tam-discovery
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx vitest run
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm ci
+      - run: npm run build
+
+      # CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID are repo secrets -- see
+      # tam-discovery/README.md's deployment runbook for exactly how to
+      # create the scoped API token this expects (Workers Scripts: Edit).
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: tam-discovery
+          command: deploy

@@ -1,0 +1,20 @@
+// See README.md's deployment runbook for exactly how to fill in the
+// remaining placeholders below. Secrets (ACCESS_TEAM_DOMAIN, ACCESS_AUD)
+// are set via `wrangler secret put`, never written here.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tam-data-explorer",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    {
+      "binding": "DATA",
+      "bucket_name": "tam-data"
+    }
+  ]
+}

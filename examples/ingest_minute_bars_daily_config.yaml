@@ -1,0 +1,20 @@
+# Production config for the manually-triggered GitHub Actions ingest workflow
+# (see .github/workflows/ingest_minute_bars.yml) -- NOT for the initial
+# backfill; use examples/ingest_minute_bars_config.yaml as a starting point
+# for that instead (a much wider date range, run locally). INGEST_START/
+# INGEST_END are set by that workflow to "yesterday" before this file is read
+# (tam.config expands ${VAR} from the environment); running this file
+# directly without those set resolves to an empty string, which fails fast
+# with a clear "Invalid isoformat string" error rather than silently doing
+# nothing.
+marketdata:
+  provider: massive_flatfiles
+  store: r2_parquet
+  # Point-in-time S&P 500 membership -- needs the `pitindex` extra (Python
+  # >=3.11; see pyproject.toml). Swap to `csv` + universe_kwargs: {path: ...}
+  # if you maintain your own membership file instead (see
+  # tam.basket.universe.CsvUniverse).
+  universe: pitindex
+  extra_symbols: [SPY]
+  start: "${INGEST_START}"
+  end: "${INGEST_END}"

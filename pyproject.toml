@@ -20,6 +20,9 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/Huddie/Tam"
 
+[project.scripts]
+upload-discovery = "tam.discovery.cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ipython>=8.0"]
 live = ["dash>=2.17"]
@@ -52,6 +55,14 @@ quantstats = [
 # above, just for a Python-version constraint instead of a platform one).
 pitindex = [
     "pitindex; python_version >= '3.11'",
+]
+# duckdb/pandas_market_calendars are only needed for the historical 1-minute
+# market-data lake (tam.marketdata) -- irrelevant to running a backtest, so
+# gated behind their own extra like every other specialty dependency here
+# rather than made a hard dependency of the whole package.
+marketdata = [
+    "duckdb>=1.0",
+    "pandas_market_calendars>=4.0",
 ]
 
 [[tool.uv.index]]
