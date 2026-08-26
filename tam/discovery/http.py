@@ -12,22 +12,15 @@ from typing import Optional
 import requests
 
 _ENV_VAR = "TAM_DISCOVERY_API_URL"
+_DEFAULT_API_URL = "https://discovery.tamquant.com"
 
 
 def resolve_api_url(explicit: Optional[str] = None) -> str:
     """explicit `api_url=`/`--api-url` wins, then the TAM_DISCOVERY_API_URL
-    env var. No hardcoded production default here -- unlike the token,
-    there's no safe placeholder to fall back to silently; a caller with
-    neither gets a clear error instead of silently talking to a fictional
-    endpoint."""
-    resolved = explicit or os.environ.get(_ENV_VAR)
-    if not resolved:
-        raise RuntimeError(
-            f"No Discovery API URL configured -- pass api_url=... (or --api-url to the "
-            f"CLI), or set the {_ENV_VAR} environment variable to your Discovery site's "
-            "own URL (e.g. https://discovery.example.com)."
-        )
-    return resolved
+    env var, then the real production Discovery site -- overridable for
+    anyone self-hosting their own separate Discovery instance, but nothing
+    to configure for the common case of publishing to this one."""
+    return explicit or os.environ.get(_ENV_VAR) or _DEFAULT_API_URL
 
 
 class DiscoveryClient:

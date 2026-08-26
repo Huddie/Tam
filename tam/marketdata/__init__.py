@@ -17,7 +17,7 @@ anywhere else, with no API service in between.
     from tam.marketdata.credentials import resolve_r2_credentials
     from tam.marketdata.duckdb_query import open_duckdb
 
-    con = open_duckdb(bucket="tam-market-data")
+    con = open_duckdb(bucket="tam-data")
     con.sql("SELECT * FROM daily_bars('SPY')").df()
 """
 from .schema import MINUTE_BAR_COLUMNS, SYMBOL, TS, empty_minute_bar_frame

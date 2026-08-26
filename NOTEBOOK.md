@@ -279,7 +279,7 @@ named exactly `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
 ```python
 from tam.marketdata.duckdb_query import open_duckdb
 
-con = open_duckdb(bucket="tam-market-data")
+con = open_duckdb(bucket="tam-data")
 con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
 ```
 
@@ -300,14 +300,12 @@ result = upload(fig, title="AAPL moving-average backtest", tags=["aapl", "moving
 print(result.url)
 ```
 
-This needs a publishing token and an API URL, neither of which have a hardcoded
-default:
+This needs a publishing token (the API URL already defaults to
+`https://discovery.tamquant.com`, nothing to configure there):
 - Create a token once at `https://discovery.tamquant.com/settings/tokens`
   (requires GitHub login), then add it as a Colab secret named
   `TAM_PAT` -- or, if you're working locally instead of in Colab, run
   `upload-discovery login` once and it's saved for every future call.
-- Set `TAM_DISCOVERY_API_URL` (Colab secret or env var) to
-  `https://discovery.tamquant.com`.
 
 `type=` groups this with other kinds of published HTML (default `"dashboard"`);
 `name=` gives it a stable slug that always resolves to whichever version you

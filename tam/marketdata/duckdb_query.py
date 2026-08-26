@@ -9,7 +9,7 @@ its result from the 1-minute Parquet files on demand, per this project's own
 
     from tam.marketdata.duckdb_query import open_duckdb
 
-    con = open_duckdb(bucket="tam-market-data")          # reads from R2
+    con = open_duckdb(bucket="tam-data")          # reads from R2
     con.sql("SELECT * FROM daily_bars('SPY') ORDER BY day").df()
     con.sql("SELECT * FROM rollup_bars('SPY', 5) ORDER BY bucket").df()
     con.sql("SELECT * FROM rolling_volatility('SPY', 21) ORDER BY day").df()

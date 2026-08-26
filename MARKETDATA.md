@@ -44,7 +44,7 @@ Massive flat files  -->  filter to universe  -->  validate  -->  R2 (Parquet)
 
 ## R2 setup
 
-1. Create an R2 bucket in the Cloudflare dashboard (e.g. `tam-market-data`).
+1. Create an R2 bucket in the Cloudflare dashboard (e.g. `tam-data`).
 2. Create **two** API tokens (R2 -> Manage API Tokens): a **read-only** one
    for querying, and a **read-write** one for ingestion. Never use the
    write token from a notebook.
@@ -129,7 +129,7 @@ and re-ingested automatically, not skipped.
 ```python
 from tam.marketdata.duckdb_query import open_duckdb
 
-con = open_duckdb(bucket="tam-market-data")   # reads from R2 directly
+con = open_duckdb(bucket="tam-data")   # reads from R2 directly
 # con = open_duckdb(local_root="data/minute")  # or: plain local Parquet, no R2/network
 
 con.sql("SELECT * FROM minute_bars('SPY') WHERE ts >= '2020-03-01' ORDER BY ts").df()
