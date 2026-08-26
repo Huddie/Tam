@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { type Discovery, listDiscoveries, listTags, listTypes } from "../api";
+import { type Discovery, hideDiscovery, listDiscoveries, listTags, listTypes, renameDiscovery } from "../api";
+import { ManageMenu } from "../ManageMenu";
 import { useSort } from "../useSort";
 
 export function CatalogPage() {
@@ -10,6 +11,8 @@ export function CatalogPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const filters = useMemo(
     () => ({
@@ -48,6 +51,28 @@ export function CatalogPage() {
     // back to page 1.
     if (key !== "page") next.delete("page");
     setParams(next);
+  }
+
+  function startRename(discovery: Discovery) {
+    setRenamingId(discovery.id);
+    setRenameValue(discovery.title);
+  }
+
+  function saveRename() {
+    if (!renamingId || !renameValue.trim()) return;
+    const title = renameValue.trim();
+    renameDiscovery(renamingId, title)
+      .then(() => {
+        setDiscoveries((prev) => prev.map((d) => (d.id === renamingId ? { ...d, title } : d)));
+        setRenamingId(null);
+      })
+      .catch((e) => setError(String(e)));
+  }
+
+  function deleteRow(id: string) {
+    hideDiscovery(id)
+      .then(() => setDiscoveries((prev) => prev.filter((d) => d.id !== id)))
+      .catch((e) => setError(String(e)));
   }
 
   const { sorted, toggleSort, indicator } = useSort<Discovery>(discoveries, (discovery, key) => {
@@ -123,13 +148,31 @@ export function CatalogPage() {
             <th className="sortable" onClick={() => toggleSort("updated")}>
               Updated{indicator("updated")}
             </th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {sorted.map((discovery) => (
             <tr key={discovery.id}>
               <td>
-                <Link to={`/d/${discovery.name}`}>{discovery.title}</Link>
+                {renamingId === discovery.id ? (
+                  <div className="toolbar" style={{ margin: 0 }}>
+                    <input
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && saveRename()}
+                      autoFocus
+                    />
+                    <button className="primary" disabled={!renameValue.trim()} onClick={saveRename}>
+                      Save
+                    </button>
+                    <button className="secondary" onClick={() => setRenamingId(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <Link to={`/d/${discovery.name}`}>{discovery.title}</Link>
+                )}
               </td>
               <td>{discovery.type}</td>
               <td>
@@ -142,6 +185,11 @@ export function CatalogPage() {
               <td className="muted">{discovery.created_by}</td>
               <td className="muted mono" title={new Date(discovery.updated_at).toLocaleString()}>
                 {new Date(discovery.updated_at).toLocaleDateString()}
+              </td>
+              <td>
+                {discovery.can_manage && (
+                  <ManageMenu onRename={() => startRename(discovery)} onDelete={() => deleteRow(discovery.id)} />
+                )}
               </td>
             </tr>
           ))}

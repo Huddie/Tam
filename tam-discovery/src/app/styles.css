@@ -309,7 +309,11 @@ tbody tr:hover td {
   flex-shrink: 0;
   background: var(--bg);
   border: 1px solid var(--border);
-  overflow: hidden;
+  /* No overflow:hidden here -- it doesn't clip anything meaningful (no
+     rounded corners in this design), but it WOULD clip the ManageMenu's
+     absolutely-positioned dropdown popup whenever this container is short
+     (i.e. collapsed, with no .detail-overlay-body adding height), making
+     the menu invisible right when someone actually wants to open it. */
 }
 
 .detail-overlay-header {

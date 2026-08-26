@@ -53,7 +53,7 @@ describe("catalog filtering", () => {
       tags: ["other"],
     });
 
-    const response = await listDiscoveries(listRequest("?type=report&tag=earnings&creator=alice@example.com"), env);
+    const response = await listDiscoveries(listRequest("?type=report&tag=earnings&creator=alice@example.com"), env, "someone-else@example.com");
     const body = await response.json<{ discoveries: Array<{ id: string }> }>();
 
     expect(body.discoveries.map((d) => d.id)).toEqual(["d-report-alice"]);
@@ -75,7 +75,7 @@ describe("catalog filtering", () => {
       createdAt: "2026-02-02T00:00:00.000Z",
     });
 
-    const response = await listDiscoveries(listRequest("?q=earnings"), env);
+    const response = await listDiscoveries(listRequest("?q=earnings"), env, "someone-else@example.com");
     const body = await response.json<{ discoveries: Array<{ id: string }> }>();
 
     expect(body.discoveries.map((d) => d.id)).toEqual(["d-text-1"]);
@@ -87,8 +87,8 @@ describe("catalog filtering", () => {
     // Make "Old" the most recently UPDATED despite being created first.
     await env.DB.prepare("UPDATE discoveries SET updated_at = ? WHERE id = ?").bind("2026-04-01T00:00:00.000Z", "d-sort-old").run();
 
-    const byNewest = await (await listDiscoveries(listRequest("?sort=newest"), env)).json<{ discoveries: Array<{ id: string }> }>();
-    const byUpdated = await (await listDiscoveries(listRequest("?sort=updated"), env)).json<{ discoveries: Array<{ id: string }> }>();
+    const byNewest = await (await listDiscoveries(listRequest("?sort=newest"), env, "someone-else@example.com")).json<{ discoveries: Array<{ id: string }> }>();
+    const byUpdated = await (await listDiscoveries(listRequest("?sort=updated"), env, "someone-else@example.com")).json<{ discoveries: Array<{ id: string }> }>();
 
     expect(byNewest.discoveries[0].id).toBe("d-sort-new");
     expect(byUpdated.discoveries[0].id).toBe("d-sort-old");

@@ -54,7 +54,7 @@ async function handleCatalogApi(request: Request, env: Env, path: string[]): Pro
   const user = await requireAccess(request, env);
   const method = request.method;
 
-  if (path.length === 1 && path[0] === "discoveries" && method === "GET") return listDiscoveries(request, env);
+  if (path.length === 1 && path[0] === "discoveries" && method === "GET") return listDiscoveries(request, env, user);
   if (path.length === 2 && path[0] === "discoveries" && method === "GET") return getDiscovery(env, path[1], user);
   if (path.length === 2 && path[0] === "discoveries" && method === "PATCH") return renameDiscovery(request, env, user, path[1]);
   if (path.length === 3 && path[0] === "discoveries" && path[2] === "versions" && method === "GET") {

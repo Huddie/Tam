@@ -1,70 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { type DiscoveryDetail, type VersionSummary, getDiscovery, getVersions, hideDiscovery, renameDiscovery } from "../api";
-
-/** The "..." menu next to a discovery's title -- Rename and Delete, both
- * creator-only (the server enforces this too; can_manage just decides
- * whether to show the menu at all). Delete is soft (see hideDiscovery()
- * on the Worker side) -- this menu's own confirm step is the only
- * "are you sure" a user gets, so it needs to be unambiguous about what
- * actually happens. */
-function ManageMenu({
-  onRename,
-  onDelete,
-}: {
-  onRename: () => void;
-  onDelete: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  return (
-    <div className="menu-dropdown">
-      <button
-        className="menu-dropdown-toggle secondary"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((value) => !value);
-          setConfirmingDelete(false);
-        }}
-      >
-        &#8942;
-      </button>
-      {open && (
-        <div className="menu-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-          {!confirmingDelete ? (
-            <>
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  onRename();
-                }}
-              >
-                Rename
-              </button>
-              <button className="danger" onClick={() => setConfirmingDelete(true)}>
-                Delete
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="danger"
-                onClick={() => {
-                  setOpen(false);
-                  onDelete();
-                }}
-              >
-                Yes, delete
-              </button>
-              <button onClick={() => setConfirmingDelete(false)}>Cancel</button>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+import { ManageMenu } from "../ManageMenu";
 
 export function DetailPage() {
   const { id } = useParams<{ id: string }>();

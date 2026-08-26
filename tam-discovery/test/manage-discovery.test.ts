@@ -40,7 +40,7 @@ describe("renaming and soft-deleting a discovery", () => {
 
     await hideDiscovery(env, "alice@example.com", "d-hide-1");
 
-    const listed = await listDiscoveries(new Request("https://discovery.example.com/api/discoveries"), env);
+    const listed = await listDiscoveries(new Request("https://discovery.example.com/api/discoveries"), env, "alice@example.com");
     const listedBody = await listed.json<{ discoveries: Array<{ id: string }> }>();
     expect(listedBody.discoveries.map((d) => d.id)).not.toContain("d-hide-1");
 

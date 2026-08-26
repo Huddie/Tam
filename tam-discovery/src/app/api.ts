@@ -7,11 +7,11 @@ export interface Discovery {
   created_at: string;
   updated_at: string;
   tags: string[];
+  can_manage: boolean;
 }
 
 export interface DiscoveryDetail extends Discovery {
   latest_version_id: string;
-  can_manage: boolean;
 }
 
 export interface VersionSummary {

@@ -12,7 +12,7 @@ const PAGE_SIZE = 50;
  * here, regardless of other filters -- see hideDiscovery() below; their
  * permalink/version URLs still resolve directly, just not through the
  * catalog listing. */
-export async function listDiscoveries(request: Request, env: Env): Promise<Response> {
+export async function listDiscoveries(request: Request, env: Env, user: string): Promise<Response> {
   const url = new URL(request.url);
   const q = url.searchParams.get("q");
   const tag = url.searchParams.get("tag");
@@ -65,6 +65,7 @@ export async function listDiscoveries(request: Request, env: Env): Promise<Respo
       created_at: row.created_at,
       updated_at: row.updated_at,
       tags: await tagNamesForDiscovery(env, row.id),
+      can_manage: row.created_by === user,
     }))
   );
 
