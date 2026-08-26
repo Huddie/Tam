@@ -51,6 +51,14 @@ export function rawDownloadUrl(key: string): string {
   return `/api/download?key=${encodeURIComponent(key)}`;
 }
 
-export function exportUrl(prefix: string, format: "parquet" | "csv"): string {
-  return `/api/export?format=${format}&prefix=${encodeURIComponent(prefix)}`;
+export interface ExportSelection {
+  prefixes?: string[];
+  keys?: string[];
+}
+
+export function exportUrl(selection: ExportSelection, format: "parquet" | "csv"): string {
+  const params = new URLSearchParams({ format });
+  (selection.prefixes ?? []).forEach((prefix) => params.append("prefix", prefix));
+  (selection.keys ?? []).forEach((key) => params.append("key", key));
+  return `/api/export?${params.toString()}`;
 }

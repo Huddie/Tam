@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { type Discovery, listDiscoveries, listTags, listTypes } from "../api";
+import { useSort } from "../useSort";
 
 export function CatalogPage() {
   const [params, setParams] = useSearchParams();
@@ -37,6 +38,21 @@ export function CatalogPage() {
     else next.delete(key);
     setParams(next);
   }
+
+  const { sorted, toggleSort, indicator } = useSort<Discovery>(discoveries, (discovery, key) => {
+    switch (key) {
+      case "title":
+        return discovery.title.toLowerCase();
+      case "type":
+        return discovery.type.toLowerCase();
+      case "creator":
+        return discovery.created_by.toLowerCase();
+      case "updated":
+        return discovery.updated_at;
+      default:
+        return "";
+    }
+  });
 
   return (
     <div className="page">
@@ -83,15 +99,23 @@ export function CatalogPage() {
       <table>
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Type</th>
+            <th className="sortable" onClick={() => toggleSort("title")}>
+              Title{indicator("title")}
+            </th>
+            <th className="sortable" onClick={() => toggleSort("type")}>
+              Type{indicator("type")}
+            </th>
             <th>Tags</th>
-            <th>Creator</th>
-            <th>Updated</th>
+            <th className="sortable" onClick={() => toggleSort("creator")}>
+              Creator{indicator("creator")}
+            </th>
+            <th className="sortable" onClick={() => toggleSort("updated")}>
+              Updated{indicator("updated")}
+            </th>
           </tr>
         </thead>
         <tbody>
-          {discoveries.map((discovery) => (
+          {sorted.map((discovery) => (
             <tr key={discovery.id}>
               <td>
                 <Link to={`/d/${discovery.name}`}>{discovery.title}</Link>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { type FilePage, csvDownloadUrl, rawDownloadUrl, viewFile } from "../api";
+import { useSort } from "../useSort";
 
 const PAGE_SIZE = 200;
 
@@ -18,6 +19,8 @@ export function FileViewPage() {
       .then(setData)
       .catch((e) => setError(String(e)));
   }, [key, page]);
+
+  const { sorted, toggleSort, indicator } = useSort<Record<string, unknown>>(data?.rows ?? [], (row, column) => row[column]);
 
   function goToPage(next: number) {
     const nextParams = new URLSearchParams(params);
@@ -52,14 +55,14 @@ export function FileViewPage() {
             {data.totalRows.toLocaleString()} rows total -- showing page {data.page} of {totalPages}
           </p>
           <div className="pagination">
-            <button disabled={page <= 1} onClick={() => goToPage(page - 1)}>
-              Previous
+            <button className="pager-btn" disabled={page <= 1} onClick={() => goToPage(page - 1)}>
+              &lsaquo; Prev
             </button>
             <span className="muted">
               Page {page} / {totalPages}
             </span>
-            <button disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>
-              Next
+            <button className="pager-btn" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>
+              Next &rsaquo;
             </button>
           </div>
 
@@ -68,12 +71,15 @@ export function FileViewPage() {
               <thead>
                 <tr>
                   {data.columns.map((column) => (
-                    <th key={column}>{column}</th>
+                    <th className="sortable" key={column} onClick={() => toggleSort(column)}>
+                      {column}
+                      {indicator(column)}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((row, index) => (
+                {sorted.map((row, index) => (
                   <tr key={index}>
                     {data.columns.map((column) => (
                       <td key={column}>{String(row[column] ?? "")}</td>

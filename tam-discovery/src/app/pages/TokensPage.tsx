@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type TokenSummary, createToken, listTokens, revokeToken } from "../api";
+import { useSort } from "../useSort";
 
 export function TokensPage() {
   const [tokens, setTokens] = useState<TokenSummary[]>([]);
@@ -42,6 +43,21 @@ export function TokensPage() {
     }
   }
 
+  const { sorted, toggleSort, indicator } = useSort<TokenSummary>(tokens, (token, key) => {
+    switch (key) {
+      case "name":
+        return token.name.toLowerCase();
+      case "created":
+        return token.created_at;
+      case "lastUsed":
+        return token.last_used_at ?? "";
+      case "status":
+        return token.revoked_at ? "revoked" : "active";
+      default:
+        return "";
+    }
+  });
+
   return (
     <div className="page page-narrow">
       <Link className="back-link" to="/">
@@ -78,15 +94,23 @@ export function TokensPage() {
       <table style={{ marginTop: "1.25rem" }}>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Created</th>
-            <th>Last used</th>
-            <th>Status</th>
+            <th className="sortable" onClick={() => toggleSort("name")}>
+              Name{indicator("name")}
+            </th>
+            <th className="sortable" onClick={() => toggleSort("created")}>
+              Created{indicator("created")}
+            </th>
+            <th className="sortable" onClick={() => toggleSort("lastUsed")}>
+              Last used{indicator("lastUsed")}
+            </th>
+            <th className="sortable" onClick={() => toggleSort("status")}>
+              Status{indicator("status")}
+            </th>
             <th />
           </tr>
         </thead>
         <tbody>
-          {tokens.map((token) => (
+          {sorted.map((token) => (
             <tr key={token.id}>
               <td className="mono">{token.name}</td>
               <td className="muted mono">{new Date(token.created_at).toLocaleString()}</td>

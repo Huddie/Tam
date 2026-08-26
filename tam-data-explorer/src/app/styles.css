@@ -63,7 +63,7 @@ code,
 pre {
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 2px;
   font-size: 0.9em;
 }
 code {
@@ -91,7 +91,7 @@ input,
 select {
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--bg);
   color: var(--text);
 }
@@ -99,13 +99,13 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 button {
   padding: 0.55rem 1.1rem;
   border: 1px solid var(--accent);
-  border-radius: 6px;
+  border-radius: 2px;
   background: var(--accent);
   color: white;
   cursor: pointer;
@@ -130,7 +130,7 @@ table {
   border-collapse: collapse;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 2px;
   overflow: hidden;
   font-variant-numeric: tabular-nums;
 }
@@ -153,6 +153,13 @@ th {
   letter-spacing: 0.05em;
   font-family: var(--mono);
   background: var(--bg-subtle);
+}
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+th.sortable:hover {
+  color: var(--text);
 }
 tbody tr:last-child td {
   border-bottom: none;
@@ -228,14 +235,14 @@ tbody tr:hover td {
   color: var(--danger);
   background: #fdf1f0;
   border: 1px solid #f3d4d0;
-  border-radius: 6px;
+  border-radius: 2px;
   padding: 0.6rem 0.9rem;
 }
 
 .callout {
   background: #fffaeb;
   border: 1px solid #f3e0a3;
-  border-radius: 6px;
+  border-radius: 2px;
   padding: 0.75rem 1rem;
   margin: 1rem 0;
 }
@@ -244,7 +251,7 @@ tbody tr:hover td {
   display: inline-block;
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 2px;
   padding: 0.1rem 0.6rem;
   font-size: 0.75rem;
   font-family: var(--mono);
@@ -304,13 +311,13 @@ tbody tr:hover td {
 .browse-list {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 2px;
   overflow: hidden;
 }
 .browse-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0.6rem;
   padding: 0.6rem 0.9rem;
   border-bottom: 1px solid var(--border);
   font-family: var(--mono);
@@ -318,12 +325,44 @@ tbody tr:hover td {
 }
 .browse-row a {
   cursor: pointer;
+  flex: 1;
+}
+.browse-row .size {
+  margin-left: auto;
+  color: var(--muted);
 }
 .browse-row:last-child {
   border-bottom: none;
 }
 .browse-row:hover {
   background: var(--bg-subtle);
+}
+
+.export-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.export-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 10;
+  min-width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+}
+.export-dropdown-menu a {
+  display: block;
+  padding: 0.5rem 0.85rem;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.export-dropdown-menu a:hover {
+  background: var(--bg-subtle);
+  text-decoration: none;
 }
 
 .actions {
@@ -339,4 +378,22 @@ tbody tr:hover td {
   margin: 1rem 0;
   font-family: var(--mono);
   font-size: 0.9rem;
+}
+.pager-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.4rem 0.85rem;
+  font-weight: 500;
+}
+.pager-btn:hover:not(:disabled) {
+  background: none;
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+.pager-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  border-color: var(--border);
+  color: var(--muted);
 }

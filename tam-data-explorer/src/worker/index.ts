@@ -45,9 +45,9 @@ async function handleApi(request: Request, env: Env, path: string[]): Promise<Re
   if (path.length === 1 && path[0] === "export" && method === "GET") {
     const format = url.searchParams.get("format");
     if (format !== "parquet" && format !== "csv") throw new ApiError(400, "format must be 'parquet' or 'csv'");
-    const prefix = url.searchParams.get("prefix");
+    const prefixes = url.searchParams.getAll("prefix");
     const keys = url.searchParams.getAll("key");
-    return exportFiles(env, prefix, keys, format);
+    return exportFiles(env, prefixes, keys, format);
   }
 
   throw new ApiError(404, `no route for ${method} /api/${path.join("/")}`);

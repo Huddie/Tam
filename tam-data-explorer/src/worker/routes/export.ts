@@ -14,38 +14,56 @@ import type { Env } from "../types";
 const MAX_EXPORT_FILES = 200;
 const MAX_EXPORT_BYTES = 50 * 1024 * 1024;
 
-async function resolveExportKeys(env: Env, prefix: string | null, keys: string[]): Promise<string[]> {
-  if (keys.length) return keys;
-  if (!prefix) throw new ApiError(400, "prefix or at least one key is required");
+/** Resolves any combination of `prefixes` (each expanded recursively, e.g.
+ * from a multi-folder selection) and explicit `keys` into one deduplicated
+ * key list -- a folder and an individually-picked file under a DIFFERENT
+ * folder can be selected together in the same export. */
+async function resolveExportKeys(env: Env, prefixes: string[], keys: string[]): Promise<string[]> {
+  const collected = new Set(keys);
 
-  const found = (await listAllKeysUnderPrefix(env, prefix)).filter((entry) => entry.key.endsWith(".parquet"));
-  const totalBytes = found.reduce((sum, entry) => sum + entry.size, 0);
-  if (found.length > MAX_EXPORT_FILES || totalBytes > MAX_EXPORT_BYTES) {
-    throw new ApiError(
-      400,
-      `${found.length} files (${totalBytes} bytes) under ${prefix} is too much to export at once -- narrow the folder`
-    );
+  if (prefixes.length) {
+    let totalFiles = 0;
+    let totalBytes = 0;
+    for (const prefix of prefixes) {
+      const found = (await listAllKeysUnderPrefix(env, prefix)).filter((entry) => entry.key.endsWith(".parquet"));
+      totalFiles += found.length;
+      totalBytes += found.reduce((sum, entry) => sum + entry.size, 0);
+      found.forEach((entry) => collected.add(entry.key));
+    }
+    if (totalFiles > MAX_EXPORT_FILES || totalBytes > MAX_EXPORT_BYTES) {
+      throw new ApiError(
+        400,
+        `${totalFiles} files (${totalBytes} bytes) under the selected folder(s) is too much to export at once -- select fewer`
+      );
+    }
   }
-  return found.map((entry) => entry.key);
+
+  if (!collected.size) throw new ApiError(400, "prefix or at least one key is required");
+  return [...collected];
 }
 
-function exportBaseName(prefix: string | null, keys: string[]): string {
+function exportBaseName(prefixes: string[], keys: string[]): string {
   const raw =
-    prefix?.replace(/\/$/, "").split("/").pop() ?? (keys.length === 1 ? keys[0].split("/").pop()?.replace(/\.parquet$/, "") : "export");
+    prefixes.length === 1 && !keys.length
+      ? prefixes[0].replace(/\/$/, "").split("/").pop()
+      : prefixes.length + keys.length === 1
+        ? keys[0]?.split("/").pop()?.replace(/\.parquet$/, "")
+        : "export";
   return (raw || "export").replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/** GET /api/export?format=parquet|csv&prefix=... (a whole folder,
- * recursively) or &key=...&key=... (specific files). "parquet" zips up the
- * original files unmodified; "csv" reads and concatenates every file's rows
- * into one combined CSV -- correct here because every minute-bar file
- * already carries its own `symbol` column (tam/marketdata/schema.py), so
- * concatenating rows across symbols/years is meaningful, not just a byte
- * dump. */
-export async function exportFiles(env: Env, prefix: string | null, keys: string[], format: "parquet" | "csv"): Promise<Response> {
-  const resolvedKeys = await resolveExportKeys(env, prefix, keys);
+/** GET /api/export?format=parquet|csv&prefix=...&prefix=... (one or more
+ * folders, each expanded recursively) and/or &key=...&key=... (specific
+ * files) -- any mix of both. "parquet" zips up the original files
+ * unmodified; "csv" reads and concatenates every file's rows into one
+ * combined CSV -- correct here because every minute-bar file already
+ * carries its own `symbol` column (tam/marketdata/schema.py), so
+ * concatenating rows across symbols/years/folders is meaningful, not just
+ * a byte dump. */
+export async function exportFiles(env: Env, prefixes: string[], keys: string[], format: "parquet" | "csv"): Promise<Response> {
+  const resolvedKeys = await resolveExportKeys(env, prefixes, keys);
   if (!resolvedKeys.length) throw new ApiError(404, "no .parquet files found to export");
-  const baseName = exportBaseName(prefix, resolvedKeys);
+  const baseName = exportBaseName(prefixes, keys);
 
   if (format === "parquet") {
     const entries: Record<string, Uint8Array> = {};
