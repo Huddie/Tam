@@ -1,16 +1,22 @@
-/* Plain CSS, no framework -- same base as tam-discovery's stylesheet, plus
-   a few classes for the browse tree/breadcrumb/tabs this app also needs. */
+/* Plain CSS, no framework -- same base/theme as tam-discovery's stylesheet
+   (deliberately kept in sync -- see its own comment), plus a few extra
+   classes for the browse tree/breadcrumb/tabs this app needs. Table cells
+   here default to the monospace stack (unlike Discovery's, which show
+   prose titles/emails) -- this table is almost always OHLCV price data,
+   where a fixed-width numeric column actually helps scanning. */
 
 :root {
   color-scheme: light;
-  --border: #e3e5e8;
-  --text: #1f2328;
-  --muted: #636c76;
-  --accent: #2563eb;
-  --accent-dark: #1d4ed8;
+  --border: #dde3e6;
+  --text: #16211f;
+  --muted: #5b6b68;
+  --navy: #0b1520;
+  --accent: #0d9488;
+  --accent-dark: #0f766e;
   --bg: #ffffff;
-  --bg-subtle: #f6f7f9;
+  --bg-subtle: #f4f7f6;
   --danger: #b42318;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
 }
 
 * {
@@ -21,7 +27,10 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--text);
-  background: var(--bg-subtle);
+  background-color: var(--bg-subtle);
+  background-image: linear-gradient(rgba(15, 118, 110, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
   line-height: 1.5;
 }
 
@@ -31,22 +40,28 @@ h1 {
 }
 
 h2 {
-  font-size: 1.1rem;
   margin: 1.5rem 0 0.75rem;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   font-weight: 600;
+  font-family: var(--mono);
+  font-size: 0.85rem;
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-dark);
   text-decoration: none;
 }
 a:hover {
   text-decoration: underline;
 }
 
+code,
+pre,
+.mono {
+  font-family: var(--mono);
+}
 code,
 pre {
   background: var(--bg-subtle);
@@ -87,7 +102,7 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
 }
 
 button {
@@ -120,6 +135,7 @@ table {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+  font-variant-numeric: tabular-nums;
 }
 th,
 td {
@@ -128,12 +144,17 @@ td {
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
+td {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+}
 th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  font-family: var(--mono);
   background: var(--bg-subtle);
 }
 tbody tr:last-child td {
@@ -147,14 +168,19 @@ tbody tr:hover td {
 
 .topnav {
   display: flex;
+  align-items: center;
   gap: 1.5rem;
   padding: 0.75rem 1.25rem;
-  background: var(--text);
+  background: var(--navy);
+  border-bottom: 2px solid var(--accent);
 }
 .topnav a {
-  color: #cdd5e0;
-  font-size: 0.9rem;
-  font-weight: 500;
+  color: #9db3ae;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--mono);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 .topnav a:hover {
   color: white;
@@ -162,7 +188,6 @@ tbody tr:hover td {
 }
 .topnav a.active {
   color: white;
-  border-bottom: 2px solid var(--accent);
 }
 
 .page {
@@ -224,8 +249,9 @@ tbody tr:hover td {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.1rem 0.6rem;
-  font-size: 0.8rem;
-  color: var(--muted);
+  font-size: 0.75rem;
+  font-family: var(--mono);
+  color: var(--accent-dark);
   margin: 0 0.25rem 0.25rem 0;
 }
 
@@ -252,6 +278,10 @@ tbody tr:hover td {
   color: var(--muted);
   padding: 0.6rem 0.2rem;
   margin-right: 1.25rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 .tabs button:hover {
   background: none;
@@ -266,9 +296,11 @@ tbody tr:hover td {
 .breadcrumb {
   margin-bottom: 1rem;
   color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.9rem;
 }
 .breadcrumb a {
-  color: var(--accent);
+  color: var(--accent-dark);
   cursor: pointer;
 }
 
@@ -284,6 +316,8 @@ tbody tr:hover td {
   align-items: center;
   padding: 0.6rem 0.9rem;
   border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.9rem;
 }
 .browse-row a {
   cursor: pointer;
@@ -306,4 +340,6 @@ tbody tr:hover td {
   align-items: center;
   gap: 0.75rem;
   margin: 1rem 0;
+  font-family: var(--mono);
+  font-size: 0.9rem;
 }

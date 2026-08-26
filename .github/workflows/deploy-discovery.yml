@@ -4,6 +4,12 @@ name: Deploy Discovery
 # D1/R2 via Miniflare, no live Cloudflare account needed) must pass before
 # deploy runs at all, via the `needs: test` dependency below -- same gating
 # pattern as publish.yml's own PyPI publish job.
+#
+# `npm install`, not `npm ci` -- re-resolves against whatever registry is
+# actually configured (see .npmrc: the public npmjs.org registry) rather
+# than trusting the committed lockfile's exact resolved URLs, which can
+# otherwise drift to a machine-specific mirror if the lockfile was last
+# regenerated somewhere with a different npm registry configured.
 "on":
   push:
     branches: [main]
@@ -25,7 +31,7 @@ jobs:
         with:
           node-version: "20"
 
-      - run: npm ci
+      - run: npm install
       - run: npm run build
       - run: npx vitest run
 
@@ -39,7 +45,7 @@ jobs:
         with:
           node-version: "20"
 
-      - run: npm ci
+      - run: npm install
       - run: npm run build
 
       # CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID are repo secrets -- see

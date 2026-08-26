@@ -88,9 +88,9 @@ export function TokensPage() {
         <tbody>
           {tokens.map((token) => (
             <tr key={token.id}>
-              <td>{token.name}</td>
-              <td className="muted">{new Date(token.created_at).toLocaleString()}</td>
-              <td className="muted">{token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"}</td>
+              <td className="mono">{token.name}</td>
+              <td className="muted mono">{new Date(token.created_at).toLocaleString()}</td>
+              <td className="muted mono">{token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"}</td>
               <td>{token.revoked_at ? "revoked" : "active"}</td>
               <td>{!token.revoked_at && <button onClick={() => handleRevoke(token.id)}>Revoke</button>}</td>
             </tr>

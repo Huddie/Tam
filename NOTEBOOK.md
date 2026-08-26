@@ -237,6 +237,78 @@ works fine on Colab as long as you don't configure a `lora:` block in its config
 (pointing `base_url`/`model` at a remote/HTTP-served LLM instead, e.g. an
 OpenAI-compatible endpoint) -- only the local self-fine-tuning path needs `mlx-lm`.
 
+## Querying the minute-bar market-data lake (R2 + DuckDB) from Colab
+
+`tam.marketdata` is a separate 1-minute OHLCV data lake (Parquet in Cloudflare R2),
+independent of the `data:`/backtest config above. Install its extra first:
+
+```python
+!pip install -q "tam-quant[marketdata]"
+```
+
+Then add R2 credentials as Colab secrets (key-icon panel, left sidebar) -- add
+secrets named exactly `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+`R2_BUCKET`, and grant this notebook access to them. Ask whoever manages the bucket
+for a **read-only** R2 API token for this -- ingestion needs a read-write one, but
+querying from a notebook never should use write credentials.
+
+```python
+from tam.marketdata.duckdb_query import open_duckdb
+
+con = open_duckdb(bucket="tam-market-data")
+con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
+con.sql("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day").df()
+```
+
+`open_duckdb()` wires up DuckDB's `httpfs` extension against R2 directly -- every
+query reads Parquet on demand, nothing is downloaded or materialized up front. See
+`tam.marketdata.duckdb_query`'s own module docstring for the full list of built-in
+macros (`minute_bars`, `daily_bars`, `weekly_bars`, `monthly_bars`, `rollup_bars`,
+`daily_returns`, `rolling_volatility`) -- all derived from the 1-minute files on
+demand, none of them precomputed/stored separately.
+
+**Simpler alternative, no DuckDB/R2 credentials at all** -- for just one
+symbol-year as a DataFrame, `tam-data-explorer`'s own HTTP API
+(`data.tamquant.com`) works from anywhere `requests` does:
+
+```python
+from tam.marketdata.explorer_client import fetch_dataframe
+
+df = fetch_dataframe("AAPL", 2024)
+```
+
+This needs a *different* kind of credential -- a Cloudflare Access **Service
+Token** (a Client ID + Secret pair, not the R2 keys above). Add it as Colab
+secrets named `DATA_EXPLORER_SERVICE_TOKEN_ID`/`DATA_EXPLORER_SERVICE_TOKEN_SECRET`
+-- see `https://data.tamquant.com/api-access` for exactly how to create one.
+
+## Publishing dashboards to Discovery
+
+Any Plotly figure -- or an already-rendered `.html` file -- can be published to
+[Discovery](https://discovery.tamquant.com) (a private, GitHub-authenticated
+catalog) directly from a notebook:
+
+```python
+from tam.discovery import upload
+
+result = upload(fig, title="AAPL moving-average backtest", tags=["aapl", "moving-average"])
+print(result.url)
+```
+
+This needs a publishing token and an API URL, neither of which have a hardcoded
+default:
+- Create a token once at `https://discovery.tamquant.com/settings/tokens`
+  (requires GitHub login), then add it as a Colab secret named
+  `TAM_DISCOVERY_TOKEN` -- or, if you're working locally instead of in Colab, run
+  `upload-discovery login` once and it's saved for every future call.
+- Set `TAM_DISCOVERY_API_URL` (Colab secret or env var) to
+  `https://discovery.tamquant.com`.
+
+`type=` groups this with other kinds of published HTML (default `"dashboard"`);
+`name=` gives it a stable slug that always resolves to whichever version you
+publish most recently, while the version's own URL (`result.url`) never changes
+regardless of what you publish under that name later.
+
 ## Persisting data and reports across a Colab session
 
 Colab's local filesystem is wiped when the runtime recycles. If you want ingested

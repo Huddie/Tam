@@ -12,9 +12,6 @@ name: Tests
     branches: [main]
   workflow_dispatch: {}
 
-env:
-  UV_DEFAULT_INDEX: https://pypi.org/simple
-
 jobs:
   test:
     runs-on: ubuntu-latest

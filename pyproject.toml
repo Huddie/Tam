@@ -65,10 +65,6 @@ marketdata = [
     "pandas_market_calendars>=4.0",
 ]
 
-[[tool.uv.index]]
-url = "https://pypi.apple.com/simple"
-default = true
-
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"

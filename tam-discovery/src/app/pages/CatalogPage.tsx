@@ -105,7 +105,7 @@ export function CatalogPage() {
                 ))}
               </td>
               <td className="muted">{discovery.created_by}</td>
-              <td className="muted">{new Date(discovery.updated_at).toLocaleString()}</td>
+              <td className="muted mono">{new Date(discovery.updated_at).toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
