@@ -133,7 +133,7 @@ def test_main_does_not_expand_a_real_subcommand_name():
 
 
 def test_main_reports_a_clean_error_instead_of_a_traceback_on_failure(monkeypatch, tmp_path):
-    monkeypatch.delenv("TAM_DISCOVERY_TOKEN", raising=False)
+    monkeypatch.delenv("TAM_PAT", raising=False)
     monkeypatch.setattr("tam.discovery.auth.token_file_path", lambda: tmp_path / "does-not-exist")
     html_path = tmp_path / "r.html"
     html_path.write_text("<html></html>")

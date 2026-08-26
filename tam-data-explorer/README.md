@@ -135,7 +135,7 @@ the same GitHub login Discovery uses, and land on the browse UI. Go to
 **Personal tokens** -> create one -> then locally:
 
 ```bash
-export DATA_EXPLORER_TOKEN=<the token you just created>
+export TAM_PAT=<the token you just created>
 uv run python -c "from tam.marketdata.explorer_client import fetch_dataframe; print(fetch_dataframe('AAPL', 2024).head())"
 uv run python -c "from tam.marketdata.explorer_client import connect; print(connect().sql(\"SELECT * FROM daily_bars('AAPL') LIMIT 5\").df())"
 ```

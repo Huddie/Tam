@@ -41,7 +41,11 @@ from dotenv import dotenv_values, find_dotenv
 
 from .duckdb_query import _register_macros
 
-_ENV_VAR = "DATA_EXPLORER_TOKEN"
+# TAM_PAT ("personal access token"), not something Data-Explorer-specific --
+# the same token also authenticates against Discovery (tam.discovery.auth
+# uses the identical name for exactly this reason), so naming it after just
+# one of the two sites it works on would be misleading.
+_ENV_VAR = "TAM_PAT"
 _API_URL_ENV_VAR = "DATA_EXPLORER_API_URL"
 _DEFAULT_API_URL = "https://data.tamquant.com"
 
@@ -99,7 +103,7 @@ def _from_dotenv() -> Optional[str]:
 
 
 def resolve_token(explicit: Optional[str] = None) -> str:
-    """Resolution order: explicit kwarg -> DATA_EXPLORER_TOKEN env var
+    """Resolution order: explicit kwarg -> TAM_PAT env var
     (directly, or via a .env file) -> Colab secret (same name,
     auto-detected -- nothing to configure differently just because you're
     in Colab) -> ~/.config/tam-data-explorer/token. Raises a clear,

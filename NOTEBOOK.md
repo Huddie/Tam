@@ -251,7 +251,7 @@ at `https://data.tamquant.com/settings/tokens` (requires GitHub login) -- it's
 yours alone, and revoking it never affects anyone else's access. (This is the same
 token used for publishing to Discovery below -- one token, not two; either site's
 `/settings/tokens` page manages it.) Add it as a Colab secret named
-`DATA_EXPLORER_TOKEN` (key-icon panel, left sidebar), then:
+`TAM_PAT` (key-icon panel, left sidebar), then:
 
 ```python
 from tam.marketdata.explorer_client import fetch_dataframe, connect
@@ -304,7 +304,7 @@ This needs a publishing token and an API URL, neither of which have a hardcoded
 default:
 - Create a token once at `https://discovery.tamquant.com/settings/tokens`
   (requires GitHub login), then add it as a Colab secret named
-  `TAM_DISCOVERY_TOKEN` -- or, if you're working locally instead of in Colab, run
+  `TAM_PAT` -- or, if you're working locally instead of in Colab, run
   `upload-discovery login` once and it's saved for every future call.
 - Set `TAM_DISCOVERY_API_URL` (Colab secret or env var) to
   `https://discovery.tamquant.com`.

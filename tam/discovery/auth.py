@@ -1,6 +1,12 @@
 """Publishing-token resolution -- shared by tam.discovery.upload() and the
 upload-discovery CLI, so both look in exactly the same places in exactly the
 same order. Never prints or logs the token itself.
+
+The env var/Colab secret is named TAM_PAT ("personal access token"), not
+something Discovery-specific -- the same token also authenticates against
+Data Explorer (tam.marketdata.explorer_client uses the identical name for
+exactly this reason), so naming it after just one of the two sites it
+works on would be misleading.
 """
 from __future__ import annotations
 
@@ -11,8 +17,8 @@ from typing import Optional
 
 from dotenv import dotenv_values, find_dotenv
 
-_ENV_VAR = "TAM_DISCOVERY_TOKEN"
-_COLAB_SECRET_NAME = "TAM_DISCOVERY_TOKEN"
+_ENV_VAR = "TAM_PAT"
+_COLAB_SECRET_NAME = "TAM_PAT"
 
 
 def token_file_path() -> Path:
@@ -71,7 +77,7 @@ def _from_dotenv() -> Optional[str]:
 
 def resolve_token(explicit: Optional[str] = None) -> str:
     """Resolution order: an explicit `token=`/`--token` argument, then the
-    TAM_DISCOVERY_TOKEN env var (directly, or via a .env file found by
+    TAM_PAT env var (directly, or via a .env file found by
     walking up from the current directory), then (if running in Colab)
     that same name as a Colab secret, then whatever `upload-discovery
     login` last saved to disk. Raises a clear, actionable RuntimeError
