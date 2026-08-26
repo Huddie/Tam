@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { type BrowseResult, type ExportSelection, type YearEntry, browse, exportUrl, listSymbols, listYears } from "../api";
+import { useClickOutside } from "../useClickOutside";
 
 /** A small hand-drawn "table" glyph (a grid, not a real icon library) --
  * marks a row as "this opens the tabular/table view when clicked",
@@ -51,11 +52,12 @@ function Breadcrumb({ prefix, onNavigate }: { prefix: string; onNavigate: (prefi
  * selection-mode "export selected" action below. */
 function ExportDropdown({ selection, label }: { selection: ExportSelection; label: string }) {
   const [open, setOpen] = useState(false);
+  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
   const isEmpty = !(selection.prefixes?.length || selection.keys?.length);
   if (isEmpty) return null;
 
   return (
-    <div className="export-dropdown">
+    <div className="export-dropdown" ref={ref}>
       <button className="secondary" onClick={() => setOpen((value) => !value)}>
         {label} &#9662;
       </button>
@@ -103,8 +105,9 @@ function OptionsMenu({
   setShowHidden: (value: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
   return (
-    <div className="menu-dropdown">
+    <div className="menu-dropdown" ref={ref}>
       <button
         className="secondary"
         onClick={(e) => {

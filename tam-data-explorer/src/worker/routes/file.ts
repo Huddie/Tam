@@ -1,4 +1,5 @@
-import { readParquetAll, readParquetDateIndex, readParquetFiltered, readParquetPage } from "../lib/parquet";
+import { arrayBufferSource, r2AsyncBuffer, readParquetAll, readParquetDateIndex, readParquetFiltered, readParquetPage } from "../lib/parquet";
+import type { AsyncBuffer } from "hyparquet";
 import { rowsToCsv } from "../lib/csv";
 import { ApiError } from "../lib/errors";
 import type { Env } from "../types";
@@ -21,6 +22,22 @@ async function fetchObject(env: Env, key: string) {
   const object = await env.DATA.get(key);
   if (!object) throw new ApiError(404, `no object at key ${key}`);
   return object;
+}
+
+/** Builds a lazy, range-request-backed AsyncBuffer for `key` instead of
+ * downloading the whole R2 object -- head() gets the size with no body
+ * transfer, then each byte range hyparquet actually asks for (the footer,
+ * then just the row groups a page/filtered read touches) becomes its own
+ * R2 range-GET. See lib/parquet.ts's r2AsyncBuffer for why small files
+ * still cost exactly one request either way. */
+async function r2ParquetFile(env: Env, key: string): Promise<AsyncBuffer> {
+  const head = await env.DATA.head(key);
+  if (!head) throw new ApiError(404, `no object at key ${key}`);
+  return r2AsyncBuffer(head.size, async (offset, length) => {
+    const object = await env.DATA.get(key, { range: { offset, length } });
+    if (!object) throw new Error(`no object at key ${key} (range ${offset}+${length})`);
+    return object.arrayBuffer();
+  });
 }
 
 /** Resolves whichever row-range the caller actually asked for -- an
@@ -75,16 +92,15 @@ export async function viewFile(
   end?: string,
 ): Promise<Response> {
   if (!key.endsWith(".parquet")) throw new ApiError(400, `${key} is not a .parquet file`);
-  const object = await fetchObject(env, key);
-  const buffer = await object.arrayBuffer();
+  const file = await r2ParquetFile(env, key);
 
   const boundedPageSize = Math.min(Math.max(1, pageSize || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
   const boundedPage = Math.max(1, page || 1);
   const range = resolveRange(key, month, day, start, end);
 
   const result = range
-    ? await readParquetFiltered(buffer, range, boundedPage, boundedPageSize)
-    : await readParquetPage(buffer, boundedPage, boundedPageSize);
+    ? await readParquetFiltered(file, range, boundedPage, boundedPageSize)
+    : await readParquetPage(file, boundedPage, boundedPageSize);
 
   return Response.json({ ...result, page: boundedPage, pageSize: boundedPageSize });
 }
@@ -95,9 +111,8 @@ export async function viewFile(
  * day-partitioned storage change at all). */
 export async function viewFileDates(env: Env, key: string): Promise<Response> {
   if (!key.endsWith(".parquet")) throw new ApiError(400, `${key} is not a .parquet file`);
-  const object = await fetchObject(env, key);
-  const buffer = await object.arrayBuffer();
-  return Response.json(await readParquetDateIndex(buffer));
+  const file = await r2ParquetFile(env, key);
+  return Response.json(await readParquetDateIndex(file));
 }
 
 /** GET /api/file/completeness?key= -- the actual/expected-minutes index
@@ -126,7 +141,7 @@ export async function downloadCsv(env: Env, key: string): Promise<Response> {
   if (!key.endsWith(".parquet")) throw new ApiError(400, `${key} is not a .parquet file`);
   const object = await fetchObject(env, key);
   const buffer = await object.arrayBuffer();
-  const { columns, rows } = await readParquetAll(buffer);
+  const { columns, rows } = await readParquetAll(arrayBufferSource(buffer));
   const csv = rowsToCsv(columns, rows);
 
   const filename = key.split("/").pop()!.replace(/\.parquet$/, ".csv");

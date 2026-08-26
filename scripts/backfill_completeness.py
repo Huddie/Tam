@@ -75,9 +75,24 @@ def main() -> None:
 
     store = R2MinuteBarStore()
     symbols = args.symbols or store.list_symbols()
-    print(f"Found {len(symbols)} symbol(s). Listing years...")
+    print(f"Found {len(symbols)} symbol(s). Listing years for each (this is the slow, quiet-looking part)...")
 
-    jobs: List[Tuple[str, int]] = [(symbol, year) for symbol in symbols for year in store._partition_years(symbol)]
+    # Listing each symbol's years is ITSELF one R2 network call per symbol
+    # -- with hundreds of symbols, doing this sequentially (a plain list
+    # comprehension) took minutes with zero output, looking exactly like a
+    # hang. Same thread pool, same reasoning as the backfill work below:
+    # I/O-bound, so parallelize it instead of waiting on it one symbol at
+    # a time.
+    jobs: List[Tuple[str, int]] = []
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = {pool.submit(store._partition_years, symbol): symbol for symbol in symbols}
+        for i, future in enumerate(as_completed(futures), 1):
+            symbol = futures[future]
+            years = future.result()
+            jobs.extend((symbol, year) for year in years)
+            if i % 50 == 0 or i == len(symbols):
+                print(f"  Listed years for {i}/{len(symbols)} symbol(s)...")
+
     print(f"{len(jobs)} symbol-year(s) to check, using {args.workers} worker thread(s).")
 
     written = 0

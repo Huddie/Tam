@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useClickOutside } from "./useClickOutside";
 
 /** Three evenly-spaced dots, drawn ourselves rather than relying on a font's
  * own "..." glyph (which renders cramped, with uneven spacing depending on
@@ -22,9 +23,10 @@ function KebabIcon() {
 export function ManageMenu({ onRename, onDelete }: { onRename: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
 
   return (
-    <div className="menu-dropdown">
+    <div className="menu-dropdown" ref={ref}>
       <button
         className="menu-dropdown-toggle"
         aria-label="More actions"

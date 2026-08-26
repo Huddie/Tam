@@ -10,6 +10,7 @@ import {
   rawDownloadUrl,
   viewFile,
 } from "../api";
+import { useClickOutside } from "../useClickOutside";
 import { useSort } from "../useSort";
 
 const PAGE_SIZE = 50;
@@ -82,6 +83,7 @@ function CompletenessBadge({
   rangeEnd?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const ref = useClickOutside<HTMLSpanElement>(open, () => setOpen(false));
   if (!index) return null;
 
   let actual: number;
@@ -124,7 +126,7 @@ function CompletenessBadge({
   const summary = `${label}: ${actual.toLocaleString()} / ${expected.toLocaleString()} bars present (${pct}%)`;
 
   return (
-    <span className="completeness-badge-wrap">
+    <span className="completeness-badge-wrap" ref={ref}>
       <button
         className="completeness-badge"
         title={summary}
@@ -166,8 +168,9 @@ function CompletenessBadge({
  * button-heavy toolbar. */
 function DownloadDropdown({ fileKey }: { fileKey: string }) {
   const [open, setOpen] = useState(false);
+  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
   return (
-    <div className="export-dropdown">
+    <div className="export-dropdown" ref={ref}>
       <button className="secondary" onClick={() => setOpen((value) => !value)}>
         Download &#9662;
       </button>
