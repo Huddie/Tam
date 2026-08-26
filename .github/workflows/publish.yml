@@ -1,12 +1,20 @@
 name: Publish to PyPI
 
-# Runs on every push to main (a direct commit or a merged PR). Tests must
-# pass before publish runs at all -- see the `needs: test` dependency below.
-# The publish step itself explicitly targets https://upload.pypi.org/legacy/
-# (see Makefile's own `publish` target).
+# Runs on every push to main that touches something that actually affects
+# the published PyPI package (a direct commit or a merged PR) -- tam-
+# discovery/** and tam-data-explorer/** changes have their own separate
+# deploy workflows and shouldn't trigger a PyPI publish attempt at all.
+# Tests must pass before publish runs at all -- see the `needs: test`
+# dependency below. The publish step itself explicitly targets
+# https://upload.pypi.org/legacy/ (see Makefile's own `publish` target).
 "on":
   push:
     branches: [main]
+    paths:
+      - "tam/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "README.md"
   workflow_dispatch: {}
 
 jobs:
