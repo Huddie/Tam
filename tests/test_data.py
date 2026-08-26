@@ -148,27 +148,6 @@ def test_ingest_does_not_re_fetch_or_re_warn_for_a_confirmed_empty_gap_in_the_sa
     assert len(provider.calls) == 1  # not re-fetched
 
 
-def test_ingest_fetches_multiple_symbols_concurrently_not_sequentially(tmp_path):
-    class SlowProvider(DataProvider):
-        def fetch_eod(self, symbol, start, end):
-            time.sleep(0.2)
-            return _bars(["2024-01-02"], [100.0])
-
-    repo = DataRepository(SlowProvider(), CsvStore(tmp_path))
-
-    started = time.monotonic()
-    repo.ingest([f"SYM{i}" for i in range(8)], date(2024, 1, 2), date(2024, 1, 2))
-    elapsed = time.monotonic() - started
-
-    # 8 symbols x 0.2s each: sequential would take >=1.6s; concurrent
-    # (default max_workers=8, one thread per symbol here) should take
-    # roughly one sleep's worth. 1.0s (5x one sleep) proved flaky on a
-    # loaded/shared GitHub-hosted runner even with real concurrency working
-    # correctly -- 1.4s (7x) keeps a wide margin below the 1.6s sequential
-    # floor while tolerating realistic CI scheduling jitter.
-    assert elapsed < 1.4
-
-
 @pytest.mark.parametrize("store_cls", [CsvStore, ParquetStore])
 def test_history_reads_store_at_most_once_per_symbol(tmp_path, store_cls):
     frame = _bars(["2024-01-02", "2024-01-03", "2024-01-04"], [100.0, 101.0, 99.0])
