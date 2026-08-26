@@ -1,13 +1,13 @@
 """Local LLM client that periodically LoRA fine-tunes itself on realized
 outcomes, for use as the `llm_client` in llm_trading.py's LLMTradingStrategy.
 
-Runs entirely locally via mlx-lm (Apple Silicon / Metal) -- no network calls,
+Runs entirely locally via mlx-lm (M-series Mac / Metal) -- no network calls,
 no Ollama. Genuinely updates the model's weights every `fine_tune_every_n_days`
 accumulated outcomes, unlike LLMTradingStrategy's always-on in-context memory
 (which stays active on top of this -- the two are complementary, not
 alternatives). This is real gradient-based training, so it costs real
 wall-clock time per pass (expect tens of seconds to a few minutes even for a
-small model/LoRA rank on Apple Silicon) -- pick a period large enough that
+small model/LoRA rank on an M-series Mac) -- pick a period large enough that
 this doesn't dominate backtest runtime. Defaults to a small (~0.5B parameter)
 instruct model for the same reason: fast enough to fine-tune repeatedly
 inside a backtest loop, unlike the 7B model llm_trading.py defaults to for

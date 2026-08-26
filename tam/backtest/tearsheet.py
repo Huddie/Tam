@@ -1340,7 +1340,7 @@ def metrics_table(report: Report, metrics: List[Union[str, TearsheetMetric]] = D
 # ---- assembly ---------------------------------------------------------------
 
 _STYLE = """
-  body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 24px; color: #222; }
+  body { font-family: system-ui, Helvetica, Arial, sans-serif; margin: 24px; color: #222; }
   h1 { margin-bottom: 4px; }
   .subtitle { color: #666; margin-bottom: 24px; }
   .tearsheet-grid { display: grid; gap: 24px; align-items: start; }

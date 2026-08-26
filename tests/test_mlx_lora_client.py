@@ -12,7 +12,7 @@ from tam.strategy.mlx_lora_client import MLXLoRAClient
 
 requires_mlx_lm = pytest.mark.skipif(
     importlib.util.find_spec("mlx_lm") is None,
-    reason="mlx_lm is Apple-Silicon-only and isn't installed on this runner",
+    reason="mlx_lm is M-series-Mac-only and isn't installed on this runner",
 )
 
 

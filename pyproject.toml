@@ -27,7 +27,7 @@ upload-discovery = "tam.discovery.cli:main"
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ipython>=8.0"]
 live = ["dash>=2.17"]
-# mlx-lm/mlx are Apple-Silicon-only (Metal) -- a hard dependency here would
+# mlx-lm/mlx only run on an M-series Mac (Metal) -- a hard dependency here would
 # make `pip install tam-quant` fail outright on Linux/Colab/Windows, not just
 # leave an unusable feature installed. Only tam.strategy.mlx_lora_client
 # needs this; every other strategy works fine without it (see

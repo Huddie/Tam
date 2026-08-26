@@ -231,7 +231,7 @@ Base install (`pip install tam-quant`) covers every built-in strategy except one
 ```
 
 **`llm` will not install on Colab.** `mlx-lm` (and its dependency `mlx`) only run on
-Apple Silicon (they use Metal) -- installing it will fail outright on Colab's Linux
+an M-series Mac (they use Metal) -- installing it will fail outright on Colab's Linux
 runtime, not just leave an unusable feature installed. `llm_trading` itself still
 works fine on Colab as long as you don't configure a `lora:` block in its config
 (pointing `base_url`/`model` at a remote/HTTP-served LLM instead, e.g. an

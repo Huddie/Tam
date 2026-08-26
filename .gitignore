@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 /data/
-/scripts/scrub_apple_mirror.py
 *.egg-info/
 examples/output/
 .DS_Store

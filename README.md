@@ -47,7 +47,7 @@ Trades" button).
 
 `examples/llm_trading_config.yaml` is different: it drives a strategy that
 queries a local language model each simulated day, and by default also
-periodically LoRA fine-tunes it (both via `mlx-lm`, Apple Silicon only). The
+periodically LoRA fine-tunes it (both via `mlx-lm`, M-series Mac only). The
 first run downloads the base model from Hugging Face (needs network once).
 Because it calls the model every simulated day, this one is much slower than
 the others — try a short date range first (edit `start`/`end` in the config)
