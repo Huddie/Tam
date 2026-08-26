@@ -253,7 +253,22 @@ class R2MinuteBarStore(MinuteBarStore):
             aws_access_key_id=self._credentials.access_key_id,
             aws_secret_access_key=self._credentials.secret_access_key,
         )
-        return session.client("s3", endpoint_url=self._credentials.endpoint, config=Config(signature_version="s3v4"))
+        # region_name="auto" -- R2 REJECTS a real AWS region name outright
+        # (InvalidRegionName; it only accepts "auto" or one of its own
+        # continent tokens), unlike some other S3-compatible services (e.g.
+        # Massive's own endpoint, which is why the boto3 snippet in their
+        # docs doesn't need to set this at all -- it just doesn't validate
+        # the field). Without this, boto3 falls back to whatever region is
+        # configured/default on the machine running this (observed: a
+        # plain AWS region like "us-west-2" from local AWS config/env),
+        # which R2 then rejects. Matches tam.marketdata.filesystem.
+        # r2_filesystem()'s own region="auto" for the pyarrow client.
+        return session.client(
+            "s3",
+            endpoint_url=self._credentials.endpoint,
+            region_name="auto",
+            config=Config(signature_version="s3v4"),
+        )
 
     def _symbol_prefix(self, symbol: str) -> str:
         return f"{self._prefix}/{symbol.upper()}/"

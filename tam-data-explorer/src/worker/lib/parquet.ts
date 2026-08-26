@@ -97,23 +97,23 @@ export async function readParquetDateIndex(buffer: ArrayBuffer): Promise<DateInd
   return { months };
 }
 
-/** Same page shape as readParquetPage(), scoped to a single UTC month
- * (`day` omitted) or a single UTC day (`day` given) within `year` -- via
- * hyparquet's own $gte/$lt range filter directly on `ts` (the same
- * tz-aware UTC timestamp tam.marketdata writes; no separate month/day
- * columns needed in the file itself), then paginated in memory. One
- * day/month's rows are a small fraction of a whole year, so decoding the
- * filtered set before slicing is cheap -- same reasoning readParquetAll()
- * already relies on for CSV export. */
+/** Same page shape as readParquetPage(), scoped to an arbitrary
+ * [start, end) UTC range -- via hyparquet's own $gte/$lt range filter
+ * directly on `ts` (the same tz-aware UTC timestamp tam.marketdata writes;
+ * no separate month/day columns needed in the file itself), then paginated
+ * in memory. One day/month/custom-range's rows are a small fraction of a
+ * whole year, so decoding the filtered set before slicing is cheap -- same
+ * reasoning readParquetAll() already relies on for CSV export. Callers
+ * (routes/file.ts) compute `range` from whatever the caller actually
+ * selected -- a month, a day, or an explicit start/end date -- this
+ * function only cares about the resulting two Dates. */
 export async function readParquetFiltered(
   buffer: ArrayBuffer,
-  range: { year: number; month: number; day?: number },
+  range: { start: Date; end: Date },
   page: number,
   pageSize: number,
 ): Promise<ParquetPage> {
-  const { year, month, day } = range;
-  const start = new Date(Date.UTC(year, month - 1, day ?? 1));
-  const end = day ? new Date(Date.UTC(year, month - 1, day + 1)) : new Date(Date.UTC(year, month, 1));
+  const { start, end } = range;
 
   const file = bufferSource(buffer);
   const rows = await parquetReadObjects({ file, filter: { ts: { $gte: start, $lt: end } } });

@@ -23,12 +23,47 @@ async function fetchObject(env: Env, key: string) {
   return object;
 }
 
-/** GET /api/file?key=&page=&pageSize=[&month=&day=] -- a paginated view of
- * a Parquet file's rows, optionally scoped to one UTC month (`month` only)
- * or one UTC day (`month`+`day`) within the year already encoded in `key`.
- * Non-.parquet keys are rejected (400): this route is specifically the
- * tabular viewer, not a general-purpose file fetcher -- see downloadRaw()
- * below for that. */
+/** Resolves whichever row-range the caller actually asked for -- an
+ * explicit `start`/`end` date pair (a custom range picked in the UI) takes
+ * priority over `month`/`day` (the month/day browse tree), and neither
+ * being present means "no filter, page the whole file." Kept as one place
+ * so viewFile() itself doesn't need to know there are two different ways
+ * to ask for a range. */
+function resolveRange(
+  key: string,
+  month?: number,
+  day?: number,
+  start?: string,
+  end?: string,
+): { start: Date; end: Date } | null {
+  if (start) {
+    const rangeStart = new Date(`${start}T00:00:00Z`);
+    if (Number.isNaN(rangeStart.getTime())) throw new ApiError(400, `start=${start} is not a valid date`);
+    const endBasis = end ? new Date(`${end}T00:00:00Z`) : rangeStart;
+    if (Number.isNaN(endBasis.getTime())) throw new ApiError(400, `end=${end} is not a valid date`);
+    // end is the LAST included day -- the actual upper bound passed to the
+    // $lt filter is the day after it, same "day + 1" exclusive-upper-bound
+    // convention the month/day branch below already uses.
+    const rangeEnd = new Date(endBasis.getTime() + 24 * 60 * 60 * 1000);
+    return { start: rangeStart, end: rangeEnd };
+  }
+  if (month) {
+    const year = parseYearFromKey(key);
+    return {
+      start: new Date(Date.UTC(year, month - 1, day ?? 1)),
+      end: day ? new Date(Date.UTC(year, month - 1, day + 1)) : new Date(Date.UTC(year, month, 1)),
+    };
+  }
+  return null;
+}
+
+/** GET /api/file?key=&page=&pageSize=[&month=&day=][&start=&end=] -- a
+ * paginated view of a Parquet file's rows, optionally scoped to one UTC
+ * month (`month` only), one UTC day (`month`+`day`), or an arbitrary
+ * inclusive UTC date range (`start`[+`end`], `YYYY-MM-DD`) -- see
+ * resolveRange() above for exactly how these combine. Non-.parquet keys
+ * are rejected (400): this route is specifically the tabular viewer, not a
+ * general-purpose file fetcher -- see downloadRaw() below for that. */
 export async function viewFile(
   env: Env,
   key: string,
@@ -36,6 +71,8 @@ export async function viewFile(
   pageSize: number,
   month?: number,
   day?: number,
+  start?: string,
+  end?: string,
 ): Promise<Response> {
   if (!key.endsWith(".parquet")) throw new ApiError(400, `${key} is not a .parquet file`);
   const object = await fetchObject(env, key);
@@ -43,9 +80,10 @@ export async function viewFile(
 
   const boundedPageSize = Math.min(Math.max(1, pageSize || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
   const boundedPage = Math.max(1, page || 1);
+  const range = resolveRange(key, month, day, start, end);
 
-  const result = month
-    ? await readParquetFiltered(buffer, { year: parseYearFromKey(key), month, day }, boundedPage, boundedPageSize)
+  const result = range
+    ? await readParquetFiltered(buffer, range, boundedPage, boundedPageSize)
     : await readParquetPage(buffer, boundedPage, boundedPageSize);
 
   return Response.json({ ...result, page: boundedPage, pageSize: boundedPageSize });

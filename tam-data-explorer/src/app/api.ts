@@ -54,10 +54,20 @@ export function listYears(symbol: string): Promise<{ years: YearEntry[] }> {
   return api(`/api/symbols/${encodeURIComponent(symbol)}/years`);
 }
 
-export function viewFile(key: string, page: number, pageSize: number, month?: number, day?: number): Promise<FilePage> {
+export function viewFile(
+  key: string,
+  page: number,
+  pageSize: number,
+  month?: number,
+  day?: number,
+  start?: string,
+  end?: string,
+): Promise<FilePage> {
   const params = new URLSearchParams({ key, page: String(page), pageSize: String(pageSize) });
   if (month) params.set("month", String(month));
   if (day) params.set("day", String(day));
+  if (start) params.set("start", start);
+  if (end) params.set("end", end);
   return api(`/api/file?${params.toString()}`);
 }
 

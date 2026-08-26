@@ -240,3 +240,16 @@ def test_r2_store_gives_up_and_raises_after_exhausting_retries():
 
     with pytest.raises(RuntimeError, match="simulated transient R2 error"):
         store.write("AAPL", _bars(["2024-01-02 14:30"], [100.0]))
+
+
+def test_r2_store_builds_a_real_client_with_region_auto_not_a_local_default(monkeypatch):
+    # R2 rejects a real AWS region name outright (InvalidRegionName) --
+    # confirmed live in production. Without an explicit region_name="auto",
+    # boto3 falls back to whatever region is configured locally (e.g. a
+    # real AWS region like "us-west-2" from ~/.aws/config), which is
+    # exactly what caused a real failure before this test existed.
+    # session.client(...) builds the client object with no network I/O, so
+    # this runs safely with fake credentials, no real R2 access needed.
+    monkeypatch.delenv("AWS_DEFAULT_REGION", raising=False)
+    store = R2MinuteBarStore(credentials=_FAKE_CREDS)
+    assert store._client.meta.region_name == "auto"

@@ -38,55 +38,101 @@ function DownloadDropdown({ fileKey }: { fileKey: string }) {
   );
 }
 
-/** The "browse by month/day" folder view -- NOT a different physical
- * storage layout (tam.marketdata only ever writes one Parquet file per
- * symbol per year, see MARKETDATA.md), just a query-time grouping of the
- * same year file's `ts` column, decoded via /api/file/dates. Only months/
- * days that actually have rows show up, not a blind 1-12/1-31 grid. */
+/** The "browse by month/day, or pick a custom date range" panel -- both
+ * live under the SAME toggle rather than each getting their own top-level
+ * button, since they're really two ways to do the same thing (narrow the
+ * page below to a subset of the year's rows). */
 function DateBrowser({
   dateIndex,
+  year,
+  rangeStart,
+  rangeEnd,
   onSelectMonth,
   onSelectDay,
+  onApplyRange,
+  onClearRange,
 }: {
   dateIndex: DateIndex | null;
+  year: string;
+  rangeStart: string;
+  rangeEnd: string;
   onSelectMonth: (month: number) => void;
   onSelectDay: (month: number, day: number) => void;
+  onApplyRange: (start: string, end: string) => void;
+  onClearRange: () => void;
 }) {
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
-
-  if (!dateIndex) return <p className="browse-row muted">Loading...</p>;
-  if (!dateIndex.months.length) return <p className="browse-row muted">No data.</p>;
+  const [startInput, setStartInput] = useState(rangeStart);
+  const [endInput, setEndInput] = useState(rangeEnd);
+  const bounds = { min: `${year}-01-01`, max: `${year}-12-31` };
 
   return (
-    <>
-      <p className="muted" style={{ fontSize: "0.85rem", margin: "0 0 0.5rem" }}>
-        Grouped from the single year file below (no separate day/month files are stored) -- pick a month to view
-        it as a whole, or expand it to pick one day.
-      </p>
-      <div className="browse-list">
-        {dateIndex.months.map((m) => (
-          <div key={m.month}>
-            <div className="browse-row">
-              <a onClick={() => setExpandedMonth(expandedMonth === m.month ? null : m.month)}>
-                {expandedMonth === m.month ? "▾" : "▸"} {pad2(m.month)}/
-              </a>
-              <span className="size muted">
-                {m.days.length} day{m.days.length === 1 ? "" : "s"}
-              </span>
-              <button className="secondary" onClick={() => onSelectMonth(m.month)}>
-                View
-              </button>
-            </div>
-            {expandedMonth === m.month &&
-              m.days.map((d) => (
-                <div className="browse-row" key={d} style={{ paddingLeft: "2.5rem" }}>
-                  <a onClick={() => onSelectDay(m.month, d)}>{pad2(d)}</a>
-                </div>
-              ))}
-          </div>
-        ))}
+    <div className="browse-list" style={{ marginBottom: "1rem" }}>
+      <div className="browse-row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+        <span className="muted mono" style={{ fontSize: "0.85rem" }}>
+          Custom range:
+        </span>
+        <input
+          type="date"
+          value={startInput}
+          min={bounds.min}
+          max={bounds.max}
+          onChange={(e) => setStartInput(e.target.value)}
+          style={{ width: "auto" }}
+        />
+        <span className="muted">to</span>
+        <input
+          type="date"
+          value={endInput}
+          min={startInput || bounds.min}
+          max={bounds.max}
+          onChange={(e) => setEndInput(e.target.value)}
+          style={{ width: "auto" }}
+        />
+        <button className="secondary" disabled={!startInput} onClick={() => onApplyRange(startInput, endInput)}>
+          Apply
+        </button>
+        {(rangeStart || rangeEnd) && (
+          <button
+            className="secondary"
+            onClick={() => {
+              setStartInput("");
+              setEndInput("");
+              onClearRange();
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
-    </>
+
+      <p className="muted" style={{ fontSize: "0.85rem", margin: "0.75rem 0 0.5rem" }}>
+        Or pick a month/day below -- grouped from the single year file (no separate day/month files are stored).
+      </p>
+      {!dateIndex && <p className="browse-row muted">Loading...</p>}
+      {dateIndex && !dateIndex.months.length && <p className="browse-row muted">No data.</p>}
+      {dateIndex?.months.map((m) => (
+        <div key={m.month}>
+          <div className="browse-row">
+            <a onClick={() => setExpandedMonth(expandedMonth === m.month ? null : m.month)}>
+              {expandedMonth === m.month ? "▾" : "▸"} {pad2(m.month)}/
+            </a>
+            <span className="size muted">
+              {m.days.length} day{m.days.length === 1 ? "" : "s"}
+            </span>
+            <button className="secondary" onClick={() => onSelectMonth(m.month)}>
+              View
+            </button>
+          </div>
+          {expandedMonth === m.month &&
+            m.days.map((d) => (
+              <div className="browse-row" key={d} style={{ paddingLeft: "2.5rem" }}>
+                <a onClick={() => onSelectDay(m.month, d)}>{pad2(d)}</a>
+              </div>
+            ))}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -96,11 +142,14 @@ export function FileViewPage() {
   const page = Number(params.get("page") ?? "1");
   const month = params.get("month") ? Number(params.get("month")) : undefined;
   const day = params.get("day") ? Number(params.get("day")) : undefined;
+  const rangeStart = params.get("start") ?? "";
+  const rangeEnd = params.get("end") ?? "";
 
   const [data, setData] = useState<FilePage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [browsing, setBrowsing] = useState(false);
   const [dateIndex, setDateIndex] = useState<DateIndex | null>(null);
+  const [pageInput, setPageInput] = useState(String(page));
 
   const yearMatch = YEAR_KEY_RE.exec(key);
   const year = yearMatch ? yearMatch[1] : "";
@@ -108,10 +157,14 @@ export function FileViewPage() {
   useEffect(() => {
     if (!key) return;
     setData(null);
-    viewFile(key, page, PAGE_SIZE, month, day)
+    viewFile(key, page, PAGE_SIZE, month, day, rangeStart || undefined, rangeEnd || undefined)
       .then(setData)
       .catch((e) => setError(String(e)));
-  }, [key, page, month, day]);
+  }, [key, page, month, day, rangeStart, rangeEnd]);
+
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
 
   useEffect(() => {
     if (!browsing || !key) return;
@@ -137,6 +190,8 @@ export function FileViewPage() {
     updateParams((p) => {
       p.set("month", String(m));
       p.delete("day");
+      p.delete("start");
+      p.delete("end");
       p.set("page", "1");
     });
     setBrowsing(false);
@@ -146,15 +201,39 @@ export function FileViewPage() {
     updateParams((p) => {
       p.set("month", String(m));
       p.set("day", String(d));
+      p.delete("start");
+      p.delete("end");
       p.set("page", "1");
     });
     setBrowsing(false);
+  }
+
+  function applyRange(start: string, end: string) {
+    updateParams((p) => {
+      p.set("start", start);
+      if (end) p.set("end", end);
+      else p.delete("end");
+      p.delete("month");
+      p.delete("day");
+      p.set("page", "1");
+    });
+    setBrowsing(false);
+  }
+
+  function clearRange() {
+    updateParams((p) => {
+      p.delete("start");
+      p.delete("end");
+      p.set("page", "1");
+    });
   }
 
   function clearMonth() {
     updateParams((p) => {
       p.delete("month");
       p.delete("day");
+      p.delete("start");
+      p.delete("end");
       p.set("page", "1");
     });
   }
@@ -167,6 +246,13 @@ export function FileViewPage() {
   }
 
   const totalPages = data ? Math.max(1, Math.ceil(data.totalRows / data.pageSize)) : 1;
+  const hasFilter = month != null || Boolean(rangeStart);
+
+  function jumpToPage() {
+    const target = Math.min(Math.max(1, Number(pageInput) || 1), totalPages);
+    setPageInput(String(target));
+    goToPage(target);
+  }
 
   return (
     <div className="page page-wide">
@@ -175,9 +261,16 @@ export function FileViewPage() {
       </Link>
       <h1>{key}</h1>
 
-      {(month || browsing) && (
+      {(hasFilter || browsing) && (
         <p className="breadcrumb">
           <a onClick={clearMonth}>{year}</a>
+          {rangeStart && (
+            <span>
+              {" / "}
+              {rangeStart}
+              {rangeEnd && rangeEnd !== rangeStart ? ` → ${rangeEnd}` : ""}
+            </span>
+          )}
           {month != null && (
             <span>
               {" / "}
@@ -191,9 +284,9 @@ export function FileViewPage() {
       <div className="actions">
         <DownloadDropdown fileKey={key} />
         <button className="secondary" onClick={() => setBrowsing((v) => !v)}>
-          {browsing ? "Cancel" : "Browse by month/day"}
+          {browsing ? "Cancel" : "Browse dates"}
         </button>
-        {(month != null || day != null) && !browsing && (
+        {hasFilter && !browsing && (
           <button className="secondary" onClick={clearMonth}>
             View full year
           </button>
@@ -201,7 +294,16 @@ export function FileViewPage() {
       </div>
 
       {browsing && (
-        <DateBrowser dateIndex={dateIndex} onSelectMonth={selectMonth} onSelectDay={selectDay} />
+        <DateBrowser
+          dateIndex={dateIndex}
+          year={year}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onSelectMonth={selectMonth}
+          onSelectDay={selectDay}
+          onApplyRange={applyRange}
+          onClearRange={clearRange}
+        />
       )}
 
       {error && <p className="error">{error}</p>}
@@ -225,6 +327,23 @@ export function FileViewPage() {
                 <button className="pager-btn" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>
                   Next &rsaquo;
                 </button>
+                {totalPages > 1 && (
+                  <span className="muted" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    Go to
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && jumpToPage()}
+                      style={{ width: "4.5rem" }}
+                    />
+                    <button className="pager-btn" onClick={jumpToPage}>
+                      Go
+                    </button>
+                  </span>
+                )}
               </div>
 
               <div style={{ overflowX: "auto" }}>

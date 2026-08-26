@@ -54,6 +54,8 @@ async function handleDataRoutes(request: Request, env: Env, path: string[]): Pro
       pageSize,
       monthParam ? Number(monthParam) : undefined,
       dayParam ? Number(dayParam) : undefined,
+      url.searchParams.get("start") ?? undefined,
+      url.searchParams.get("end") ?? undefined,
     );
   }
   if (path.length === 2 && path[0] === "file" && path[1] === "dates" && method === "GET") {
