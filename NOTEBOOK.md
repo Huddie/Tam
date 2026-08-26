@@ -237,7 +237,7 @@ works fine on Colab as long as you don't configure a `lora:` block in its config
 (pointing `base_url`/`model` at a remote/HTTP-served LLM instead, e.g. an
 OpenAI-compatible endpoint) -- only the local self-fine-tuning path needs `mlx-lm`.
 
-## Querying the minute-bar market-data lake (R2 + DuckDB) from Colab
+## Querying the minute-bar market-data lake from Colab
 
 `tam.marketdata` is a separate 1-minute OHLCV data lake (Parquet in Cloudflare R2),
 independent of the `data:`/backtest config above. Install its extra first:
@@ -246,41 +246,46 @@ independent of the `data:`/backtest config above. Install its extra first:
 !pip install -q "tam-quant[marketdata]"
 ```
 
-Then add R2 credentials as Colab secrets (key-icon panel, left sidebar) -- add
-secrets named exactly `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-`R2_BUCKET`, and grant this notebook access to them. Ask whoever manages the bucket
-for a **read-only** R2 API token for this -- ingestion needs a read-write one, but
-querying from a notebook never should use write credentials.
+**Recommended: a personal token, self-service, no admin involvement.** Create one
+at `https://data.tamquant.com/settings/tokens` (requires GitHub login) -- it's
+yours alone, and revoking it never affects anyone else's access. (This is the same
+token used for publishing to Discovery below -- one token, not two; either site's
+`/settings/tokens` page manages it.) Add it as a Colab secret named
+`DATA_EXPLORER_TOKEN` (key-icon panel, left sidebar), then:
+
+```python
+from tam.marketdata.explorer_client import fetch_dataframe, connect
+
+df = fetch_dataframe("AAPL", 2024)      # one symbol-year as a DataFrame, plain HTTP
+
+con = connect()                          # full SQL access over the whole lake
+con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
+con.sql("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day").df()
+```
+
+`connect()` mints a short-lived, **read-only** R2 credential scoped to just this
+bucket behind the scenes (Cloudflare's own Temporary Credentials API), refreshes
+it automatically as it approaches expiry, and gives you the same macros as
+`tam.marketdata.duckdb_query.open_duckdb()` below (`daily_bars`, `weekly_bars`,
+`rollup_bars`, `daily_returns`, `rolling_volatility`) -- full glob/multi-file SQL,
+without ever handling real R2 account credentials yourself. See
+`https://data.tamquant.com/api-access` for curl/plain-`requests` equivalents.
+
+**Alternative, if you already have admin R2 credentials** (ingestion jobs, or
+anyone who's been handed a real read-only R2 API token directly): add secrets
+named exactly `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+`R2_BUCKET`, and:
 
 ```python
 from tam.marketdata.duckdb_query import open_duckdb
 
 con = open_duckdb(bucket="tam-market-data")
 con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
-con.sql("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day").df()
 ```
 
-`open_duckdb()` wires up DuckDB's `httpfs` extension against R2 directly -- every
-query reads Parquet on demand, nothing is downloaded or materialized up front. See
-`tam.marketdata.duckdb_query`'s own module docstring for the full list of built-in
-macros (`minute_bars`, `daily_bars`, `weekly_bars`, `monthly_bars`, `rollup_bars`,
-`daily_returns`, `rolling_volatility`) -- all derived from the 1-minute files on
-demand, none of them precomputed/stored separately.
-
-**Simpler alternative, no DuckDB/R2 credentials at all** -- for just one
-symbol-year as a DataFrame, `tam-data-explorer`'s own HTTP API
-(`data.tamquant.com`) works from anywhere `requests` does:
-
-```python
-from tam.marketdata.explorer_client import fetch_dataframe
-
-df = fetch_dataframe("AAPL", 2024)
-```
-
-This needs a *different* kind of credential -- a Cloudflare Access **Service
-Token** (a Client ID + Secret pair, not the R2 keys above). Add it as Colab
-secrets named `DATA_EXPLORER_SERVICE_TOKEN_ID`/`DATA_EXPLORER_SERVICE_TOKEN_SECRET`
--- see `https://data.tamquant.com/api-access` for exactly how to create one.
+Functionally equivalent to `connect()` above -- this path exists mainly because
+it's what ingestion jobs already use, and it doesn't depend on `data.tamquant.com`
+being reachable. For an ordinary notebook, prefer the personal-token path.
 
 ## Publishing dashboards to Discovery
 

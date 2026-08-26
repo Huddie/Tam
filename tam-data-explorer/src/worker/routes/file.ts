@@ -49,14 +49,59 @@ export async function downloadCsv(env: Env, key: string): Promise<Response> {
 /** GET /api/download?key= -- a plain passthrough for whatever's at `key`,
  * for browsing non-Parquet objects that the paginated viewer can't render
  * (this bucket is Parquet-only today per tam.marketdata's own design, but
- * nothing about the browse UI assumes that stays true forever). */
-export async function downloadRaw(env: Env, key: string): Promise<Response> {
-  const object = await fetchObject(env, key);
+ * nothing about the browse UI assumes that stays true forever).
+ *
+ * Also the endpoint DuckDB's httpfs/read_parquet() hits directly for
+ * token-authenticated querying (see routes/token-api.ts) -- httpfs reads
+ * Parquet footers/row-groups via HTTP range requests rather than
+ * downloading the whole file, so Range support here isn't optional for
+ * that use case. */
+export async function downloadRaw(env: Env, key: string, rangeHeader: string | null): Promise<Response> {
+  const range = parseRange(rangeHeader);
+  const object = range ? await env.DATA.get(key, { range }) : await env.DATA.get(key);
+  if (!object) throw new ApiError(404, `no object at key ${key}`);
+
   const filename = key.split("/").pop() ?? key;
-  return new Response(object.body, {
-    headers: {
-      "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Accept-Ranges": "bytes",
+  };
+
+  // R2Object's own `range` field (only set when the .get() call above used
+  // one) tells us exactly which bytes came back, needed for a correct
+  // Content-Range header -- R2 clamps an out-of-bounds range to what's
+  // actually available rather than erroring, so this reflects reality
+  // rather than echoing the request back unchecked.
+  const objectWithRange = object as R2ObjectBody & { range?: { offset: number; length: number } };
+  if (objectWithRange.range) {
+    const { offset, length } = objectWithRange.range;
+    headers["Content-Range"] = `bytes ${offset}-${offset + length - 1}/${object.size}`;
+    headers["Content-Length"] = String(length);
+    return new Response(object.body, { status: 206, headers });
+  }
+
+  headers["Content-Length"] = String(object.size);
+  return new Response(object.body, { headers });
+}
+
+/** Parses a standard single-range `Range: bytes=start-end` header into R2's
+ * own `{offset, length}` shape. Suffix ranges (`bytes=-500`, "last 500
+ * bytes") map to R2's `{suffix}` form; anything malformed or absent is
+ * treated as "no range requested" (a full-object GET) rather than a 4xx --
+ * matches how most HTTP servers degrade when a client sends a Range header
+ * they don't have to honor. */
+function parseRange(header: string | null): R2Range | undefined {
+  if (!header) return undefined;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return undefined;
+  const [, startStr, endStr] = match;
+
+  if (!startStr && endStr) return { suffix: Number(endStr) };
+  if (!startStr) return undefined;
+
+  const offset = Number(startStr);
+  if (!endStr) return { offset };
+  const end = Number(endStr);
+  return { offset, length: end - offset + 1 };
 }

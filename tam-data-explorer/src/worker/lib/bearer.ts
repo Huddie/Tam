@@ -2,11 +2,13 @@ import type { Env } from "../types";
 
 const TOKEN_PREFIX = "tamquant_";
 
-/** 32 random bytes, base64url-encoded, tamquant_-prefixed -- shown to the
- * user exactly once at creation time; only its HMAC ever touches D1.
- * tam-data-explorer binds this SAME D1 database and its own copy of this
- * function (with the SAME TOKEN_HMAC_SECRET) -- a token created here works
- * there too, and vice versa; there is only one "tokens" table. */
+/** 32 random bytes, base64url-encoded, tamquant_-prefixed -- identical
+ * shape (and, since both Workers bind the SAME "tokens" D1 table and must
+ * therefore be given the SAME TOKEN_HMAC_SECRET, functionally
+ * interchangeable) with tam-discovery's own copy of this function -- a
+ * token created via either site's /settings/tokens page works on both.
+ * Shown to the user exactly once at creation time; only its HMAC ever
+ * touches D1. */
 export function generateToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
@@ -25,14 +27,17 @@ export async function hashToken(token: string, secret: string): Promise<string> 
   return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** Verifies the request's `Authorization: Bearer <token>` header against
- * `tokens.token_hash`, bumping `last_used_at` on a hit. Returns null (never
- * throws) on anything short of a valid, unrevoked token -- callers turn that
- * into a 401 without leaking which part of the check failed. */
+/** Verifies a request's personal API token, from EITHER an `Authorization:
+ * Bearer <token>` header (curl/Python) or a `?token=<token>` query
+ * parameter (DuckDB's httpfs/read_parquet() can't attach custom headers to
+ * a plain HTTPS GET, so the token has to travel in the URL for that case).
+ * Bumps `last_used_at` on a hit. Returns null (never throws) on anything
+ * short of a valid, unrevoked token. */
 export async function verifyBearer(request: Request, env: Env): Promise<{ user: string; tokenId: string } | null> {
   const header = request.headers.get("Authorization");
-  if (!header?.startsWith("Bearer ")) return null;
-  const token = header.slice("Bearer ".length).trim();
+  const headerToken = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : null;
+  const queryToken = new URL(request.url).searchParams.get("token");
+  const token = headerToken || queryToken;
   if (!token) return null;
 
   const hash = await hashToken(token, env.TOKEN_HMAC_SECRET);

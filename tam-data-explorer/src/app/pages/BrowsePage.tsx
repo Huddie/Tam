@@ -211,6 +211,7 @@ export function BrowsePage() {
       <header className="page-header">
         <h1>Data Explorer</h1>
         <nav>
+          <Link to="/settings/tokens">Personal tokens</Link>
           <Link to="/api-access">API access</Link>
         </nav>
       </header>

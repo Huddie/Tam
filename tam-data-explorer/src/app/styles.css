@@ -103,26 +103,33 @@ select:focus {
 }
 
 button {
-  padding: 0.55rem 1.1rem;
-  border: 1px solid var(--accent);
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
   border-radius: 2px;
-  background: var(--accent);
-  color: white;
-  cursor: pointer;
-  font-weight: 500;
-}
-button:hover {
-  background: var(--accent-dark);
-  border-color: var(--accent-dark);
-}
-button.secondary {
   background: var(--bg);
   color: var(--text);
-  border-color: var(--border);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
 }
-button.secondary:hover {
+button:hover {
   background: var(--bg-subtle);
-  border-color: var(--border);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+button.secondary {
+  /* Same as the default now -- kept as a harmless no-op class rather than
+     removed from every call site, since the plain default already IS the
+     understated look this class used to opt into. */
+}
+button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+button.primary:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
 }
 
 table {

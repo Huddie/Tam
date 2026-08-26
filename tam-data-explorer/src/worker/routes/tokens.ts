@@ -4,16 +4,13 @@ import { ApiError } from "../lib/errors";
 import type { Env } from "../types";
 
 /** POST /api/tokens -- the raw token is returned exactly once, here; only
- * its HMAC is ever persisted (see lib/bearer.ts), so it can't be recovered
- * even from a full D1 dump. `name` is required and must be unique for this
- * user (idx_tokens_user_name) -- e.g. "colab"/"laptop" -- so /settings/tokens
- * and `upload-discovery list`-style output can identify which token is
- * which without anyone having to remember creation timestamps.
- *
- * Tokens are unified across sites: tam-data-explorer binds this SAME D1
- * database and shares this SAME token namespace, so a token created here
- * (or there) works for both Discovery publishing and Data Explorer/DuckDB
- * access -- one "colab" token, not two. */
+ * its HMAC is ever persisted (see lib/bearer.ts). `name` is required and
+ * must be unique for this user (idx_tokens_user_name), same self-service
+ * design as tam-discovery's own publishing tokens -- and literally the
+ * SAME token namespace (this Worker binds tam-discovery's own D1 database
+ * for its "DB" binding on purpose, see wrangler.jsonc), so a token created
+ * here also works for Discovery publishing, and revoking one user's token
+ * never affects anyone else's. */
 export async function createToken(request: Request, env: Env, user: string): Promise<Response> {
   const body = await request.json<{ name?: string }>().catch(() => ({}) as { name?: string });
   const name = body.name?.trim();

@@ -1,6 +1,7 @@
 // See README.md's deployment runbook for exactly how to fill in the
-// remaining placeholders below. Secrets (ACCESS_TEAM_DOMAIN, ACCESS_AUD)
-// are set via `wrangler secret put`, never written here.
+// remaining placeholders below. Secrets (ACCESS_TEAM_DOMAIN, ACCESS_AUD,
+// TOKEN_HMAC_SECRET, R2_PARENT_API_TOKEN, R2_PARENT_ACCESS_KEY_ID) are set
+// via `wrangler secret put`, never written here.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tam-data-explorer",
@@ -16,5 +17,24 @@
       "binding": "DATA",
       "bucket_name": "tam-data"
     }
-  ]
+  ],
+  "d1_databases": [
+    {
+      // Deliberately the SAME database as tam-discovery/wrangler.jsonc's own
+      // "DB" binding -- personal tokens are unified across both sites (one
+      // token works for Discovery publishing AND Data Explorer/DuckDB
+      // access), so both Workers bind to the one tokens table rather than
+      // each keeping a separate copy. tam-discovery's own migrations own
+      // this schema; this Worker never runs migrations against it.
+      "binding": "DB",
+      "database_name": "tam-discovery-db",
+      "database_id": "d7d0a787-4b7c-41a2-91b7-83c7204965ee"
+    }
+  ],
+  "vars": {
+    // Not secret -- same Cloudflare account as everything else in this
+    // repo (see root .env's R2_ACCOUNT_ID). Needed to call the Temp
+    // Credentials API (src/worker/lib/r2-credentials.ts).
+    "R2_ACCOUNT_ID": "65c76cd478aba6575ed57de7d93480ad"
+  }
 }

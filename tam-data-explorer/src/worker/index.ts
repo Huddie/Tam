@@ -1,8 +1,11 @@
 import { verifyAccess } from "./lib/access";
+import { verifyBearer } from "./lib/bearer";
 import { ApiError, jsonError } from "./lib/errors";
 import { browse, listSymbols, listYears } from "./routes/browse";
+import { issueCredentials } from "./routes/credentials";
 import { exportFiles } from "./routes/export";
 import { downloadCsv, downloadRaw, viewFile } from "./routes/file";
+import { createToken, listTokens, revokeToken } from "./routes/tokens";
 import type { Env } from "./types";
 
 async function requireAccess(request: Request, env: Env): Promise<string> {
@@ -11,8 +14,20 @@ async function requireAccess(request: Request, env: Env): Promise<string> {
   return user.identity;
 }
 
-async function handleApi(request: Request, env: Env, path: string[]): Promise<Response> {
-  await requireAccess(request, env);
+async function requireBearer(request: Request, env: Env): Promise<string> {
+  const auth = await verifyBearer(request, env);
+  if (!auth) throw new ApiError(401, "missing or invalid personal API token");
+  return auth.user;
+}
+
+/** The read-only data routes (browse/symbols/years/file/export) -- reachable
+ * BOTH as /api/* (Access-gated, used by the browser SPA) and /api/token/*
+ * (bearer-gated -- see README's runbook for the matching Access "Bypass"
+ * Application that excludes this prefix from the edge login redirect --
+ * used by scripts/notebooks/DuckDB). Identical logic either way; only how
+ * the caller got authenticated differs, already resolved by the two
+ * callers below before this ever runs. */
+async function handleDataRoutes(request: Request, env: Env, path: string[]): Promise<Response> {
   const url = new URL(request.url);
   const method = request.method;
 
@@ -40,7 +55,7 @@ async function handleApi(request: Request, env: Env, path: string[]): Promise<Re
   if (path.length === 1 && path[0] === "download" && method === "GET") {
     const key = url.searchParams.get("key");
     if (!key) throw new ApiError(400, "key is required");
-    return downloadRaw(env, key);
+    return downloadRaw(env, key, request.headers.get("Range"));
   }
   if (path.length === 1 && path[0] === "export" && method === "GET") {
     const format = url.searchParams.get("format");
@@ -50,7 +65,21 @@ async function handleApi(request: Request, env: Env, path: string[]): Promise<Re
     return exportFiles(env, prefixes, keys, format);
   }
 
-  throw new ApiError(404, `no route for ${method} /api/${path.join("/")}`);
+  throw new ApiError(404, `no route for ${method} /${path.join("/")}`);
+}
+
+/** /api/tokens[/...] -- self-service personal-token management, ACCESS-gated
+ * (only a real, logged-in GitHub user can create/list/revoke THEIR OWN
+ * tokens; there's no bearer-token path to this route on purpose). */
+async function handleTokensApi(request: Request, env: Env, path: string[]): Promise<Response> {
+  const user = await requireAccess(request, env);
+  const method = request.method;
+
+  if (path.length === 0 && method === "POST") return createToken(request, env, user);
+  if (path.length === 0 && method === "GET") return listTokens(env, user);
+  if (path.length === 1 && method === "DELETE") return revokeToken(env, user, path[0]);
+
+  throw new ApiError(404, `no token route for ${method} /api/tokens/${path.join("/")}`);
 }
 
 async function serveSpaShell(request: Request, env: Env): Promise<Response> {
@@ -65,8 +94,20 @@ export default {
     const segments = url.pathname.split("/").filter(Boolean);
 
     try {
+      if (segments[0] === "api" && segments[1] === "tokens") {
+        return await handleTokensApi(request, env, segments.slice(2));
+      }
+      if (segments[0] === "api" && segments[1] === "token") {
+        await requireBearer(request, env);
+        const path = segments.slice(2);
+        if (path.length === 1 && path[0] === "credentials" && request.method === "POST") {
+          return await issueCredentials(request, env);
+        }
+        return await handleDataRoutes(request, env, path);
+      }
       if (segments[0] === "api") {
-        return await handleApi(request, env, segments.slice(1));
+        await requireAccess(request, env);
+        return await handleDataRoutes(request, env, segments.slice(1));
       }
       // Anything else reaching the Worker didn't match a static asset
       // either (Cloudflare serves those directly, before the Worker ever

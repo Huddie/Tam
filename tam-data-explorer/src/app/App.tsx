@@ -3,6 +3,7 @@ import { NavBar } from "./NavBar";
 import { ApiAccessPage } from "./pages/ApiAccessPage";
 import { BrowsePage } from "./pages/BrowsePage";
 import { FileViewPage } from "./pages/FileViewPage";
+import { TokensPage } from "./pages/TokensPage";
 
 export function App() {
   return (
@@ -12,6 +13,7 @@ export function App() {
         <Route path="/" element={<BrowsePage />} />
         <Route path="/view" element={<FileViewPage />} />
         <Route path="/api-access" element={<ApiAccessPage />} />
+        <Route path="/settings/tokens" element={<TokensPage />} />
       </Routes>
     </>
   );

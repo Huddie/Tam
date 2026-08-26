@@ -18,12 +18,21 @@ export interface YearEntry {
   size: number;
 }
 
-async function api<T>(path: string): Promise<T> {
-  const response = await fetch(path);
+export interface TokenSummary {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, init);
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
     throw new Error((body as { error?: string }).error ?? `request to ${path} failed with ${response.status}`);
   }
+  if (response.status === 204) return undefined as T;
   return response.json();
 }
 
@@ -61,4 +70,16 @@ export function exportUrl(selection: ExportSelection, format: "parquet" | "csv")
   (selection.prefixes ?? []).forEach((prefix) => params.append("prefix", prefix));
   (selection.keys ?? []).forEach((key) => params.append("key", key));
   return `/api/export?${params.toString()}`;
+}
+
+export function listTokens(): Promise<{ tokens: TokenSummary[] }> {
+  return api("/api/tokens");
+}
+
+export function createToken(name: string): Promise<{ id: string; name: string; token: string; created_at: string }> {
+  return api("/api/tokens", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+}
+
+export function revokeToken(id: string): Promise<void> {
+  return api(`/api/tokens/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

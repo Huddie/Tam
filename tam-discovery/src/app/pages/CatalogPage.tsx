@@ -58,7 +58,7 @@ export function CatalogPage() {
     <div className="page page-wide">
       <header className="page-header">
         <h1>Discovery</h1>
-        <Link to="/settings/tokens">Publishing tokens</Link>
+        <Link to="/settings/tokens">Personal tokens</Link>
       </header>
 
       <div className="toolbar">

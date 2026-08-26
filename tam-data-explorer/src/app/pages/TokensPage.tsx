@@ -61,14 +61,13 @@ export function TokensPage() {
   return (
     <div className="page page-wide">
       <Link className="back-link" to="/">
-        &larr; Back to catalog
+        &larr; Back to browse
       </Link>
       <h1>Personal tokens</h1>
       <p className="muted">
-        Used by <code>upload-discovery login</code> (or <code>tam.discovery.upload(token=...)</code>) to publish from
-        a shell, notebook, or Colab -- see the README for setup. The same token also works on{" "}
-        <a href="https://data.tamquant.com/settings/tokens">Data Explorer</a> for data/DuckDB access -- one token,
-        not two.
+        For scripts/notebooks/DuckDB -- see <Link to="/api-access">API access</Link> for exact usage. Each token is
+        yours alone: revoking one never affects anyone else's access. The same token also works on{" "}
+        <a href="https://discovery.tamquant.com/settings/tokens">Discovery</a> for publishing -- one token, not two.
       </p>
 
       <div className="toolbar">
@@ -83,9 +82,7 @@ export function TokensPage() {
 
       {freshToken && (
         <p className="callout">
-          <strong>
-            "{freshToken.name}" -- copy this now, it won't be shown again:
-          </strong>
+          <strong>"{freshToken.name}" -- copy this now, it won't be shown again:</strong>
           <br />
           <code>{freshToken.token}</code>
         </p>

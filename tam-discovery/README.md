@@ -96,6 +96,11 @@ npm install
 
 ### 5. Create the D1 database
 
+Note: `tam-data-explorer`'s own `wrangler.jsonc` binds this SAME database
+(its `DB` binding points at this `database_id` too) -- personal tokens are
+unified across both sites, one shared `tokens` table. Don't delete or
+recreate this database without checking that Worker's own config first.
+
 ```bash
 npx wrangler login
 npx wrangler d1 create tam-discovery-db
