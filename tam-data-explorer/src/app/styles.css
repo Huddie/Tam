@@ -234,6 +234,13 @@ tbody tr:hover td {
   flex: 1;
   min-width: 200px;
 }
+/* Date inputs have their own compact, natural width -- stretching them to
+   match text-filter inputs (flex:1, min-width:200px above) just leaves
+   awkward empty space inside the field. */
+.toolbar input[type="date"] {
+  flex: 0 0 auto;
+  min-width: 0;
+}
 
 .error {
   color: var(--danger);

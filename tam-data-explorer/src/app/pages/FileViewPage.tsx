@@ -38,20 +38,13 @@ function DownloadDropdown({ fileKey }: { fileKey: string }) {
   );
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 /** The "browse by month/day, or pick a custom date range" panel -- both
  * live under the SAME toggle rather than each getting their own top-level
  * button, since they're really two ways to do the same thing (narrow the
- * page below to a subset of the year's rows). Plain text date inputs
- * (YYYY-MM-DD, matching this page's own URL param format directly) rather
- * than native <input type="date">: the OS-native date-picker chrome looks
- * out of place against the site's plain monospace styling everywhere
- * else, and a plain text input is already an existing, working, styled
- * component (same one "Search titles"/"Creator email" use) instead of a
- * one-off. */
+ * page below to a subset of the year's rows). */
 function DateBrowser({
   dateIndex,
+  year,
   rangeStart,
   rangeEnd,
   onSelectMonth,
@@ -60,6 +53,7 @@ function DateBrowser({
   onClearRange,
 }: {
   dateIndex: DateIndex | null;
+  year: string;
   rangeStart: string;
   rangeEnd: string;
   onSelectMonth: (month: number) => void;
@@ -70,16 +64,22 @@ function DateBrowser({
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
   const [startInput, setStartInput] = useState(rangeStart);
   const [endInput, setEndInput] = useState(rangeEnd);
-  const canApply = DATE_RE.test(startInput) && (!endInput || DATE_RE.test(endInput));
+  const bounds = { min: `${year}-01-01`, max: `${year}-12-31` };
 
   return (
     <>
       <div className="toolbar">
         <span className="muted">Custom range:</span>
-        <input placeholder="YYYY-MM-DD" value={startInput} onChange={(e) => setStartInput(e.target.value)} />
+        <input type="date" value={startInput} min={bounds.min} max={bounds.max} onChange={(e) => setStartInput(e.target.value)} />
         <span className="muted">to</span>
-        <input placeholder="YYYY-MM-DD (optional)" value={endInput} onChange={(e) => setEndInput(e.target.value)} />
-        <button className="secondary" disabled={!canApply} onClick={() => onApplyRange(startInput, endInput)}>
+        <input
+          type="date"
+          value={endInput}
+          min={startInput || bounds.min}
+          max={bounds.max}
+          onChange={(e) => setEndInput(e.target.value)}
+        />
+        <button className="secondary" disabled={!startInput} onClick={() => onApplyRange(startInput, endInput)}>
           Apply
         </button>
         {(rangeStart || rangeEnd) && (
@@ -97,7 +97,7 @@ function DateBrowser({
       </div>
 
       <p className="muted">
-        Or pick a month/day below -- grouped from the single year file (no separate day/month files are stored).
+        <small>Or pick a month/day below -- grouped from the single year file (no separate day/month files are stored).</small>
       </p>
       <div className="browse-list">
         {!dateIndex && <p className="browse-row muted">Loading...</p>}
@@ -288,6 +288,7 @@ export function FileViewPage() {
       {browsing && (
         <DateBrowser
           dateIndex={dateIndex}
+          year={year}
           rangeStart={rangeStart}
           rangeEnd={rangeEnd}
           onSelectMonth={selectMonth}
