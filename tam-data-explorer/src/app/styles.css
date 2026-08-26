@@ -1,9 +1,6 @@
 /* Plain CSS, no framework -- same base/theme as tam-discovery's stylesheet
    (deliberately kept in sync -- see its own comment), plus a few extra
-   classes for the browse tree/breadcrumb/tabs this app needs. Table cells
-   here default to the monospace stack (unlike Discovery's, which show
-   prose titles/emails) -- this table is almost always OHLCV price data,
-   where a fixed-width numeric column actually helps scanning. */
+   classes for the browse tree/breadcrumb/tabs this app needs. */
 
 :root {
   color-scheme: light;
