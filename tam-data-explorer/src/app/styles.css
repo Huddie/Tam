@@ -404,3 +404,38 @@ tbody tr:hover td {
   border-color: var(--border);
   color: var(--muted);
 }
+
+.code-block {
+  margin: 0.75rem 0 1.25rem;
+  border: 1px solid var(--border);
+}
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+}
+.code-block-copy {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+}
+.code-block pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+.tok-comment {
+  color: var(--muted);
+}
+.tok-string {
+  color: #1a7f5a;
+}
+.tok-keyword {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.tok-placeholder {
+  color: #b45309;
+}

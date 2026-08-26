@@ -65,7 +65,7 @@ export function TokensPage() {
       </Link>
       <h1>Personal tokens</h1>
       <p className="muted">
-        For scripts/notebooks/DuckDB -- see <Link to="/api-access">API access</Link> for exact usage. Each token is
+        For scripts, notebooks, or SQL access -- see <Link to="/api-access">API access</Link> for exact usage. Each token is
         yours alone: revoking one never affects anyone else's access. The same token also works on{" "}
         <a href="https://discovery.tamquant.com/settings/tokens">Discovery</a> for publishing -- one token, not two.
       </p>

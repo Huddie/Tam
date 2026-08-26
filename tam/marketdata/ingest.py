@@ -258,10 +258,21 @@ def ingest(
     pending_by_symbol: Dict[str, List[pd.DataFrame]] = {}
     pending_count = 0
 
+    def _write_one(item) -> None:
+        symbol, frames = item
+        store.write(symbol, pd.concat(frames))
+
     def _flush() -> None:
         nonlocal pending_count
-        for symbol, frames in pending_by_symbol.items():
-            store.write(symbol, pd.concat(frames))
+        if pending_by_symbol:
+            # Each symbol's store.write() is its own full R2 round-trip
+            # (read the year file, merge, rewrite) -- hundreds of symbols
+            # done one at a time here would make the WRITE side the
+            # bottleneck even though fetching is already concurrent above;
+            # different symbols write to different paths, so there's
+            # nothing to race on running these concurrently too.
+            with ThreadPoolExecutor(max_workers=max_workers) as write_pool:
+                list(write_pool.map(_write_one, pending_by_symbol.items()))
         pending_by_symbol.clear()
         manifest.flush()
         pending_count = 0

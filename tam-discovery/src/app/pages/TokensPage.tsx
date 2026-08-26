@@ -67,7 +67,7 @@ export function TokensPage() {
       <p className="muted">
         Used by <code>upload-discovery login</code> (or <code>tam.discovery.upload(token=...)</code>) to publish from
         a shell, notebook, or Colab -- see the README for setup. The same token also works on{" "}
-        <a href="https://data.tamquant.com/settings/tokens">Data Explorer</a> for data/DuckDB access -- one token,
+        <a href="https://data.tamquant.com/settings/tokens">Data Explorer</a> for data/SQL access -- one token,
         not two.
       </p>
 
