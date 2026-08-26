@@ -162,8 +162,11 @@ def test_ingest_fetches_multiple_symbols_concurrently_not_sequentially(tmp_path)
 
     # 8 symbols x 0.2s each: sequential would take >=1.6s; concurrent
     # (default max_workers=8, one thread per symbol here) should take
-    # roughly one sleep's worth. Generous margin against slow CI hosts.
-    assert elapsed < 1.0
+    # roughly one sleep's worth. 1.0s (5x one sleep) proved flaky on a
+    # loaded/shared GitHub-hosted runner even with real concurrency working
+    # correctly -- 1.4s (7x) keeps a wide margin below the 1.6s sequential
+    # floor while tolerating realistic CI scheduling jitter.
+    assert elapsed < 1.4
 
 
 @pytest.mark.parametrize("store_cls", [CsvStore, ParquetStore])
