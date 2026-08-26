@@ -1,6 +1,17 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { type BrowseResult, type Dataset, type ExportSelection, type YearEntry, browse, exportUrl, listSymbols, listYears } from "../api";
+import {
+  type BrowseResult,
+  type BucketStats,
+  type Dataset,
+  type ExportSelection,
+  type YearEntry,
+  bucketStats,
+  browse,
+  exportUrl,
+  listSymbols,
+  listYears,
+} from "../api";
 import { Spinner } from "../Spinner";
 import { useClickOutside } from "../useClickOutside";
 
@@ -86,27 +97,40 @@ type SizeUnit = (typeof SIZE_UNITS)[number];
 function formatSize(bytes: number, unit: SizeUnit): string {
   const resolved = unit === "auto" ? (bytes >= 1024 ** 3 ? "GB" : bytes >= 1024 ** 2 ? "MB" : "KB") : unit;
   const divisor = resolved === "GB" ? 1024 ** 3 : resolved === "MB" ? 1024 ** 2 : 1024;
-  return `${(bytes / divisor).toFixed(1)} ${resolved}`;
+  return `${(bytes / divisor).toFixed(2)} ${resolved}`;
+}
+
+/** The size unit every SizeLabel on the page shares -- clicking ANY one of
+ * them cycles auto -> KB -> MB -> GB for ALL of them at once, not just the
+ * row that was clicked (a per-row unit made comparing rows across a table
+ * confusing: two rows of a similar size showing "0.02 MB" and "20 KB" for
+ * the same underlying magnitude). Defaults to "auto" -- each row still
+ * picks its own best-fit unit independently until the user explicitly
+ * overrides it by clicking one. */
+const SizeUnitContext = createContext<[SizeUnit, (unit: SizeUnit) => void]>(["auto", () => {}]);
+
+function useSizeUnit(): [SizeUnit, () => void] {
+  const [unit, setUnit] = useContext(SizeUnitContext);
+  const cycle = () => setUnit(SIZE_UNITS[(SIZE_UNITS.indexOf(unit) + 1) % SIZE_UNITS.length]);
+  return [unit, cycle];
 }
 
 /** A file size that cycles auto -> KB -> MB -> GB on click -- "auto" (the
- * default) picks whichever unit reads best for that one row's magnitude;
- * clicking forces every row using this same unit through KB/MB/GB, useful
- * for comparing rows of wildly different sizes on the same scale. Each
- * instance owns its own unit rather than sharing one across the whole
- * table, so clicking a folder's total doesn't also resize an unrelated
- * file's row. */
+ * default) picks whichever unit reads best for that row's own magnitude;
+ * clicking any SizeLabel on the page forces EVERY SizeLabel through the
+ * same KB/MB/GB unit (see SizeUnitContext above), useful for comparing
+ * rows of wildly different sizes on the same scale. */
 function SizeLabel({ bytes }: { bytes: number }) {
-  const [unit, setUnit] = useState<SizeUnit>("auto");
+  const [unit, cycle] = useSizeUnit();
   return (
     <span
       className="size muted"
       role="button"
       tabIndex={0}
-      title="Click to cycle units"
+      title="Click to cycle units (affects every size on this page)"
       onClick={(e) => {
         e.stopPropagation();
-        setUnit((current) => SIZE_UNITS[(SIZE_UNITS.indexOf(current) + 1) % SIZE_UNITS.length]);
+        cycle();
       }}
     >
       {formatSize(bytes, unit)}
@@ -403,10 +427,53 @@ function SymbolYearTab() {
   );
 }
 
+/** Total storage/object-count summary for the whole bucket, broken down by
+ * dataset -- shown on the bucket's landing page (root prefix, no folder
+ * drilled into yet) so "how much are we storing" is visible at a glance
+ * without digging through folders one at a time. Sizes use the SAME shared
+ * unit (see SizeUnitContext) as every other size on the page. */
+function BucketStatsPanel() {
+  const [stats, setStats] = useState<BucketStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    bucketStats()
+      .then(setStats)
+      .catch((e) => setError(String(e)));
+  }, []);
+
+  if (error) return null; // a stats-fetch failure shouldn't block browsing itself
+  if (!stats) return <Spinner label="Loading bucket stats..." />;
+
+  const datasetLabels: Record<keyof BucketStats["byDataset"], string> = {
+    minute: "Minute bars",
+    eod: "Daily / EOD bars",
+    other: "Other",
+  };
+
+  return (
+    <div className="bucket-stats">
+      <div className="bucket-stats-total">
+        <SizeLabel bytes={stats.totalBytes} /> across {stats.totalObjects.toLocaleString()} object(s)
+      </div>
+      <div className="bucket-stats-breakdown">
+        {(Object.keys(stats.byDataset) as Array<keyof BucketStats["byDataset"]>)
+          .filter((key) => stats.byDataset[key].objects > 0)
+          .map((key) => (
+            <span key={key} className="bucket-stats-item">
+              {datasetLabels[key]}: <SizeLabel bytes={stats.byDataset[key].bytes} /> ({stats.byDataset[key].objects.toLocaleString()})
+            </span>
+          ))}
+      </div>
+    </div>
+  );
+}
+
 export function BrowsePage() {
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") === "symbol" ? "symbol" : "browse";
   const prefix = params.get("prefix") ?? "";
+  const sizeUnitState = useState<SizeUnit>("auto");
 
   function setTab(next: "browse" | "symbol") {
     setParams({ tab: next });
@@ -417,25 +484,28 @@ export function BrowsePage() {
   }
 
   return (
-    <div className="page page-wide">
-      <header className="page-header">
-        <h1>Data Explorer</h1>
-        <nav>
-          <Link to="/settings/tokens">Personal tokens</Link>
-          <Link to="/api-access">API access</Link>
-        </nav>
-      </header>
+    <SizeUnitContext.Provider value={sizeUnitState}>
+      <div className="page page-wide">
+        <header className="page-header">
+          <h1>Data Explorer</h1>
+          <nav>
+            <Link to="/settings/tokens">Personal tokens</Link>
+            <Link to="/api-access">API access</Link>
+          </nav>
+        </header>
 
-      <div className="tabs">
-        <button className={tab === "browse" ? "active" : ""} onClick={() => setTab("browse")}>
-          Browse
-        </button>
-        <button className={tab === "symbol" ? "active" : ""} onClick={() => setTab("symbol")}>
-          Symbol / Year
-        </button>
+        <div className="tabs">
+          <button className={tab === "browse" ? "active" : ""} onClick={() => setTab("browse")}>
+            Browse
+          </button>
+          <button className={tab === "symbol" ? "active" : ""} onClick={() => setTab("symbol")}>
+            Symbol / Year
+          </button>
+        </div>
+
+        {tab === "browse" && !prefix && <BucketStatsPanel />}
+        {tab === "browse" ? <BrowseTab prefix={prefix} onNavigate={navigatePrefix} /> : <SymbolYearTab />}
       </div>
-
-      {tab === "browse" ? <BrowseTab prefix={prefix} onNavigate={navigatePrefix} /> : <SymbolYearTab />}
-    </div>
+    </SizeUnitContext.Provider>
   );
 }

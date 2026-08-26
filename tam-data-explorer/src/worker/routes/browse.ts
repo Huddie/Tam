@@ -120,3 +120,63 @@ export async function listAllKeysUnderPrefix(env: Env, prefix: string): Promise<
 
   return keys;
 }
+
+export interface DatasetStats {
+  bytes: number;
+  objects: number;
+}
+
+export interface BucketStats {
+  totalBytes: number;
+  totalObjects: number;
+  byDataset: Record<Dataset | "other", DatasetStats>;
+}
+
+const STATS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Isolate-local cache, not a real distributed cache (no KV/Durable Object
+// binding for this) -- Workers can and do reuse the same isolate across
+// several requests, so this cuts a full bucket scan down to roughly once
+// per 5 minutes PER isolate rather than once per page load, without adding
+// new infrastructure for what's ultimately a rough "how much are we
+// using" display, not a billing-accurate figure. Worst case (a fresh
+// isolate, or the TTL just expired) is a real bucket-wide list() scan --
+// see bucketStats() below for why that's still bounded/acceptable.
+let cachedStats: { value: BucketStats; expiresAt: number } | null = null;
+
+/** GET /api/bucket-stats -- total bytes/object count across the whole
+ * bucket, broken down by top-level prefix (minute/eod/other) so the
+ * bucket's landing page can show "how much storage is this actually
+ * using" at a glance. Walks EVERY object in the bucket (no delimiter) --
+ * there's no cheaper way to get an exact byte total from R2's list API,
+ * which is why this is cached (see cachedStats above) rather than
+ * recomputed on every request. */
+export async function bucketStats(env: Env): Promise<BucketStats> {
+  const now = Date.now();
+  if (cachedStats && cachedStats.expiresAt > now) return cachedStats.value;
+
+  const byDataset: Record<Dataset | "other", DatasetStats> = {
+    minute: { bytes: 0, objects: 0 },
+    eod: { bytes: 0, objects: 0 },
+    other: { bytes: 0, objects: 0 },
+  };
+  let totalBytes = 0;
+  let totalObjects = 0;
+
+  let cursor: string | undefined;
+  do {
+    const page = await env.DATA.list({ cursor, limit: FETCH_BATCH_SIZE });
+    for (const object of page.objects) {
+      totalBytes += object.size;
+      totalObjects += 1;
+      const bucket = object.key.startsWith("minute/") ? "minute" : object.key.startsWith("eod/") ? "eod" : "other";
+      byDataset[bucket].bytes += object.size;
+      byDataset[bucket].objects += 1;
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+
+  const stats: BucketStats = { totalBytes, totalObjects, byDataset };
+  cachedStats = { value: stats, expiresAt: now + STATS_CACHE_TTL_MS };
+  return stats;
+}

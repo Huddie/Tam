@@ -4,6 +4,21 @@ export interface BrowseResult {
   cursor: string | null;
 }
 
+export interface DatasetStats {
+  bytes: number;
+  objects: number;
+}
+
+export interface BucketStats {
+  totalBytes: number;
+  totalObjects: number;
+  byDataset: Record<"minute" | "eod" | "other", DatasetStats>;
+}
+
+export function bucketStats(): Promise<BucketStats> {
+  return api("/api/bucket-stats");
+}
+
 export interface FilePage {
   columns: string[];
   rows: Record<string, unknown>[];

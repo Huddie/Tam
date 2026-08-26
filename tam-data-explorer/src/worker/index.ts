@@ -1,7 +1,7 @@
 import { verifyAccess } from "./lib/access";
 import { verifyBearer } from "./lib/bearer";
 import { ApiError, jsonError } from "./lib/errors";
-import { browse, listSymbols, listYears, parseDataset } from "./routes/browse";
+import { browse, bucketStats, listSymbols, listYears, parseDataset } from "./routes/browse";
 import { issueCredentials } from "./routes/credentials";
 import { exportFiles } from "./routes/export";
 import { downloadCsv, downloadRaw, viewFile, viewFileCompleteness, viewFileDates } from "./routes/file";
@@ -33,6 +33,9 @@ async function handleDataRoutes(request: Request, env: Env, path: string[]): Pro
 
   if (path.length === 1 && path[0] === "browse" && method === "GET") {
     return Response.json(await browse(env, url.searchParams.get("prefix") ?? "", url.searchParams.get("cursor") ?? undefined));
+  }
+  if (path.length === 1 && path[0] === "bucket-stats" && method === "GET") {
+    return Response.json(await bucketStats(env));
   }
   if (path.length === 1 && path[0] === "symbols" && method === "GET") {
     return Response.json({ symbols: await listSymbols(env, parseDataset(url.searchParams.get("dataset"))) });

@@ -620,3 +620,26 @@ tbody tr:hover td {
   background: var(--accent);
   color: white;
 }
+
+.bucket-stats {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.bucket-stats-total {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.bucket-stats-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  color: var(--muted);
+}
+.bucket-stats-item .size {
+  padding: 0;
+}
