@@ -24,13 +24,6 @@ export function DetailPage() {
 
   return (
     <div className="viewer-page">
-      {/* No allow-same-origin -- this keeps the artifact's origin opaque and
-          unique, so its JS can never reach this app's cookies/session even
-          if the artifact itself were malicious. See src/worker/routes/view.ts
-          for the matching server-side CSP `sandbox` directive -- the two
-          together are what actually enforce this, not either alone. */}
-      <iframe title={discovery.title} src={`/d/${id}/view`} sandbox="allow-scripts" className="viewer-frame-full" />
-
       <div className="detail-overlay">
         <button className="detail-overlay-toggle" onClick={() => setExpanded((value) => !value)}>
           <span>{discovery.title}</span>
@@ -78,6 +71,16 @@ export function DetailPage() {
             </ul>
           </div>
         )}
+      </div>
+
+      <div className="viewer-frame-wrap">
+        {/* No allow-same-origin -- this keeps the artifact's origin opaque
+            and unique, so its JS can never reach this app's cookies/session
+            even if the artifact itself were malicious. See
+            src/worker/routes/view.ts for the matching server-side CSP
+            `sandbox` directive -- the two together are what actually
+            enforce this, not either alone. */}
+        <iframe title={discovery.title} src={`/d/${id}/view`} sandbox="allow-scripts" className="viewer-frame-full" />
       </div>
     </div>
   );

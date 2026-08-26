@@ -55,7 +55,7 @@ export function CatalogPage() {
   });
 
   return (
-    <div className="page">
+    <div className="page page-wide">
       <header className="page-header">
         <h1>Discovery</h1>
         <Link to="/settings/tokens">Publishing tokens</Link>
@@ -129,7 +129,9 @@ export function CatalogPage() {
                 ))}
               </td>
               <td className="muted">{discovery.created_by}</td>
-              <td className="muted mono">{new Date(discovery.updated_at).toLocaleString()}</td>
+              <td className="muted mono" title={new Date(discovery.updated_at).toLocaleString()}>
+                {new Date(discovery.updated_at).toLocaleDateString()}
+              </td>
             </tr>
           ))}
         </tbody>

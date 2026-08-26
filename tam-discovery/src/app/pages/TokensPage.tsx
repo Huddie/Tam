@@ -59,7 +59,7 @@ export function TokensPage() {
   });
 
   return (
-    <div className="page page-narrow">
+    <div className="page page-wide">
       <Link className="back-link" to="/">
         &larr; Back to catalog
       </Link>
