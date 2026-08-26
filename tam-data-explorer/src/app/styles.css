@@ -357,6 +357,7 @@ tbody tr:hover td {
   margin-left: auto;
   color: var(--muted);
   flex-shrink: 0;
+  cursor: pointer;
 }
 .browse-row:last-child {
   border-bottom: none;

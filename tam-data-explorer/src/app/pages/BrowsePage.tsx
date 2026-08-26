@@ -80,6 +80,40 @@ function basename(key: string): string {
   return key.replace(/\/$/, "").split("/").pop() ?? key;
 }
 
+const SIZE_UNITS = ["auto", "KB", "MB", "GB"] as const;
+type SizeUnit = (typeof SIZE_UNITS)[number];
+
+function formatSize(bytes: number, unit: SizeUnit): string {
+  const resolved = unit === "auto" ? (bytes >= 1024 ** 3 ? "GB" : bytes >= 1024 ** 2 ? "MB" : "KB") : unit;
+  const divisor = resolved === "GB" ? 1024 ** 3 : resolved === "MB" ? 1024 ** 2 : 1024;
+  return `${(bytes / divisor).toFixed(1)} ${resolved}`;
+}
+
+/** A file size that cycles auto -> KB -> MB -> GB on click -- "auto" (the
+ * default) picks whichever unit reads best for that one row's magnitude;
+ * clicking forces every row using this same unit through KB/MB/GB, useful
+ * for comparing rows of wildly different sizes on the same scale. Each
+ * instance owns its own unit rather than sharing one across the whole
+ * table, so clicking a folder's total doesn't also resize an unrelated
+ * file's row. */
+function SizeLabel({ bytes }: { bytes: number }) {
+  const [unit, setUnit] = useState<SizeUnit>("auto");
+  return (
+    <span
+      className="size muted"
+      role="button"
+      tabIndex={0}
+      title="Click to cycle units"
+      onClick={(e) => {
+        e.stopPropagation();
+        setUnit((current) => SIZE_UNITS[(SIZE_UNITS.indexOf(current) + 1) % SIZE_UNITS.length]);
+      }}
+    >
+      {formatSize(bytes, unit)}
+    </span>
+  );
+}
+
 /** A "starts with an underscore" folder/file (e.g. _diag/, _test/, the
  * ingestion manifest _manifest.json) -- a plain naming convention this
  * bucket already uses for "not part of the actual symbol data", not a
@@ -247,7 +281,7 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
               >
                 {displayName}
               </a>
-              <span className="size muted">{(object.size / 1024).toFixed(1)} KB</span>
+              <SizeLabel bytes={object.size} />
             </div>
           );
         })}
@@ -347,7 +381,7 @@ function SymbolYearTab() {
               <div className="browse-row" key={y.key}>
                 <TableIcon />
                 <a onClick={() => navigate(`/view?key=${encodeURIComponent(y.key)}`)}>{y.year}</a>
-                <span className="size muted">{(y.size / 1024).toFixed(1)} KB</span>
+                <SizeLabel bytes={y.size} />
               </div>
             ))}
             {!years.length && <p className="browse-row muted">No data for {symbol} yet.</p>}
