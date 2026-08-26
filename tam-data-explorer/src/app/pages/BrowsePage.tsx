@@ -73,16 +73,75 @@ function ExportDropdown({ selection, label }: { selection: ExportSelection; labe
   );
 }
 
+function basename(key: string): string {
+  return key.replace(/\/$/, "").split("/").pop() ?? key;
+}
+
+/** A "starts with an underscore" folder/file (e.g. _diag/, _test/, the
+ * ingestion manifest _manifest.json) -- a plain naming convention this
+ * bucket already uses for "not part of the actual symbol data", not a
+ * server-enforced concept (see browse.ts's own comment on why that
+ * filtering stays server-side only for .completeness.json, not this). */
+function isUnderscored(key: string): boolean {
+  return basename(key).startsWith("_");
+}
+
+/** The "[Options]" dropdown -- Show extensions / Show hidden, both off by
+ * default. Kept as one small menu instead of two standalone checkboxes on
+ * the actions row now that there are two of them -- matches ManageMenu's
+ * own "one button, not a growing row of toggles" reasoning on the
+ * Discovery side. */
+function OptionsMenu({
+  showExtensions,
+  setShowExtensions,
+  showHidden,
+  setShowHidden,
+}: {
+  showExtensions: boolean;
+  setShowExtensions: (value: boolean) => void;
+  showHidden: boolean;
+  setShowHidden: (value: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="menu-dropdown">
+      <button
+        className="secondary"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((value) => !value);
+        }}
+      >
+        Options &#9662;
+      </button>
+      {open && (
+        <div className="menu-dropdown-menu menu-dropdown-menu-checkboxes" onClick={(e) => e.stopPropagation()}>
+          <label>
+            <input type="checkbox" checked={showExtensions} onChange={(e) => setShowExtensions(e.target.checked)} />
+            Show extensions
+          </label>
+          <label>
+            <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
+            Show hidden (_-prefixed)
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix: string) => void }) {
   const navigate = useNavigate();
   const [result, setResult] = useState<BrowseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  // Off by default -- the .parquet suffix is redundant noise once the
-  // table icon already marks a row as "this is a table", and hiding it
-  // makes the year/symbol name easier to scan at a glance.
+  // Both off by default -- the .parquet suffix is redundant noise once the
+  // table icon already marks a row as "this is a table", and _-prefixed
+  // folders/files are internal-convention clutter (diagnostics, the
+  // ingestion manifest) that isn't useful to browse day to day.
   const [showExtensions, setShowExtensions] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   // Stack of cursors seen so far, one per page already visited -- lets
   // "Previous" go back without a second round-trip (R2's cursors are
   // forward-only, so the way back is replaying cursors we already have,
@@ -121,6 +180,10 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
   const selectedPrefixes = [...selected].filter((item) => item.endsWith("/"));
   const selectedKeys = [...selected].filter((item) => !item.endsWith("/"));
 
+  const visiblePrefixes = showHidden ? result.prefixes : result.prefixes.filter((p) => !isUnderscored(p));
+  const visibleObjects = showHidden ? result.objects : result.objects.filter((o) => !isUnderscored(o.key));
+  const hiddenCount = result.prefixes.length + result.objects.length - visiblePrefixes.length - visibleObjects.length;
+
   return (
     <>
       <Breadcrumb prefix={prefix} onNavigate={onNavigate} />
@@ -143,14 +206,18 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
         ) : (
           prefix && <ExportDropdown selection={{ prefixes: [prefix] }} label="Export this folder" />
         )}
-        <label className="muted" style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginLeft: "auto" }}>
-          <input type="checkbox" checked={showExtensions} onChange={(e) => setShowExtensions(e.target.checked)} />
-          Show extensions
-        </label>
+        <div style={{ marginLeft: "auto" }}>
+          <OptionsMenu
+            showExtensions={showExtensions}
+            setShowExtensions={setShowExtensions}
+            showHidden={showHidden}
+            setShowHidden={setShowHidden}
+          />
+        </div>
       </div>
 
       <div className="browse-list">
-        {result.prefixes.map((childPrefix) => (
+        {visiblePrefixes.map((childPrefix) => (
           <div className="browse-row" key={childPrefix}>
             {selecting && (
               <input type="checkbox" checked={selected.has(childPrefix)} onChange={() => toggleSelected(childPrefix)} />
@@ -161,7 +228,7 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
             <span className="size muted">folder</span>
           </div>
         ))}
-        {result.objects.map((object) => {
+        {visibleObjects.map((object) => {
           const isTable = object.key.endsWith(".parquet");
           const name = object.key.replace(prefix, "");
           const displayName = !showExtensions && isTable ? name.replace(/\.parquet$/, "") : name;
@@ -180,8 +247,13 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
             </div>
           );
         })}
-        {!result.prefixes.length && !result.objects.length && <p className="browse-row muted">(empty)</p>}
+        {!visiblePrefixes.length && !visibleObjects.length && <p className="browse-row muted">(empty)</p>}
       </div>
+      {hiddenCount > 0 && (
+        <p className="muted" style={{ fontSize: "0.8rem", margin: "0.5rem 0 0" }}>
+          <small>{hiddenCount} hidden -- toggle "Show hidden" in Options to see them.</small>
+        </p>
+      )}
       {(pageIndex > 0 || result.cursor) && (
         <div className="pagination">
           <button className="pager-btn" disabled={pageIndex === 0} onClick={() => setCursorStack((stack) => stack.slice(0, -1))}>

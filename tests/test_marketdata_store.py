@@ -262,6 +262,15 @@ def test_r2_store_manifest_bytes_roundtrip():
     assert store.read_manifest_bytes() == b'{"2024-01-02": "abc"}'
 
 
+def test_r2_store_completeness_bytes_roundtrip():
+    client = _FakeS3Client()
+    store = R2MinuteBarStore(credentials=_FAKE_CREDS, client=client)
+
+    assert store.read_completeness_bytes("AAPL", 2024) is None
+    store.write_completeness_bytes("AAPL", 2024, b'{"schema_version": 2}')
+    assert store.read_completeness_bytes("AAPL", 2024) == b'{"schema_version": 2}'
+
+
 def test_r2_store_retries_transient_errors_and_succeeds():
     client = _FakeS3Client(fail_times=2)  # fails twice, succeeds on the 3rd attempt
     store = R2MinuteBarStore(credentials=_FAKE_CREDS, client=client)

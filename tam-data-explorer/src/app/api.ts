@@ -24,14 +24,16 @@ export interface DateIndex {
 
 export interface DayCompleteness {
   day: number;
-  actual_minutes: number;
-  expected_minutes: number;
+  actual_bars: number;
+  expected_bars: number;
+  extended_hours_bars: number;
 }
 
 export interface MonthCompleteness {
   month: number;
-  actual_minutes: number;
-  expected_minutes: number;
+  actual_bars: number;
+  expected_bars: number;
+  extended_hours_bars: number;
   days: DayCompleteness[];
 }
 
@@ -39,8 +41,9 @@ export interface CompletenessIndex {
   symbol: string;
   year: number;
   calendar: string;
-  actual_minutes: number;
-  expected_minutes: number;
+  actual_bars: number;
+  expected_bars: number;
+  extended_hours_bars: number;
   months: MonthCompleteness[];
 }
 

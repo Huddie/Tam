@@ -484,15 +484,25 @@ tbody tr:hover td {
   }
 }
 
+.completeness-badge-wrap {
+  position: relative;
+  display: inline-block;
+}
 .completeness-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   margin: 0.4rem 0 0.75rem;
+  padding: 0.2rem 0.4rem;
+  background: none;
+  border: none;
   font-family: var(--mono);
   font-size: 0.85rem;
   color: var(--muted);
-  cursor: default;
+}
+.completeness-badge:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 .completeness-dot {
   display: inline-block;
@@ -502,4 +512,66 @@ tbody tr:hover td {
   flex-shrink: 0;
 }
 
+.completeness-popover {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 10;
+  min-width: 260px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.85rem;
+}
+.completeness-popover dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0.5rem 0 0;
+}
+.completeness-popover dt {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.completeness-popover dd {
+  margin: 0;
+  font-family: var(--mono);
+}
+
+/* A dropdown menu holding checkboxes (BrowsePage's OptionsMenu) rather
+   than clickable action buttons -- .menu-dropdown-menu's own base styling
+   (position/border/shadow) still applies, this just swaps the button-row
+   look for label rows. */
+.menu-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.menu-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 10;
+  min-width: 160px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+}
+.menu-dropdown-menu-checkboxes {
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+}
+.menu-dropdown-menu-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
 

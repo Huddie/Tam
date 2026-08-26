@@ -30,31 +30,44 @@ function completenessColor(ratio: number): string {
   return "#b42318";
 }
 
-/** Sums actual/expected minutes across every day in `index` for which
- * `include(dateStr)` (an "YYYY-MM-DD" string) returns true -- the one
- * piece of aggregation logic CompletenessBadge needs for all four scopes
- * (year/month/day/range), since a custom range can span multiple months
- * within the same year file. */
-function sumCompleteness(index: CompletenessIndex, include: (dateStr: string) => boolean): { actual: number; expected: number } {
+/** Sums actual/expected/extended-hours bar counts across every day in
+ * `index` for which `include(dateStr)` (an "YYYY-MM-DD" string) returns
+ * true -- the one piece of aggregation logic CompletenessBadge needs for
+ * all four scopes (year/month/day/range), since a custom range can span
+ * multiple months within the same year file. */
+function sumCompleteness(
+  index: CompletenessIndex,
+  include: (dateStr: string) => boolean,
+): { actual: number; expected: number; extended: number; days: number; incompleteDays: number } {
   let actual = 0;
   let expected = 0;
+  let extended = 0;
+  let days = 0;
+  let incompleteDays = 0;
   for (const month of index.months) {
     for (const d of month.days) {
       const dateStr = `${index.year}-${pad2(month.month)}-${pad2(d.day)}`;
       if (include(dateStr)) {
-        actual += d.actual_minutes;
-        expected += d.expected_minutes;
+        actual += d.actual_bars;
+        expected += d.expected_bars;
+        extended += d.extended_hours_bars;
+        if (d.expected_bars > 0) {
+          days += 1;
+          if (d.actual_bars < d.expected_bars) incompleteDays += 1;
+        }
       }
     }
   }
-  return { actual, expected };
+  return { actual, expected, extended, days, incompleteDays };
 }
 
 /** A minimal actual-vs-expected status indicator -- a colored dot plus a
  * percentage, scoped to whichever of year/month/day/custom-range is
- * currently being viewed. Hover for the exact counts and date range;
- * intentionally not more than that (a fuller breakdown belongs in the
- * "Browse dates" panel's own per-day list, not cluttering this line). */
+ * currently being viewed. Click it for a small stats popover (session
+ * completeness, trading days with any gap, extended-hours bar count);
+ * hover alone still shows the same summary as a tooltip for a quick
+ * glance without a click. Deliberately not a full day-by-day table here
+ * -- that's what the "Browse dates" panel's own per-day list is for. */
 function CompletenessBadge({
   index,
   month,
@@ -68,42 +81,78 @@ function CompletenessBadge({
   rangeStart?: string;
   rangeEnd?: string;
 }) {
+  const [open, setOpen] = useState(false);
   if (!index) return null;
 
   let actual: number;
   let expected: number;
+  let extended: number;
+  let days: number;
+  let incompleteDays: number;
   let label: string;
 
   if (rangeStart) {
     const end = rangeEnd || rangeStart;
-    ({ actual, expected } = sumCompleteness(index, (d) => d >= rangeStart && d <= end));
+    ({ actual, expected, extended, days, incompleteDays } = sumCompleteness(index, (d) => d >= rangeStart && d <= end));
     label = end !== rangeStart ? `${rangeStart} → ${end}` : rangeStart;
   } else if (month != null && day != null) {
     const dateStr = `${index.year}-${pad2(month)}-${pad2(day)}`;
-    ({ actual, expected } = sumCompleteness(index, (d) => d === dateStr));
-    label = `${index.year}-${pad2(month)}-${pad2(day)}`;
+    ({ actual, expected, extended, days, incompleteDays } = sumCompleteness(index, (d) => d === dateStr));
+    label = dateStr;
   } else if (month != null) {
     const m = index.months.find((mo) => mo.month === month);
-    actual = m?.actual_minutes ?? 0;
-    expected = m?.expected_minutes ?? 0;
+    actual = m?.actual_bars ?? 0;
+    expected = m?.expected_bars ?? 0;
+    extended = m?.extended_hours_bars ?? 0;
+    days = m?.days.filter((d) => d.expected_bars > 0).length ?? 0;
+    incompleteDays = m?.days.filter((d) => d.expected_bars > 0 && d.actual_bars < d.expected_bars).length ?? 0;
     label = `${index.year}-${pad2(month)}`;
   } else {
-    actual = index.actual_minutes;
-    expected = index.expected_minutes;
+    actual = index.actual_bars;
+    expected = index.expected_bars;
+    extended = index.extended_hours_bars;
+    days = index.months.flatMap((m) => m.days).filter((d) => d.expected_bars > 0).length;
+    incompleteDays = index.months
+      .flatMap((m) => m.days)
+      .filter((d) => d.expected_bars > 0 && d.actual_bars < d.expected_bars).length;
     label = String(index.year);
   }
 
   if (expected === 0) return null; // no trading days at all in this scope -- nothing meaningful to show
   const ratio = actual / expected;
   const pct = Math.round(ratio * 100);
+  const summary = `${label}: ${actual.toLocaleString()} / ${expected.toLocaleString()} bars present (${pct}%)`;
 
   return (
-    <span
-      className="completeness-badge"
-      title={`${label}: ${actual.toLocaleString()} / ${expected.toLocaleString()} expected minutes present (${pct}%)`}
-    >
-      <span className="completeness-dot" style={{ background: completenessColor(ratio) }} />
-      {pct}% complete
+    <span className="completeness-badge-wrap">
+      <button
+        className="completeness-badge"
+        title={summary}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((value) => !value);
+        }}
+      >
+        <span className="completeness-dot" style={{ background: completenessColor(ratio) }} />
+        {pct}% complete
+      </button>
+      {open && (
+        <div className="completeness-popover" onClick={(e) => e.stopPropagation()}>
+          <p className="mono">{label}</p>
+          <dl>
+            <dt>Regular session</dt>
+            <dd>
+              {actual.toLocaleString()} / {expected.toLocaleString()} bars ({pct}%)
+            </dd>
+            <dt>Trading days</dt>
+            <dd>
+              {days.toLocaleString()} ({incompleteDays.toLocaleString()} with a gap)
+            </dd>
+            <dt>Extended hours</dt>
+            <dd>{extended.toLocaleString()} bars (pre/post-market, not counted above)</dd>
+          </dl>
+        </div>
+      )}
     </span>
   );
 }

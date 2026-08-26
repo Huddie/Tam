@@ -19,12 +19,18 @@ const FETCH_BATCH_SIZE = 1000; // R2's own per-call max -- only used by the two 
  * cut off anything past the cap).
  *
  * Completeness sidecars (<year>.completeness.json, written next to each
- * <year>.parquet by tam.marketdata.completeness) are filtered out here --
- * an implementation detail the file browser has no reason to show as its
- * own clickable row. Filtered post-fetch (R2's own .list() has no
- * "exclude this suffix" option), so an individual page can occasionally
- * come back with fewer than BROWSE_PAGE_SIZE visible entries -- harmless,
- * cursor-based pagination still works correctly either way. */
+ * <year>.parquet by tam.marketdata.completeness) are filtered out here,
+ * unconditionally -- they're pure metadata, never independently openable
+ * in the table view, so there's no "show hidden" toggle that should ever
+ * reveal them. Underscore-prefixed folders/files (e.g. _diag/, _test/,
+ * the ingestion manifest _manifest.json) are NOT filtered here on
+ * purpose -- those ARE real, occasionally-useful things to browse, so
+ * whether to show them is a client-side "Show hidden" toggle (see
+ * BrowsePage.tsx) rather than a server-side always-off decision.
+ * Filtered post-fetch (R2's own .list() has no "exclude this" option), so
+ * an individual page can occasionally come back with fewer than
+ * BROWSE_PAGE_SIZE visible entries -- harmless, cursor-based pagination
+ * still works correctly either way. */
 export async function browse(env: Env, prefix: string, cursor?: string): Promise<BrowseEntry> {
   const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: BROWSE_PAGE_SIZE });
   return {

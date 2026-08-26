@@ -7,7 +7,7 @@ data that was written before that change landed.
 Usage:
     uv run python scripts/backfill_completeness.py
     uv run python scripts/backfill_completeness.py --symbol AAPL --symbol MSFT
-    uv run python scripts/backfill_completeness.py --force      # recompute even where a sidecar already exists
+    uv run python scripts/backfill_completeness.py --force      # recompute even a sidecar that's already current
     uv run python scripts/backfill_completeness.py --workers 16  # default: 8
 
 Runs symbol-year backfills concurrently via a thread pool -- each unit of
@@ -22,10 +22,16 @@ Reads R2 credentials the usual way (tam.marketdata.credentials.
 resolve_r2_credentials: kwarg -> env var (directly, or via a .env file) ->
 Colab secret -> saved file).
 
-Idempotent by default: without --force, a symbol-year that already has a
-sidecar is skipped, so a re-run after an interrupted backfill only does the
-remaining work. One symbol-year failing doesn't abort the rest -- failures
-are collected and reported at the end.
+Safe to re-run any time, NOT just "idempotent while nothing changes": a
+symbol-year is only skipped when its existing sidecar's own
+schema_version already matches completeness.SCHEMA_VERSION (see
+sidecar_schema_version()) -- an old-schema sidecar (e.g. from before the
+actual_minutes/expected_minutes -> actual_bars/expected_bars rename) gets
+rewritten automatically, same as a missing one, with no --force needed.
+--force only matters for forcing a rewrite of an ALREADY-current sidecar
+(e.g. after fixing a bug in compute_completeness() itself that a version
+bump wouldn't otherwise catch). One symbol-year failing doesn't abort the
+rest -- failures are collected and reported at the end.
 """
 from __future__ import annotations
 
@@ -33,7 +39,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple
 
-from tam.marketdata.completeness import compute_completeness, completeness_sidecar_suffix
+from tam.marketdata.completeness import SCHEMA_VERSION, compute_completeness, sidecar_schema_version
 from tam.marketdata.store import R2MinuteBarStore
 
 DEFAULT_WORKERS = 8
@@ -44,9 +50,10 @@ def _backfill_one(store: R2MinuteBarStore, symbol: str, year: int, force: bool) 
     the same store/client. Returns "written" or "skipped"; raises on a
     real failure (network error, missing pandas_market_calendars, etc.)
     for the caller to catch and report without aborting the rest."""
-    sidecar_key = f"{store._symbol_prefix(symbol)}{year}{completeness_sidecar_suffix()}"
-    if not force and store._object_exists(sidecar_key):
-        return "skipped"
+    if not force:
+        existing = store.read_completeness_bytes(symbol, year)
+        if existing is not None and sidecar_schema_version(existing) == SCHEMA_VERSION:
+            return "skipped"
 
     df = store._read_object(store._key(symbol, year))
     index = compute_completeness(symbol, year, df)

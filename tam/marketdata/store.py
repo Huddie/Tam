@@ -94,6 +94,15 @@ class MinuteBarStore(ABC):
         override" pattern as the manifest methods above."""
         return None
 
+    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+        """Raw bytes of one symbol-year's completeness sidecar, or None if
+        it doesn't exist -- used by scripts/backfill_completeness.py to
+        tell "already backfilled, current schema" apart from "exists, but
+        from an older schema" (see completeness.sidecar_schema_version()),
+        not just existence. Default: None, matching write_completeness_
+        bytes()'s own "opt-in via override" default."""
+        return None
+
 
 def _with_retries(func: Callable[[], _T], attempts: int = 5, base_delay: float = 2.0) -> _T:
     """Retries `func` up to `attempts` times with exponential backoff --
@@ -191,6 +200,13 @@ class ParquetFileSystemStore(MinuteBarStore):
         self._fs.create_dir(path.rsplit("/", 1)[0], recursive=True)
         with self._fs.open_output_stream(path) as handle:
             handle.write(data)
+
+    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+        path = f"{self._symbol_dir(symbol)}/{year}{completeness_sidecar_suffix()}"
+        if not self._file_exists(path):
+            return None
+        with self._fs.open_input_file(path) as handle:
+            return handle.readall()
 
     def _file_exists(self, path: str) -> bool:
         import pyarrow.fs as fs
@@ -381,6 +397,22 @@ class R2MinuteBarStore(MinuteBarStore):
             self._client.put_object(Bucket=self._credentials.bucket, Key=key, Body=data)
 
         _with_retries(_put)
+
+    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+        from botocore.exceptions import ClientError
+
+        key = f"{self._symbol_prefix(symbol)}{year}{completeness_sidecar_suffix()}"
+
+        def _get() -> Optional[bytes]:
+            try:
+                response = self._client.get_object(Bucket=self._credentials.bucket, Key=key)
+                return response["Body"].read()
+            except ClientError as exc:
+                if exc.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
+                    return None
+                raise
+
+        return _with_retries(_get)
 
     def _object_exists(self, key: str) -> bool:
         from botocore.exceptions import ClientError
