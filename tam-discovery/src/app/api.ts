@@ -44,7 +44,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json();
 }
 
-export function listDiscoveries(params: Record<string, string>): Promise<{ discoveries: Discovery[] }> {
+export function listDiscoveries(params: Record<string, string>): Promise<{ discoveries: Discovery[]; page: number; hasMore: boolean }> {
   const query = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, value]) => value)));
   return api(`/api/discoveries?${query.toString()}`);
 }

@@ -3,49 +3,54 @@ import type { Env } from "../types";
 export interface BrowseEntry {
   prefixes: string[];
   objects: Array<{ key: string; size: number; uploaded: string }>;
-  truncated: boolean;
+  cursor: string | null;
 }
 
-const MAX_KEYS = 2000;
+const PAGE_LIMIT = 1000; // R2's own per-call max for list()
 
-/** GET /api/browse?prefix= -- one "directory listing" level of the bucket,
- * using R2's delimiter support so this doesn't have to fetch every key
- * under a prefix just to show its immediate children. Caps out at
- * MAX_KEYS combined prefixes+objects (an internal-tool safety valve, not a
- * real pagination UI -- this bucket's actual shape is a few hundred
- * symbols with a handful of yearly files each, nowhere near this). */
-export async function browse(env: Env, prefix: string): Promise<BrowseEntry> {
-  const prefixes: string[] = [];
-  const objects: BrowseEntry["objects"] = [];
-  let cursor: string | undefined;
-  let truncated = false;
-
-  do {
-    const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: 1000 });
-    prefixes.push(...page.delimitedPrefixes);
-    objects.push(...page.objects.map((object) => ({ key: object.key, size: object.size, uploaded: object.uploaded.toISOString() })));
-    cursor = page.truncated ? page.cursor : undefined;
-    if (prefixes.length + objects.length >= MAX_KEYS) {
-      truncated = Boolean(cursor);
-      break;
-    }
-  } while (cursor);
-
-  return { prefixes, objects, truncated };
+/** GET /api/browse?prefix=&cursor= -- one page (>=1 R2 list() call's worth)
+ * of a "directory listing" level of the bucket, using R2's delimiter
+ * support so this doesn't have to fetch every key under a prefix just to
+ * show its immediate children. Returns a `cursor` for the next page when
+ * there's more -- real pagination, not a silent truncation, since this
+ * bucket now holds far more than "a few hundred symbols" (the assumption
+ * an earlier MAX_KEYS-capped version of this function made, which quietly
+ * cut off anything past the cap). */
+export async function browse(env: Env, prefix: string, cursor?: string): Promise<BrowseEntry> {
+  const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: PAGE_LIMIT });
+  return {
+    prefixes: page.delimitedPrefixes,
+    objects: page.objects.map((object) => ({ key: object.key, size: object.size, uploaded: object.uploaded.toISOString() })),
+    cursor: page.truncated ? page.cursor : null,
+  };
 }
 
-/** GET /api/symbols -- convenience wrapper around browse("minute/") for the
- * symbol/year picker UI, so it doesn't need to know the "minute/" prefix or
- * strip trailing slashes itself. */
+/** GET /api/symbols -- every symbol under "minute/", unpaginated: this is
+ * just a flat list of ticker names (thousands of short strings at most,
+ * trivial payload size), so unlike browse() above there's no reason to
+ * paginate it -- doing so would just push the "which symbol am I missing"
+ * problem onto the symbol-picker UI instead of solving it. Loops through
+ * every R2 list() page itself rather than stopping at some cap; a
+ * previous version capped combined prefixes+objects at 2000 and silently
+ * dropped anything past that, which is exactly what caused symbols past
+ * roughly the first couple hundred (alphabetically) to disappear once this
+ * bucket grew past that cap. */
 export async function listSymbols(env: Env): Promise<string[]> {
-  const { prefixes } = await browse(env, "minute/");
-  return prefixes.map((prefix) => prefix.replace(/^minute\//, "").replace(/\/$/, "")).sort();
+  const symbols: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await env.DATA.list({ prefix: "minute/", delimiter: "/", cursor, limit: PAGE_LIMIT });
+    symbols.push(...page.delimitedPrefixes.map((prefix) => prefix.replace(/^minute\//, "").replace(/\/$/, "")));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return symbols.sort();
 }
 
 /** GET /api/symbols/:symbol/years -- the yearly Parquet files available for
  * one symbol (tam/marketdata/store.py's own <root>/<SYMBOL>/<year>.parquet
  * layout), each with its object key ready to hand straight to the file
- * view route. */
+ * view route. A single symbol has at most a few dozen yearly files, well
+ * under one R2 list() page, so no pagination needed here either. */
 export async function listYears(env: Env, symbol: string): Promise<Array<{ year: number; key: string; size: number }>> {
   const { objects } = await browse(env, `minute/${symbol.toUpperCase()}/`);
   return objects
@@ -60,16 +65,22 @@ export async function listYears(env: Env, symbol: string): Promise<Array<{ year:
 
 /** Every object key under `prefix`, at ANY depth (no delimiter) -- used by
  * the export route to resolve a folder-level export into its concrete list
- * of .parquet files. Capped at MAX_KEYS for the same reason browse() is. */
+ * of .parquet files. Capped at MAX_EXPORT_KEYS as a memory safety valve
+ * for the Worker itself (a single export request materializing an
+ * unbounded key list) -- unlike browse()/listSymbols() above, silent
+ * truncation here is an acceptable tradeoff since it only affects the
+ * (rare) case of exporting an enormous folder in one request, not
+ * everyday browsing/listing. */
+const MAX_EXPORT_KEYS = 20000;
 export async function listAllKeysUnderPrefix(env: Env, prefix: string): Promise<Array<{ key: string; size: number }>> {
   const keys: Array<{ key: string; size: number }> = [];
   let cursor: string | undefined;
 
   do {
-    const page = await env.DATA.list({ prefix, cursor, limit: 1000 });
+    const page = await env.DATA.list({ prefix, cursor, limit: PAGE_LIMIT });
     keys.push(...page.objects.map((object) => ({ key: object.key, size: object.size })));
     cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor && keys.length < MAX_KEYS);
+  } while (cursor && keys.length < MAX_EXPORT_KEYS);
 
   return keys;
 }

@@ -5,8 +5,8 @@ either a single file as a DataFrame (fetch_dataframe(), no SQL engine setup
 at all), or a full SQL connection over the whole lake (connect()).
 
 connect() works by minting a short-lived, READ-ONLY, real R2 S3 credential
-scoped to just the tam-data bucket (Cloudflare's own Temporary Credentials
-API, see /tam-data-explorer/src/worker/lib/r2-credentials.ts) -- your
+scoped to just the tam-data bucket (Cloudflare's own R2 temporary-credentials
+scheme, see /tam-data-explorer/src/worker/lib/r2-credentials.ts) -- your
 personal token is what's allowed to mint these, so revoking it stops new
 ones from being issued (an already-minted credential still works until its
 own short TTL expires; R2 has no separate revocation for those). The

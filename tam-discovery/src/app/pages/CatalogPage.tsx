@@ -6,6 +6,7 @@ import { useSort } from "../useSort";
 export function CatalogPage() {
   const [params, setParams] = useSearchParams();
   const [discoveries, setDiscoveries] = useState<Discovery[]>([]);
+  const [hasMore, setHasMore] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -17,9 +18,11 @@ export function CatalogPage() {
       type: params.get("type") ?? "",
       creator: params.get("creator") ?? "",
       sort: params.get("sort") ?? "updated",
+      page: params.get("page") ?? "1",
     }),
     [params]
   );
+  const page = Math.max(1, Number(filters.page) || 1);
 
   useEffect(() => {
     listTags().then((r) => setTags(r.tags)).catch(() => {});
@@ -28,7 +31,10 @@ export function CatalogPage() {
 
   useEffect(() => {
     listDiscoveries(filters)
-      .then((r) => setDiscoveries(r.discoveries))
+      .then((r) => {
+        setDiscoveries(r.discoveries);
+        setHasMore(r.hasMore);
+      })
       .catch((e) => setError(String(e)));
   }, [filters]);
 
@@ -36,6 +42,11 @@ export function CatalogPage() {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
+    // Any filter/sort change re-scopes the result set -- staying on page 3
+    // of a now-different query would either show a confusing gap or a
+    // silently-empty page, so any change other than the page itself resets
+    // back to page 1.
+    if (key !== "page") next.delete("page");
     setParams(next);
   }
 
@@ -137,6 +148,17 @@ export function CatalogPage() {
         </tbody>
       </table>
       {discoveries.length === 0 && !error && <p className="muted">No discoveries match these filters.</p>}
+      {(page > 1 || hasMore) && (
+        <div className="pagination">
+          <button className="pager-btn" disabled={page <= 1} onClick={() => updateFilter("page", String(page - 1))}>
+            &larr; Previous
+          </button>
+          <span className="muted">Page {page}</span>
+          <button className="pager-btn" disabled={!hasMore} onClick={() => updateFilter("page", String(page + 1))}>
+            Next &rarr;
+          </button>
+        </div>
+      )}
     </div>
   );
 }

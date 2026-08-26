@@ -54,14 +54,26 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
   const [error, setError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Stack of cursors seen so far, one per page already visited -- lets
+  // "Previous" go back without a second round-trip (R2's cursors are
+  // forward-only, so the way back is replaying cursors we already have,
+  // not asking R2 for a "previous page" that doesn't exist as a concept).
+  const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([undefined]);
+  const pageIndex = cursorStack.length - 1;
 
   useEffect(() => {
     setSelecting(false);
     setSelected(new Set());
-    browse(prefix)
+    setCursorStack([undefined]);
+  }, [prefix]);
+
+  useEffect(() => {
+    setSelecting(false);
+    setSelected(new Set());
+    browse(prefix, cursorStack[pageIndex])
       .then(setResult)
       .catch((e) => setError(String(e)));
-  }, [prefix]);
+  }, [prefix, cursorStack, pageIndex]);
 
   function toggleSelected(item: string) {
     setSelected((prev) => {
@@ -131,7 +143,21 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
         ))}
         {!result.prefixes.length && !result.objects.length && <p className="browse-row muted">(empty)</p>}
       </div>
-      {result.truncated && <p className="muted">Showing a partial listing -- narrow the folder to see everything.</p>}
+      {(pageIndex > 0 || result.cursor) && (
+        <div className="pagination">
+          <button className="pager-btn" disabled={pageIndex === 0} onClick={() => setCursorStack((stack) => stack.slice(0, -1))}>
+            &larr; Previous
+          </button>
+          <span className="muted">Page {pageIndex + 1}</span>
+          <button
+            className="pager-btn"
+            disabled={!result.cursor}
+            onClick={() => setCursorStack((stack) => [...stack, result.cursor ?? undefined])}
+          >
+            Next &rarr;
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -139,6 +165,7 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
 function SymbolYearTab() {
   const navigate = useNavigate();
   const [symbols, setSymbols] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
   const [symbol, setSymbol] = useState("");
   const [years, setYears] = useState<YearEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -161,20 +188,42 @@ function SymbolYearTab() {
 
   if (error) return <p className="error">{error}</p>;
 
+  // Client-side filter over the full symbol list -- thousands of short
+  // ticker strings is a trivial amount of data to hold in memory and
+  // filter on every keystroke, so there's no need for server-side search
+  // (or pagination) here the way there is for browse()'s folder listings.
+  const matches = query ? symbols.filter((s) => s.includes(query.toUpperCase())) : symbols;
+
   return (
     <>
       <div className="toolbar">
-        <select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
-          <option value="">Pick a symbol...</option>
-          {symbols.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        <input
+          placeholder={`Search ${symbols.length} symbols...`}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSymbol("");
+          }}
+        />
       </div>
+      {!symbol && (
+        <div className="browse-list" style={{ maxHeight: "320px", overflowY: "auto" }}>
+          {matches.slice(0, 200).map((s) => (
+            <div className="browse-row" key={s}>
+              <a onClick={() => setSymbol(s)}>{s}</a>
+            </div>
+          ))}
+          {!matches.length && <p className="browse-row muted">No symbols match "{query}".</p>}
+          {matches.length > 200 && (
+            <p className="browse-row muted">{matches.length - 200} more match -- keep typing to narrow it down.</p>
+          )}
+        </div>
+      )}
       {symbol && (
         <>
+          <p className="breadcrumb">
+            <a onClick={() => setSymbol("")}>&larr; {symbol}</a>
+          </p>
           <div className="actions">
             <ExportDropdown selection={{ prefixes: [`minute/${symbol}/`] }} label="Export all years" />
           </div>

@@ -32,7 +32,7 @@ async function handleDataRoutes(request: Request, env: Env, path: string[]): Pro
   const method = request.method;
 
   if (path.length === 1 && path[0] === "browse" && method === "GET") {
-    return Response.json(await browse(env, url.searchParams.get("prefix") ?? ""));
+    return Response.json(await browse(env, url.searchParams.get("prefix") ?? "", url.searchParams.get("cursor") ?? undefined));
   }
   if (path.length === 1 && path[0] === "symbols" && method === "GET") {
     return Response.json({ symbols: await listSymbols(env) });

@@ -1,7 +1,7 @@
 export interface BrowseResult {
   prefixes: string[];
   objects: Array<{ key: string; size: number; uploaded: string }>;
-  truncated: boolean;
+  cursor: string | null;
 }
 
 export interface FilePage {
@@ -36,8 +36,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json();
 }
 
-export function browse(prefix: string): Promise<BrowseResult> {
-  return api(`/api/browse?prefix=${encodeURIComponent(prefix)}`);
+export function browse(prefix: string, cursor?: string): Promise<BrowseResult> {
+  const params = new URLSearchParams({ prefix });
+  if (cursor) params.set("cursor", cursor);
+  return api(`/api/browse?${params.toString()}`);
 }
 
 export function listSymbols(): Promise<{ symbols: string[] }> {

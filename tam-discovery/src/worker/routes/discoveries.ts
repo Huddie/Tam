@@ -43,11 +43,17 @@ export async function listDiscoveries(request: Request, env: Env): Promise<Respo
   const { results } = await env.DB.prepare(
     `SELECT d.* FROM discoveries d ${where} ORDER BY d.${sort} DESC LIMIT ? OFFSET ?`
   )
-    .bind(...bindings, PAGE_SIZE, (page - 1) * PAGE_SIZE)
+    // Fetch one extra row (PAGE_SIZE + 1) purely to detect "is there a next
+    // page" without a separate COUNT(*) query -- trimmed back off below
+    // before returning.
+    .bind(...bindings, PAGE_SIZE + 1, (page - 1) * PAGE_SIZE)
     .all<DiscoveryRow>();
 
+  const hasMore = results.length > PAGE_SIZE;
+  const pageRows = hasMore ? results.slice(0, PAGE_SIZE) : results;
+
   const discoveries = await Promise.all(
-    results.map(async (row) => ({
+    pageRows.map(async (row) => ({
       id: row.id,
       name: row.slug ?? row.id,
       type: row.type,
@@ -59,7 +65,7 @@ export async function listDiscoveries(request: Request, env: Env): Promise<Respo
     }))
   );
 
-  return Response.json({ discoveries, page });
+  return Response.json({ discoveries, page, hasMore });
 }
 
 export async function getDiscovery(env: Env, slugOrId: string): Promise<Response> {
