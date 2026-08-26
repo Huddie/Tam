@@ -16,12 +16,22 @@ const FETCH_BATCH_SIZE = 1000; // R2's own per-call max -- only used by the two 
  * there's more -- real pagination, not a silent truncation, since this
  * bucket now holds far more than "a few hundred symbols" (the assumption
  * an earlier MAX_KEYS-capped version of this function made, which quietly
- * cut off anything past the cap). */
+ * cut off anything past the cap).
+ *
+ * Completeness sidecars (<year>.completeness.json, written next to each
+ * <year>.parquet by tam.marketdata.completeness) are filtered out here --
+ * an implementation detail the file browser has no reason to show as its
+ * own clickable row. Filtered post-fetch (R2's own .list() has no
+ * "exclude this suffix" option), so an individual page can occasionally
+ * come back with fewer than BROWSE_PAGE_SIZE visible entries -- harmless,
+ * cursor-based pagination still works correctly either way. */
 export async function browse(env: Env, prefix: string, cursor?: string): Promise<BrowseEntry> {
   const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: BROWSE_PAGE_SIZE });
   return {
     prefixes: page.delimitedPrefixes,
-    objects: page.objects.map((object) => ({ key: object.key, size: object.size, uploaded: object.uploaded.toISOString() })),
+    objects: page.objects
+      .filter((object) => !object.key.endsWith(".completeness.json"))
+      .map((object) => ({ key: object.key, size: object.size, uploaded: object.uploaded.toISOString() })),
     cursor: page.truncated ? page.cursor : null,
   };
 }

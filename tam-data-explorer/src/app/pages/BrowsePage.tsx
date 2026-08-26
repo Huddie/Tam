@@ -2,6 +2,31 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { type BrowseResult, type ExportSelection, type YearEntry, browse, exportUrl, listSymbols, listYears } from "../api";
 
+/** A small hand-drawn "table" glyph (a grid, not a real icon library) --
+ * marks a row as "this opens the tabular/table view when clicked",
+ * distinguishing a .parquet file's row from a plain folder row at a
+ * glance without relying on file extension text alone (which the "Show
+ * extensions" toggle below can hide). */
+function TableIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      aria-hidden="true"
+      style={{ flexShrink: 0 }}
+    >
+      <rect x="1" y="1" width="12" height="12" rx="1" />
+      <line x1="1" y1="5.3" x2="13" y2="5.3" />
+      <line x1="1" y1="9.6" x2="13" y2="9.6" />
+      <line x1="5.5" y1="1" x2="5.5" y2="13" />
+    </svg>
+  );
+}
+
 function Breadcrumb({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix: string) => void }) {
   const parts = prefix.split("/").filter(Boolean);
   return (
@@ -54,6 +79,10 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
   const [error, setError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Off by default -- the .parquet suffix is redundant noise once the
+  // table icon already marks a row as "this is a table", and hiding it
+  // makes the year/symbol name easier to scan at a glance.
+  const [showExtensions, setShowExtensions] = useState(false);
   // Stack of cursors seen so far, one per page already visited -- lets
   // "Previous" go back without a second round-trip (R2's cursors are
   // forward-only, so the way back is replaying cursors we already have,
@@ -114,6 +143,10 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
         ) : (
           prefix && <ExportDropdown selection={{ prefixes: [prefix] }} label="Export this folder" />
         )}
+        <label className="muted" style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginLeft: "auto" }}>
+          <input type="checkbox" checked={showExtensions} onChange={(e) => setShowExtensions(e.target.checked)} />
+          Show extensions
+        </label>
       </div>
 
       <div className="browse-list">
@@ -128,19 +161,25 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
             <span className="size muted">folder</span>
           </div>
         ))}
-        {result.objects.map((object) => (
-          <div className="browse-row" key={object.key}>
-            {selecting && <input type="checkbox" checked={selected.has(object.key)} onChange={() => toggleSelected(object.key)} />}
-            <a
-              onClick={() =>
-                selecting ? toggleSelected(object.key) : navigate(`/view?key=${encodeURIComponent(object.key)}`)
-              }
-            >
-              {object.key.replace(prefix, "")}
-            </a>
-            <span className="size muted">{(object.size / 1024).toFixed(1)} KB</span>
-          </div>
-        ))}
+        {result.objects.map((object) => {
+          const isTable = object.key.endsWith(".parquet");
+          const name = object.key.replace(prefix, "");
+          const displayName = !showExtensions && isTable ? name.replace(/\.parquet$/, "") : name;
+          return (
+            <div className="browse-row" key={object.key}>
+              {selecting && <input type="checkbox" checked={selected.has(object.key)} onChange={() => toggleSelected(object.key)} />}
+              {isTable && <TableIcon />}
+              <a
+                onClick={() =>
+                  selecting ? toggleSelected(object.key) : navigate(`/view?key=${encodeURIComponent(object.key)}`)
+                }
+              >
+                {displayName}
+              </a>
+              <span className="size muted">{(object.size / 1024).toFixed(1)} KB</span>
+            </div>
+          );
+        })}
         {!result.prefixes.length && !result.objects.length && <p className="browse-row muted">(empty)</p>}
       </div>
       {(pageIndex > 0 || result.cursor) && (
@@ -230,6 +269,7 @@ function SymbolYearTab() {
           <div className="browse-list">
             {years.map((y) => (
               <div className="browse-row" key={y.key}>
+                <TableIcon />
                 <a onClick={() => navigate(`/view?key=${encodeURIComponent(y.key)}`)}>{y.year}</a>
                 <span className="size muted">{(y.size / 1024).toFixed(1)} KB</span>
               </div>
