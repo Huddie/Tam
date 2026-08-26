@@ -1,4 +1,4 @@
-import { readParquetAll, readParquetPage } from "../lib/parquet";
+import { readParquetAll, readParquetDateIndex, readParquetFiltered, readParquetPage } from "../lib/parquet";
 import { rowsToCsv } from "../lib/csv";
 import { ApiError } from "../lib/errors";
 import type { Env } from "../types";
@@ -6,25 +6,60 @@ import type { Env } from "../types";
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 1000;
 
+const YEAR_KEY_RE = /\/(\d{4})\.parquet$/;
+
+/** `minute/<SYMBOL>/<year>.parquet` is the only layout tam.marketdata ever
+ * writes (see store.py) -- the year is already encoded in the key itself,
+ * so a month/day filter needs no extra request parameter for it. */
+function parseYearFromKey(key: string): number {
+  const match = YEAR_KEY_RE.exec(key);
+  if (!match) throw new ApiError(400, `${key} doesn't look like a <SYMBOL>/<year>.parquet key`);
+  return Number(match[1]);
+}
+
 async function fetchObject(env: Env, key: string) {
   const object = await env.DATA.get(key);
   if (!object) throw new ApiError(404, `no object at key ${key}`);
   return object;
 }
 
-/** GET /api/file?key=&page=&pageSize= -- a paginated view of a Parquet
- * file's rows. Non-.parquet keys are rejected (400): this route is
- * specifically the tabular viewer, not a general-purpose file fetcher --
- * see downloadRaw() below for that. */
-export async function viewFile(env: Env, key: string, page: number, pageSize: number): Promise<Response> {
+/** GET /api/file?key=&page=&pageSize=[&month=&day=] -- a paginated view of
+ * a Parquet file's rows, optionally scoped to one UTC month (`month` only)
+ * or one UTC day (`month`+`day`) within the year already encoded in `key`.
+ * Non-.parquet keys are rejected (400): this route is specifically the
+ * tabular viewer, not a general-purpose file fetcher -- see downloadRaw()
+ * below for that. */
+export async function viewFile(
+  env: Env,
+  key: string,
+  page: number,
+  pageSize: number,
+  month?: number,
+  day?: number,
+): Promise<Response> {
   if (!key.endsWith(".parquet")) throw new ApiError(400, `${key} is not a .parquet file`);
   const object = await fetchObject(env, key);
   const buffer = await object.arrayBuffer();
 
   const boundedPageSize = Math.min(Math.max(1, pageSize || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
-  const result = await readParquetPage(buffer, Math.max(1, page || 1), boundedPageSize);
+  const boundedPage = Math.max(1, page || 1);
 
-  return Response.json({ ...result, page: Math.max(1, page || 1), pageSize: boundedPageSize });
+  const result = month
+    ? await readParquetFiltered(buffer, { year: parseYearFromKey(key), month, day }, boundedPage, boundedPageSize)
+    : await readParquetPage(buffer, boundedPage, boundedPageSize);
+
+  return Response.json({ ...result, page: boundedPage, pageSize: boundedPageSize });
+}
+
+/** GET /api/file/dates?key= -- which UTC months/days actually have data in
+ * this year's file, for the "browse by month/day" folder UI (see
+ * lib/parquet.ts's readParquetDateIndex for why this needs no
+ * day-partitioned storage change at all). */
+export async function viewFileDates(env: Env, key: string): Promise<Response> {
+  if (!key.endsWith(".parquet")) throw new ApiError(400, `${key} is not a .parquet file`);
+  const object = await fetchObject(env, key);
+  const buffer = await object.arrayBuffer();
+  return Response.json(await readParquetDateIndex(buffer));
 }
 
 /** GET /api/file/csv?key= -- every row (not just the current page), as a

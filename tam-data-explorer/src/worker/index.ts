@@ -4,7 +4,7 @@ import { ApiError, jsonError } from "./lib/errors";
 import { browse, listSymbols, listYears } from "./routes/browse";
 import { issueCredentials } from "./routes/credentials";
 import { exportFiles } from "./routes/export";
-import { downloadCsv, downloadRaw, viewFile } from "./routes/file";
+import { downloadCsv, downloadRaw, viewFile, viewFileDates } from "./routes/file";
 import { createToken, listTokens, revokeToken } from "./routes/tokens";
 import type { Env } from "./types";
 
@@ -45,7 +45,21 @@ async function handleDataRoutes(request: Request, env: Env, path: string[]): Pro
     if (!key) throw new ApiError(400, "key is required");
     const page = Number(url.searchParams.get("page") ?? "1");
     const pageSize = Number(url.searchParams.get("pageSize") ?? "0");
-    return viewFile(env, key, page, pageSize);
+    const monthParam = url.searchParams.get("month");
+    const dayParam = url.searchParams.get("day");
+    return viewFile(
+      env,
+      key,
+      page,
+      pageSize,
+      monthParam ? Number(monthParam) : undefined,
+      dayParam ? Number(dayParam) : undefined,
+    );
+  }
+  if (path.length === 2 && path[0] === "file" && path[1] === "dates" && method === "GET") {
+    const key = url.searchParams.get("key");
+    if (!key) throw new ApiError(400, "key is required");
+    return viewFileDates(env, key);
   }
   if (path.length === 2 && path[0] === "file" && path[1] === "csv" && method === "GET") {
     const key = url.searchParams.get("key");

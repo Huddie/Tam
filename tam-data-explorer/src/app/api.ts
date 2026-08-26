@@ -18,6 +18,10 @@ export interface YearEntry {
   size: number;
 }
 
+export interface DateIndex {
+  months: { month: number; days: number[] }[];
+}
+
 export interface TokenSummary {
   id: string;
   name: string;
@@ -50,8 +54,18 @@ export function listYears(symbol: string): Promise<{ years: YearEntry[] }> {
   return api(`/api/symbols/${encodeURIComponent(symbol)}/years`);
 }
 
-export function viewFile(key: string, page: number, pageSize: number): Promise<FilePage> {
-  return api(`/api/file?key=${encodeURIComponent(key)}&page=${page}&pageSize=${pageSize}`);
+export function viewFile(key: string, page: number, pageSize: number, month?: number, day?: number): Promise<FilePage> {
+  const params = new URLSearchParams({ key, page: String(page), pageSize: String(pageSize) });
+  if (month) params.set("month", String(month));
+  if (day) params.set("day", String(day));
+  return api(`/api/file?${params.toString()}`);
+}
+
+/** Which months/days actually have data in this year's file -- drives the
+ * "browse by month/day" folder view in FileViewPage without needing
+ * day-partitioned storage (see the Worker's readParquetDateIndex). */
+export function fileDates(key: string): Promise<DateIndex> {
+  return api(`/api/file/dates?key=${encodeURIComponent(key)}`);
 }
 
 export function csvDownloadUrl(key: string): string {
