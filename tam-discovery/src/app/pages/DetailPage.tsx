@@ -1,13 +1,80 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { type DiscoveryDetail, type VersionSummary, getDiscovery, getVersions } from "../api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { type DiscoveryDetail, type VersionSummary, getDiscovery, getVersions, hideDiscovery, renameDiscovery } from "../api";
+
+/** The "..." menu next to a discovery's title -- Rename and Delete, both
+ * creator-only (the server enforces this too; can_manage just decides
+ * whether to show the menu at all). Delete is soft (see hideDiscovery()
+ * on the Worker side) -- this menu's own confirm step is the only
+ * "are you sure" a user gets, so it needs to be unambiguous about what
+ * actually happens. */
+function ManageMenu({
+  onRename,
+  onDelete,
+}: {
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  return (
+    <div className="menu-dropdown">
+      <button
+        className="menu-dropdown-toggle secondary"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((value) => !value);
+          setConfirmingDelete(false);
+        }}
+      >
+        &#8942;
+      </button>
+      {open && (
+        <div className="menu-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+          {!confirmingDelete ? (
+            <>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  onRename();
+                }}
+              >
+                Rename
+              </button>
+              <button className="danger" onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="danger"
+                onClick={() => {
+                  setOpen(false);
+                  onDelete();
+                }}
+              >
+                Yes, delete
+              </button>
+              <button onClick={() => setConfirmingDelete(false)}>Cancel</button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [discovery, setDiscovery] = useState<DiscoveryDetail | null>(null);
   const [versions, setVersions] = useState<VersionSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -19,25 +86,71 @@ export function DetailPage() {
       .catch((e) => setError(String(e)));
   }, [id]);
 
+  function startRename() {
+    if (!discovery) return;
+    setRenameValue(discovery.title);
+    setRenaming(true);
+    setExpanded(true);
+  }
+
+  function saveRename() {
+    if (!id || !renameValue.trim()) return;
+    renameDiscovery(id, renameValue.trim())
+      .then(() => {
+        setDiscovery((prev) => (prev ? { ...prev, title: renameValue.trim() } : prev));
+        setRenaming(false);
+      })
+      .catch((e) => setError(String(e)));
+  }
+
+  function deleteDiscovery() {
+    if (!id) return;
+    hideDiscovery(id)
+      .then(() => navigate("/"))
+      .catch((e) => setError(String(e)));
+  }
+
   if (error) return <p className="error page">{error}</p>;
   if (!discovery) return <p className="muted page">Loading...</p>;
 
   return (
     <div className="viewer-page">
       <div className="detail-overlay">
-        <button className="detail-overlay-toggle" onClick={() => setExpanded((value) => !value)}>
-          <span>{discovery.title}</span>
-          <span className="chevron">{expanded ? "▾" : "▸"}</span>
-        </button>
+        <div className="detail-overlay-header">
+          <button className="detail-overlay-toggle" onClick={() => setExpanded((value) => !value)}>
+            <span>{discovery.title}</span>
+            <span className="chevron">{expanded ? "▾" : "▸"}</span>
+          </button>
+          {discovery.can_manage && <ManageMenu onRename={startRename} onDelete={deleteDiscovery} />}
+        </div>
 
         {expanded && (
           <div className="detail-overlay-body">
             <p>
               <Link to="/">&larr; Back to catalog</Link>
             </p>
-            <p className="muted">
-              <strong>Type:</strong> {discovery.type} &nbsp; <strong>Created by:</strong> {discovery.created_by}
-            </p>
+
+            {renaming ? (
+              <div className="toolbar">
+                <input
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveRename()}
+                  autoFocus
+                />
+                <button className="primary" disabled={!renameValue.trim()} onClick={saveRename}>
+                  Save
+                </button>
+                <button className="secondary" onClick={() => setRenaming(false)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <p className="muted">
+                <strong>Type:</strong> {discovery.type} &nbsp; <strong>Created by:</strong> {discovery.created_by}
+              </p>
+            )}
+
             <p>
               {discovery.tags.length ? (
                 discovery.tags.map((tag) => (

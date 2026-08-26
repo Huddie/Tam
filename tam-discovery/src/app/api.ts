@@ -11,6 +11,7 @@ export interface Discovery {
 
 export interface DiscoveryDetail extends Discovery {
   latest_version_id: string;
+  can_manage: boolean;
 }
 
 export interface VersionSummary {
@@ -55,6 +56,18 @@ export function getDiscovery(idOrSlug: string): Promise<DiscoveryDetail> {
 
 export function getVersions(idOrSlug: string): Promise<{ versions: VersionSummary[] }> {
   return api(`/api/discoveries/${encodeURIComponent(idOrSlug)}/versions`);
+}
+
+export function renameDiscovery(idOrSlug: string, title: string): Promise<{ id: string; title: string }> {
+  return api(`/api/discoveries/${encodeURIComponent(idOrSlug)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+}
+
+export function hideDiscovery(idOrSlug: string): Promise<{ id: string; hidden: boolean }> {
+  return api(`/api/discoveries/${encodeURIComponent(idOrSlug)}/hide`, { method: "POST" });
 }
 
 export function listTags(): Promise<{ tags: string[] }> {

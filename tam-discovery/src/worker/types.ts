@@ -24,6 +24,7 @@ export interface DiscoveryRow {
   created_at: string;
   updated_at: string;
   latest_version_id: string;
+  hidden_at: string | null;
 }
 
 export interface VersionRow {

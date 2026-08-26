@@ -312,12 +312,18 @@ tbody tr:hover td {
   overflow: hidden;
 }
 
+.detail-overlay-header {
+  display: flex;
+  align-items: stretch;
+}
+
 .detail-overlay-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   text-align: left;
   background: var(--bg);
   border: none;
@@ -337,6 +343,12 @@ tbody tr:hover td {
   color: var(--muted);
   font-family: var(--mono);
   flex-shrink: 0;
+}
+.detail-overlay-header .menu-dropdown {
+  display: flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  border-left: 1px solid var(--border);
 }
 
 .detail-overlay-body {
@@ -375,4 +387,44 @@ tbody tr:hover td {
   border-color: var(--border);
   color: var(--muted);
 }
+
+/* A small "..." action menu -- same look as tam-data-explorer's own
+   ExportDropdown, generalized under a name that isn't export-specific
+   since this one holds Rename/Delete instead. */
+.menu-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.menu-dropdown-toggle {
+  padding: 0.2rem 0.5rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+.menu-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 10;
+  min-width: 160px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+}
+.menu-dropdown-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.85rem;
+  border: none;
+  border-radius: 0;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.menu-dropdown-menu button:hover {
+  background: var(--bg-subtle);
+}
+.menu-dropdown-menu button.danger {
+  color: var(--danger);
+}
+
 
