@@ -237,10 +237,14 @@ works fine on Colab as long as you don't configure a `lora:` block in its config
 (pointing `base_url`/`model` at a remote/HTTP-served LLM instead, e.g. an
 OpenAI-compatible endpoint) -- only the local self-fine-tuning path needs `mlx-lm`.
 
-## Querying the minute-bar market-data lake from Colab
+## Querying the market-data lakes from Colab (minute bars + end-of-day)
 
-`tam.marketdata` is a separate 1-minute OHLCV data lake (Parquet in Cloudflare R2),
-independent of the `data:`/backtest config above. Install its extra first:
+`tam.marketdata` holds two Parquet lakes in the same Cloudflare R2 bucket, under
+different prefixes: a 1-minute OHLCV lake (`minute/`) and tam.data's end-of-day
+lake (`eod/`, the true daily bars fetched directly from a provider like yfinance --
+NOT derived from the minute bars, so it carries a real dividend/split-adjusted
+`adj_close` and generally covers a much longer history). Independent of the
+`data:`/backtest config above. Install the extra first:
 
 ```python
 !pip install -q "tam-quant[marketdata]"
@@ -258,18 +262,21 @@ from tam.marketdata.explorer_client import fetch_dataframe, connect
 
 df = fetch_dataframe("AAPL", 2024)      # one symbol-year as a DataFrame, plain HTTP
 
-con = connect()                          # full SQL access over the whole lake
-con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
+con = connect()                          # full SQL access over BOTH lakes
+con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()       # from minute bars
+con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()        # true EOD, adj_close included
+con.sql("SELECT * FROM eod_bars('^GSPC') ORDER BY date").df()       # raw indices work too (Yahoo's "^" tickers)
 con.sql("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day").df()
 ```
 
 `connect()` mints a short-lived, **read-only** R2 credential scoped to just this
 bucket behind the scenes (Cloudflare's own R2 temporary-credentials scheme), refreshes
 it automatically as it approaches expiry, and gives you the same macros as
-`tam.marketdata.duckdb_query.open_duckdb()` below (`daily_bars`, `weekly_bars`,
-`rollup_bars`, `daily_returns`, `rolling_volatility`) -- full glob/multi-file SQL,
-without ever handling real R2 account credentials yourself. See
-`https://data.tamquant.com/api-access` for curl/plain-`requests` equivalents.
+`tam.marketdata.duckdb_query.open_duckdb()` below (`minute_bars`, `eod_bars`,
+`daily_bars`, `weekly_bars`, `monthly_bars`, `rollup_bars`, `daily_returns`,
+`rolling_volatility`) -- full glob/multi-file SQL, without ever handling real R2
+account credentials yourself. See `https://data.tamquant.com/api-access` for
+curl/plain-`requests` equivalents.
 
 **Alternative, if you already have admin R2 credentials** (ingestion jobs, or
 anyone who's been handed a real read-only R2 API token directly): add secrets
@@ -281,6 +288,7 @@ from tam.marketdata.duckdb_query import open_duckdb
 
 con = open_duckdb(bucket="tam-data")
 con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
+con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()
 ```
 
 Functionally equivalent to `connect()` above -- this path exists mainly because

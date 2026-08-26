@@ -1,0 +1,80 @@
+name: Ingest EOD Bars
+
+# Incremental backfill of end-of-day OHLCV bars (S&P 500's full historical
+# constituent universe + a small curated list of common indices/ETFs) into
+# the R2 Parquet lake, under eod/<SYMBOL>/<year>.parquet -- see NOTEBOOK.md's
+# "Querying the market-data lakes" section and scripts/backfill_sp500_eod.py
+# / scripts/backfill_indices_eod.py's own docstrings. Tests must pass before
+# this runs at all (same `needs: test` gating pattern as publish.yml/
+# ingest_minute_bars.yml).
+#
+# Runs daily via `schedule:` (10:30 UTC, staggered 30 minutes after Ingest
+# Minute Bars so the two pipelines' R2 writes don't overlap), plus
+# workflow_dispatch for an on-demand run. Both backfill scripts default to
+# `--years 20`, but DataRepository.ingest() only ever fetches date gaps NOT
+# already covered (tam/data/repository.py's _missing_ranges) -- so once the
+# initial ~20-year backfill has completed once (run manually, or let the
+# first scheduled run do it), every SUBSEQUENT daily run only fetches the
+# ONE new trading day per ticker, not the whole history again. No separate
+# completeness step needed either -- tam.data.storage writes a completeness
+# sidecar automatically on every write() (see tam/data/completeness.py), so
+# a new day's write also refreshes that symbol-year's sidecar in the same
+# step.
+#
+# yfinance has no API key (nothing to configure for that), but this still
+# needs the SAME R2 repository secrets ingest_minute_bars.yml already uses
+# (Settings -> Secrets and variables -> Actions):
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+# Without them, a run fails fast with a clear "Missing R2 credential
+# field(s)" error rather than silently doing nothing.
+#
+# yfinance is an unofficial Yahoo Finance client, not a real bulk API --
+# GitHub-hosted runners share IP ranges, so a run MAY occasionally get
+# rate-limited/blocked in a way a local machine wouldn't be. A failed run
+# is safe to just re-trigger (or wait for tomorrow's scheduled run) thanks
+# to the same gap-detection resumability described above -- nothing gets
+# corrupted or double-counted by a partial/failed run.
+"on":
+  schedule:
+    - cron: "30 10 * * *"
+  workflow_dispatch: {}
+
+env:
+  UV_DEFAULT_INDEX: https://pypi.org/simple
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.11"
+
+      - run: uv sync --extra dev --extra live --extra notebook --extra quantstats --extra pitindex --extra marketdata
+
+      - run: uv run pytest tests/ -q -W ignore::UserWarning
+
+  ingest:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.11"
+
+      - run: uv sync --extra marketdata --extra pitindex
+
+      - name: S&P 500 historical universe (20 years)
+        run: uv run python scripts/backfill_sp500_eod.py --workers 4
+
+      - name: Common indices/ETFs
+        run: uv run python scripts/backfill_indices_eod.py --workers 4

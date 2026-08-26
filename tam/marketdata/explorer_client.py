@@ -254,6 +254,7 @@ class SqlConnection:
             """
         )
         con.sql(f"SET VARIABLE minute_root = 's3://{credentials['bucket']}/minute'")
+        con.sql(f"SET VARIABLE eod_root = 's3://{credentials['bucket']}/eod'")
         self._expires_at = _parse_expires_at(credentials["expiresAt"])
 
     def _ensure_fresh(self) -> None:

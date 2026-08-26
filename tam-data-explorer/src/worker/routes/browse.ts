@@ -1,9 +1,26 @@
+import { ApiError } from "../lib/errors";
 import type { Env } from "../types";
 
 export interface BrowseEntry {
   prefixes: string[];
   objects: Array<{ key: string; size: number; uploaded: string }>;
   cursor: string | null;
+}
+
+export type Dataset = "minute" | "eod";
+
+/** Validates a `dataset` query param into one of the two top-level R2
+ * prefixes the Symbol/Year picker can browse -- "minute" (tam.marketdata's
+ * 1-minute bars) or "eod" (tam.data's end-of-day bars, a DIFFERENT and
+ * generally much broader symbol universe: raw indices like "^GSPC" and
+ * decades of history for tickers the minute-bar feed never covers at all).
+ * Defaults to "minute" when omitted, matching this API's behavior before
+ * "eod" existed -- an existing caller that never sends `dataset` keeps
+ * working unchanged. */
+export function parseDataset(value: string | null): Dataset {
+  if (value === null || value === "minute") return "minute";
+  if (value === "eod") return "eod";
+  throw new ApiError(400, `dataset must be "minute" or "eod", got ${JSON.stringify(value)}`);
 }
 
 const BROWSE_PAGE_SIZE = 50; // one browse() page shown to the user at a time
@@ -42,34 +59,36 @@ export async function browse(env: Env, prefix: string, cursor?: string): Promise
   };
 }
 
-/** GET /api/symbols -- every symbol under "minute/", unpaginated: this is
- * just a flat list of ticker names (thousands of short strings at most,
- * trivial payload size), so unlike browse() above there's no reason to
- * paginate it -- doing so would just push the "which symbol am I missing"
- * problem onto the symbol-picker UI instead of solving it. Loops through
- * every R2 list() page itself rather than stopping at some cap; a
- * previous version capped combined prefixes+objects at 2000 and silently
- * dropped anything past that, which is exactly what caused symbols past
- * roughly the first couple hundred (alphabetically) to disappear once this
- * bucket grew past that cap. */
-export async function listSymbols(env: Env): Promise<string[]> {
+/** GET /api/symbols?dataset=minute|eod -- every symbol under that dataset's
+ * prefix, unpaginated: this is just a flat list of ticker names (thousands
+ * of short strings at most, trivial payload size), so unlike browse()
+ * above there's no reason to paginate it -- doing so would just push the
+ * "which symbol am I missing" problem onto the symbol-picker UI instead of
+ * solving it. Loops through every R2 list() page itself rather than
+ * stopping at some cap; a previous version capped combined
+ * prefixes+objects at 2000 and silently dropped anything past that, which
+ * is exactly what caused symbols past roughly the first couple hundred
+ * (alphabetically) to disappear once this bucket grew past that cap. */
+export async function listSymbols(env: Env, dataset: Dataset): Promise<string[]> {
+  const root = `${dataset}/`;
   const symbols: string[] = [];
   let cursor: string | undefined;
   do {
-    const page = await env.DATA.list({ prefix: "minute/", delimiter: "/", cursor, limit: FETCH_BATCH_SIZE });
-    symbols.push(...page.delimitedPrefixes.map((prefix) => prefix.replace(/^minute\//, "").replace(/\/$/, "")));
+    const page = await env.DATA.list({ prefix: root, delimiter: "/", cursor, limit: FETCH_BATCH_SIZE });
+    symbols.push(...page.delimitedPrefixes.map((prefix) => prefix.slice(root.length).replace(/\/$/, "")));
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
   return symbols.sort();
 }
 
-/** GET /api/symbols/:symbol/years -- the yearly Parquet files available for
- * one symbol (tam/marketdata/store.py's own <root>/<SYMBOL>/<year>.parquet
- * layout), each with its object key ready to hand straight to the file
- * view route. A single symbol has at most a few dozen yearly files, well
- * under one R2 list() page, so no pagination needed here either. */
-export async function listYears(env: Env, symbol: string): Promise<Array<{ year: number; key: string; size: number }>> {
-  const { objects } = await browse(env, `minute/${symbol.toUpperCase()}/`);
+/** GET /api/symbols/:symbol/years?dataset=minute|eod -- the yearly Parquet
+ * files available for one symbol in that dataset (both tam/marketdata/
+ * store.py's and tam/data/storage.py's own <root>/<SYMBOL>/<year>.parquet
+ * layout, just under a different top-level prefix). A single symbol has at
+ * most a few dozen yearly files, well under one R2 list() page, so no
+ * pagination needed here either. */
+export async function listYears(env: Env, symbol: string, dataset: Dataset): Promise<Array<{ year: number; key: string; size: number }>> {
+  const { objects } = await browse(env, `${dataset}/${symbol.toUpperCase()}/`);
   return objects
     .filter((object) => object.key.endsWith(".parquet"))
     .map((object) => ({

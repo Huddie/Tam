@@ -596,3 +596,27 @@ tbody tr:hover td {
   }
 }
 
+
+.dataset-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.dataset-toggle button {
+  border: none;
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--muted);
+  padding: 0.4rem 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.dataset-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+.dataset-toggle button.active {
+  background: var(--accent);
+  color: white;
+}

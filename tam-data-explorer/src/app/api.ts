@@ -71,12 +71,14 @@ export function browse(prefix: string, cursor?: string): Promise<BrowseResult> {
   return api(`/api/browse?${params.toString()}`);
 }
 
-export function listSymbols(): Promise<{ symbols: string[] }> {
-  return api("/api/symbols");
+export type Dataset = "minute" | "eod";
+
+export function listSymbols(dataset: Dataset): Promise<{ symbols: string[] }> {
+  return api(`/api/symbols?dataset=${dataset}`);
 }
 
-export function listYears(symbol: string): Promise<{ years: YearEntry[] }> {
-  return api(`/api/symbols/${encodeURIComponent(symbol)}/years`);
+export function listYears(symbol: string, dataset: Dataset): Promise<{ years: YearEntry[] }> {
+  return api(`/api/symbols/${encodeURIComponent(symbol)}/years?dataset=${dataset}`);
 }
 
 export function viewFile(

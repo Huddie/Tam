@@ -5,12 +5,15 @@ name: Ingest Minute Bars
 # see MARKETDATA.md. Tests must pass before this runs at all (same
 # `needs: test` gating pattern as publish.yml).
 #
-# Manually triggered ONLY (workflow_dispatch) -- deliberately no `schedule:`
-# cron trigger: run it by hand from the Actions tab (or `gh workflow run
-# "Ingest Minute Bars"`) whenever you want to catch up, or run the same
-# ingestion locally instead (see MARKETDATA.md) if you'd rather not hand a
-# CI runner your R2/Massive write credentials on any kind of recurring
-# schedule.
+# Runs daily via `schedule:` (10:00 UTC -- well after US market close and
+# Massive's own flat-file publish lag; tune if that's ever not late enough),
+# plus workflow_dispatch for an on-demand catch-up run. This DOES mean a
+# GitHub-hosted runner holds R2/Massive write credentials on a recurring,
+# unattended schedule -- previously this workflow was deliberately
+# dispatch-only specifically to avoid that; switched to `schedule:` per an
+# explicit request to automate both ingest pipelines daily. If that
+# tradeoff ever needs revisiting, removing the `schedule:` trigger below
+# reverts to the original manual-only behavior with no other changes needed.
 #
 # This is NOT the initial multi-year backfill -- that's a one-off, multi-day
 # job meant to run locally or on a dedicated machine (see MARKETDATA.md's
@@ -19,14 +22,16 @@ name: Ingest Minute Bars
 # day already ingested is a fast no-op, since tam.marketdata.ingest tracks a
 # resumability manifest in the store itself.
 #
-# Requires these repository secrets before a manual run does anything useful
+# Requires these repository secrets before a run does anything useful
 # (Settings -> Secrets and variables -> Actions):
 #   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
 #   MASSIVE_S3_ACCESS_KEY_ID, MASSIVE_S3_SECRET_ACCESS_KEY
-# Without them, a manual run fails fast with a clear "Missing R2 credential
+# Without them, a run fails fast with a clear "Missing R2 credential
 # field(s)" / "Massive flat-file access_key_id required" error rather than
 # silently doing nothing.
 "on":
+  schedule:
+    - cron: "0 10 * * *"
   workflow_dispatch: {}
 
 env:

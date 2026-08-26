@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { type BrowseResult, type ExportSelection, type YearEntry, browse, exportUrl, listSymbols, listYears } from "../api";
+import { type BrowseResult, type Dataset, type ExportSelection, type YearEntry, browse, exportUrl, listSymbols, listYears } from "../api";
 import { Spinner } from "../Spinner";
 import { useClickOutside } from "../useClickOutside";
 
@@ -313,6 +313,7 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
 
 function SymbolYearTab() {
   const navigate = useNavigate();
+  const [dataset, setDataset] = useState<Dataset>("minute");
   const [symbols, setSymbols] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -320,20 +321,22 @@ function SymbolYearTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listSymbols()
+    setSymbol("");
+    setQuery("");
+    listSymbols(dataset)
       .then((r) => setSymbols(r.symbols))
       .catch((e) => setError(String(e)));
-  }, []);
+  }, [dataset]);
 
   useEffect(() => {
     if (!symbol) {
       setYears([]);
       return;
     }
-    listYears(symbol)
+    listYears(symbol, dataset)
       .then((r) => setYears(r.years))
       .catch((e) => setError(String(e)));
-  }, [symbol]);
+  }, [symbol, dataset]);
 
   if (error) return <p className="error">{error}</p>;
 
@@ -345,6 +348,14 @@ function SymbolYearTab() {
 
   return (
     <>
+      <div className="dataset-toggle">
+        <button className={dataset === "minute" ? "active" : ""} onClick={() => setDataset("minute")}>
+          Minute bars
+        </button>
+        <button className={dataset === "eod" ? "active" : ""} onClick={() => setDataset("eod")}>
+          Daily / EOD bars
+        </button>
+      </div>
       <div className="toolbar">
         <input
           placeholder={`Search ${symbols.length} symbols...`}
@@ -374,7 +385,7 @@ function SymbolYearTab() {
             <a onClick={() => setSymbol("")}>&larr; {symbol}</a>
           </p>
           <div className="actions">
-            <ExportDropdown selection={{ prefixes: [`minute/${symbol}/`] }} label="Export all years" />
+            <ExportDropdown selection={{ prefixes: [`${dataset}/${symbol}/`] }} label="Export all years" />
           </div>
           <div className="browse-list">
             {years.map((y) => (

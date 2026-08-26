@@ -134,19 +134,32 @@ data).
 
 ### Ongoing daily ingestion (GitHub Actions)
 
-`.github/workflows/ingest_minute_bars.yml` catches up the prior trading day,
-using `examples/ingest_minute_bars_daily_config.yaml`. It's **manually
-triggered only** (`workflow_dispatch` -- no `schedule:` cron trigger, by
-design, so a CI runner never holds your R2/Massive write credentials on a
-recurring basis without you explicitly kicking off each run): from the
-Actions tab, or `gh workflow run "Ingest Minute Bars"`. It needs these
-**repository secrets** configured before a run does anything useful:
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`,
-`MASSIVE_S3_ACCESS_KEY_ID`, `MASSIVE_S3_SECRET_ACCESS_KEY`. Without them, a
-run fails fast with a clear "missing credential" error rather than silently
-doing nothing. Prefer running the same ingestion locally instead if you'd
-rather not use GitHub Actions for this at all -- see "Backfilling data"
-above.
+Two separate scheduled workflows, one per data source, each gated on the test
+suite passing first:
+
+- `.github/workflows/ingest_minute_bars.yml` catches up the prior trading
+  day's 1-minute bars, using `examples/ingest_minute_bars_daily_config.yaml`.
+- `.github/workflows/ingest_eod_bars.yml` catches up daily/EOD bars (the
+  full historical S&P 500 universe + a curated list of common indices/ETFs)
+  via `scripts/backfill_sp500_eod.py` / `scripts/backfill_indices_eod.py`.
+
+Both run daily via `schedule:` (staggered 10:00/10:30 UTC so their R2 writes
+don't overlap), plus `workflow_dispatch` for an on-demand run from the
+Actions tab or `gh workflow run "<name>"`. This means a CI runner holds R2
+(and, for minute bars, Massive) write credentials on a recurring, unattended
+schedule -- previously `ingest_minute_bars.yml` was deliberately manual-only
+to avoid exactly that; it's since been switched to a daily schedule.
+Removing a workflow's `schedule:` trigger reverts it to manual-only with no
+other change needed, if that tradeoff should be revisited.
+
+**Repository secrets** required (Settings -> Secrets and variables ->
+Actions): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+`R2_BUCKET` (both workflows), plus `MASSIVE_S3_ACCESS_KEY_ID`,
+`MASSIVE_S3_SECRET_ACCESS_KEY` (minute bars only -- yfinance needs no API
+key at all). Without them, a run fails fast with a clear "missing
+credential" error rather than silently doing nothing. Prefer running the
+same ingestion locally instead if you'd rather not use GitHub Actions for
+this at all -- see "Backfilling data" above.
 
 ### Resumability
 

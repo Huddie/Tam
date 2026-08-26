@@ -1,7 +1,7 @@
 import { verifyAccess } from "./lib/access";
 import { verifyBearer } from "./lib/bearer";
 import { ApiError, jsonError } from "./lib/errors";
-import { browse, listSymbols, listYears } from "./routes/browse";
+import { browse, listSymbols, listYears, parseDataset } from "./routes/browse";
 import { issueCredentials } from "./routes/credentials";
 import { exportFiles } from "./routes/export";
 import { downloadCsv, downloadRaw, viewFile, viewFileCompleteness, viewFileDates } from "./routes/file";
@@ -35,10 +35,10 @@ async function handleDataRoutes(request: Request, env: Env, path: string[]): Pro
     return Response.json(await browse(env, url.searchParams.get("prefix") ?? "", url.searchParams.get("cursor") ?? undefined));
   }
   if (path.length === 1 && path[0] === "symbols" && method === "GET") {
-    return Response.json({ symbols: await listSymbols(env) });
+    return Response.json({ symbols: await listSymbols(env, parseDataset(url.searchParams.get("dataset"))) });
   }
   if (path.length === 3 && path[0] === "symbols" && path[2] === "years" && method === "GET") {
-    return Response.json({ years: await listYears(env, path[1]) });
+    return Response.json({ years: await listYears(env, path[1], parseDataset(url.searchParams.get("dataset"))) });
   }
   if (path.length === 1 && path[0] === "file" && method === "GET") {
     const key = url.searchParams.get("key");
