@@ -37,6 +37,7 @@ from typing import Any, Optional
 
 import pandas as pd
 import requests
+from dotenv import dotenv_values, find_dotenv
 
 from .duckdb_query import _register_macros
 
@@ -84,21 +85,35 @@ def _from_file() -> Optional[str]:
     return text or None
 
 
+def _from_dotenv() -> Optional[str]:
+    """python-dotenv's own find_dotenv() walks up from the current working
+    directory looking for a .env file (so this works whether a script runs
+    from a project's root or one of its subdirectories); dotenv_values()
+    just parses it into a dict without touching os.environ, since loading
+    the WHOLE file into the process environment is a bigger behavior change
+    than "find my token" calls for."""
+    path = find_dotenv(usecwd=True)
+    if not path:
+        return None
+    return dotenv_values(path).get(_ENV_VAR) or None
+
+
 def resolve_token(explicit: Optional[str] = None) -> str:
-    """Resolution order: explicit kwarg -> DATA_EXPLORER_TOKEN env var ->
-    Colab secret (same name, auto-detected -- nothing to configure
-    differently just because you're in Colab) -> ~/.config/tam-data-explorer/
-    token. Raises a clear, actionable RuntimeError listing every option if
-    none of them produced anything."""
+    """Resolution order: explicit kwarg -> DATA_EXPLORER_TOKEN env var
+    (directly, or via a .env file) -> Colab secret (same name,
+    auto-detected -- nothing to configure differently just because you're
+    in Colab) -> ~/.config/tam-data-explorer/token. Raises a clear,
+    actionable RuntimeError listing every option if none of them produced
+    anything."""
     if explicit:
         return explicit
-    value = os.environ.get(_ENV_VAR) or _from_colab() or _from_file()
+    value = os.environ.get(_ENV_VAR) or _from_dotenv() or _from_colab() or _from_file()
     if value:
         return value
     raise RuntimeError(
         "No Data Explorer personal token found. Pick one:\n"
         "  1. Pass token=... directly.\n"
-        f"  2. Set the {_ENV_VAR} environment variable.\n"
+        f"  2. Set the {_ENV_VAR} environment variable (directly, or via a .env file).\n"
         f"  3. In Colab: add a secret named {_ENV_VAR} via the key-icon panel.\n"
         f"  4. Save it as plain text to {credentials_file_path()}.\n"
         "Create a token at https://data.tamquant.com/settings/tokens (requires GitHub login)."

@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from dotenv import dotenv_values, find_dotenv
+
 _ENV_VAR = "TAM_DISCOVERY_TOKEN"
 _COLAB_SECRET_NAME = "TAM_DISCOVERY_TOKEN"
 
@@ -54,12 +56,27 @@ def _from_file() -> Optional[str]:
     return text or None
 
 
+def _from_dotenv() -> Optional[str]:
+    """python-dotenv's own find_dotenv() walks up from the current working
+    directory looking for a .env file (so this works whether a script runs
+    from a project's root or one of its subdirectories); dotenv_values()
+    just parses it into a dict without touching os.environ, since loading
+    the WHOLE file into the process environment is a bigger behavior change
+    than "find my token" calls for."""
+    path = find_dotenv(usecwd=True)
+    if not path:
+        return None
+    return dotenv_values(path).get(_ENV_VAR) or None
+
+
 def resolve_token(explicit: Optional[str] = None) -> str:
     """Resolution order: an explicit `token=`/`--token` argument, then the
-    TAM_DISCOVERY_TOKEN env var, then (if running in Colab) that same name
-    as a Colab secret, then whatever `upload-discovery login` last saved to
-    disk. Raises a clear, actionable RuntimeError listing every option if
-    none of them produced anything -- publishing should never fail with a
+    TAM_DISCOVERY_TOKEN env var (directly, or via a .env file found by
+    walking up from the current directory), then (if running in Colab)
+    that same name as a Colab secret, then whatever `upload-discovery
+    login` last saved to disk. Raises a clear, actionable RuntimeError
+    listing every option if none of them produced anything -- publishing
+    should never fail with a
     bare "no token" and no indication of how to fix it."""
     if explicit:
         return explicit
@@ -67,6 +84,10 @@ def resolve_token(explicit: Optional[str] = None) -> str:
     env_value = os.environ.get(_ENV_VAR)
     if env_value:
         return env_value
+
+    dotenv_value = _from_dotenv()
+    if dotenv_value:
+        return dotenv_value
 
     colab_value = _from_colab()
     if colab_value:
@@ -79,7 +100,7 @@ def resolve_token(explicit: Optional[str] = None) -> str:
     raise RuntimeError(
         "No Discovery publishing token found. Pick one:\n"
         "  1. Pass token=... directly (or --token to the CLI).\n"
-        f"  2. Set the {_ENV_VAR} environment variable.\n"
+        f"  2. Set the {_ENV_VAR} environment variable (directly, or via a .env file).\n"
         f"  3. In Colab: add a secret named {_COLAB_SECRET_NAME} via the key-icon panel "
         "in the left sidebar, and grant this notebook access to it.\n"
         "  4. Run `upload-discovery login` (get a token first from your Discovery "
