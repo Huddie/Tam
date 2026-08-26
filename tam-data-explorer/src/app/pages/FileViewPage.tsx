@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { type FilePage, csvDownloadUrl, rawDownloadUrl, viewFile } from "../api";
 import { useSort } from "../useSort";
 
-const PAGE_SIZE = 200;
+const PAGE_SIZE = 50;
 
 export function FileViewPage() {
   const [params, setParams] = useSearchParams();

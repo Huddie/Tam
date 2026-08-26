@@ -6,7 +6,8 @@ export interface BrowseEntry {
   cursor: string | null;
 }
 
-const PAGE_LIMIT = 1000; // R2's own per-call max for list()
+const BROWSE_PAGE_SIZE = 50; // one browse() page shown to the user at a time
+const FETCH_BATCH_SIZE = 1000; // R2's own per-call max -- only used by the two loops below that aggregate ALL pages internally, unrelated to what the user sees per page
 
 /** GET /api/browse?prefix=&cursor= -- one page (>=1 R2 list() call's worth)
  * of a "directory listing" level of the bucket, using R2's delimiter
@@ -17,7 +18,7 @@ const PAGE_LIMIT = 1000; // R2's own per-call max for list()
  * an earlier MAX_KEYS-capped version of this function made, which quietly
  * cut off anything past the cap). */
 export async function browse(env: Env, prefix: string, cursor?: string): Promise<BrowseEntry> {
-  const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: PAGE_LIMIT });
+  const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: BROWSE_PAGE_SIZE });
   return {
     prefixes: page.delimitedPrefixes,
     objects: page.objects.map((object) => ({ key: object.key, size: object.size, uploaded: object.uploaded.toISOString() })),
@@ -39,7 +40,7 @@ export async function listSymbols(env: Env): Promise<string[]> {
   const symbols: string[] = [];
   let cursor: string | undefined;
   do {
-    const page = await env.DATA.list({ prefix: "minute/", delimiter: "/", cursor, limit: PAGE_LIMIT });
+    const page = await env.DATA.list({ prefix: "minute/", delimiter: "/", cursor, limit: FETCH_BATCH_SIZE });
     symbols.push(...page.delimitedPrefixes.map((prefix) => prefix.replace(/^minute\//, "").replace(/\/$/, "")));
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
@@ -77,7 +78,7 @@ export async function listAllKeysUnderPrefix(env: Env, prefix: string): Promise<
   let cursor: string | undefined;
 
   do {
-    const page = await env.DATA.list({ prefix, cursor, limit: PAGE_LIMIT });
+    const page = await env.DATA.list({ prefix, cursor, limit: FETCH_BATCH_SIZE });
     keys.push(...page.objects.map((object) => ({ key: object.key, size: object.size })));
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor && keys.length < MAX_EXPORT_KEYS);

@@ -3,7 +3,7 @@ import { rowsToCsv } from "../lib/csv";
 import { ApiError } from "../lib/errors";
 import type { Env } from "../types";
 
-const DEFAULT_PAGE_SIZE = 200;
+const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 1000;
 
 async function fetchObject(env: Env, key: string) {
