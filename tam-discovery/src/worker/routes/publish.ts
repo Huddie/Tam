@@ -60,11 +60,53 @@ export async function createDiscovery(request: Request, env: Env, user: string):
   return Response.json({ discovery_id: id, slug: null, type, title: body.title });
 }
 
+const CONTENT_HASH_RE = /^[0-9a-f]{64}$/;
+
+/** Flips a version row to 'finalized', promotes it to latest, and syncs the
+ * discovery's tag cache -- shared by finalizeVersion() (the normal
+ * upload-then-confirm path) and createVersion()'s own dedup path (an
+ * already-existing R2 object means there's nothing left to confirm, so it
+ * finalizes immediately instead of making the caller PUT bytes that are
+ * already there). */
+async function promoteVersionToFinalized(
+  env: Env,
+  version: { id: string; discovery_id: string; title: string },
+  sizeBytes: number
+): Promise<void> {
+  const now = nowIso();
+  await env.DB.prepare("UPDATE discovery_versions SET status = 'finalized', size_bytes = ? WHERE id = ?")
+    .bind(sizeBytes, version.id)
+    .run();
+  await env.DB.prepare("UPDATE discoveries SET title = ?, updated_at = ?, latest_version_id = ? WHERE id = ?")
+    .bind(version.title, now, version.id, version.discovery_id)
+    .run();
+
+  const tagIds = (
+    await env.DB.prepare("SELECT tag_id FROM version_tags WHERE version_id = ?").bind(version.id).all<{ tag_id: number }>()
+  ).results.map((row) => row.tag_id);
+  await replaceDiscoveryTagsCache(env, version.discovery_id, tagIds);
+}
+
 /** POST /api/publish/discoveries/:id/versions -- phase 1 of publishing:
  * insert a `status='pending'` row and hand back a presigned R2 PUT URL. The
  * version isn't visible as "latest" (or at all, from the catalog's point of
  * view) until finalize() promotes it -- a crash between here and finalize
- * just leaves an orphaned pending row, never a broken "latest version". */
+ * just leaves an orphaned pending row, never a broken "latest version".
+ *
+ * `content_hash` (sha256 hex of the artifact's bytes, computed client-side)
+ * drives two dedup shortcuts, checked in order:
+ *   1. This exact discovery already has a FINALIZED version with this
+ *      exact hash -- a re-publish of byte-identical content under the same
+ *      name. Nothing to do at all: return the existing version's info,
+ *      create nothing, upload nothing.
+ *   2. The R2 object at artifacts/{hash}.html already exists (from some
+ *      OTHER version -- maybe even a different discovery). This IS a new
+ *      version for this discovery (new version_number), but there's
+ *      nothing to upload -- it finalizes immediately and points at the
+ *      already-existing shared object instead of asking the client to
+ *      re-upload bytes that are already there.
+ * Otherwise, this is genuinely new content: proceeds exactly as before,
+ * just keyed by hash instead of by version id. */
 export async function createVersion(request: Request, env: Env, user: string, discoveryId: string): Promise<Response> {
   const discovery = await findDiscoveryBySlugOrId(env, discoveryId);
   if (!discovery) throw new ApiError(404, `no discovery ${discoveryId}`);
@@ -79,8 +121,29 @@ export async function createVersion(request: Request, env: Env, user: string, di
     git_branch?: string;
     git_repo?: string;
     git_dirty?: boolean;
+    content_hash?: string;
   }>();
   if (!body.title) throw new ApiError(400, "title is required");
+  if (!body.content_hash || !CONTENT_HASH_RE.test(body.content_hash)) {
+    throw new ApiError(400, "content_hash (sha256 hex of the artifact's bytes) is required");
+  }
+
+  const origin = new URL(request.url).origin;
+
+  const duplicateOfThisDiscovery = await env.DB.prepare(
+    "SELECT * FROM discovery_versions WHERE discovery_id = ? AND content_hash = ? AND status = 'finalized' ORDER BY version_number DESC LIMIT 1"
+  )
+    .bind(discovery.id, body.content_hash)
+    .first<VersionRow>();
+  if (duplicateOfThisDiscovery) {
+    return Response.json({
+      version_id: duplicateOfThisDiscovery.id,
+      url: `${origin}/d/${duplicateOfThisDiscovery.id}`,
+      version: duplicateOfThisDiscovery.version_number,
+      title: duplicateOfThisDiscovery.title,
+      already_exists: true,
+    });
+  }
 
   const versionNumberRow = await env.DB.prepare(
     "SELECT COALESCE(MAX(version_number), 0) + 1 AS next FROM discovery_versions WHERE discovery_id = ?"
@@ -91,18 +154,21 @@ export async function createVersion(request: Request, env: Env, user: string, di
 
   const id = newId();
   const now = nowIso();
-  const r2Key = `discoveries/${discovery.id}/${id}/index.html`;
+  const r2Key = `artifacts/${body.content_hash}.html`;
+  const existingObject = await env.ARTIFACTS.head(r2Key);
+  const status: "pending" | "finalized" = existingObject ? "finalized" : "pending";
 
   await env.DB.prepare(
     `INSERT INTO discovery_versions
       (id, discovery_id, version_number, status, title, description, uploaded_by, created_at,
-       source_file, git_commit, git_branch, git_repo, git_dirty, generated_at, r2_key, metadata_json)
-     VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       source_file, git_commit, git_branch, git_repo, git_dirty, generated_at, r2_key, size_bytes, metadata_json, content_hash)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
       discovery.id,
       versionNumber,
+      status,
       body.title,
       body.description ?? null,
       user,
@@ -114,13 +180,26 @@ export async function createVersion(request: Request, env: Env, user: string, di
       body.git_dirty === undefined ? null : body.git_dirty ? 1 : 0,
       now,
       r2Key,
-      JSON.stringify(body.metadata ?? {})
+      existingObject ? existingObject.size : null,
+      JSON.stringify(body.metadata ?? {}),
+      body.content_hash
     )
     .run();
 
   if (body.tags?.length) {
     const tagIds = await upsertTagIds(env, body.tags);
     await linkVersionTags(env, id, tagIds);
+  }
+
+  if (existingObject) {
+    await promoteVersionToFinalized(env, { id, discovery_id: discovery.id, title: body.title }, existingObject.size);
+    return Response.json({
+      version_id: id,
+      url: `${origin}/d/${id}`,
+      version: versionNumber,
+      title: body.title,
+      already_exists: true,
+    });
   }
 
   const uploadUrl = await createPresignedUploadUrl(env, r2Key);
@@ -147,19 +226,7 @@ export async function finalizeVersion(
   if (!object) throw new ApiError(409, "artifact was not found in storage -- the PUT to upload_url may not have completed");
 
   const body = await request.json<{ size_bytes?: number }>();
-  const now = nowIso();
-
-  await env.DB.prepare("UPDATE discovery_versions SET status = 'finalized', size_bytes = ? WHERE id = ?")
-    .bind(body.size_bytes ?? object.size, versionId)
-    .run();
-  await env.DB.prepare("UPDATE discoveries SET title = ?, updated_at = ?, latest_version_id = ? WHERE id = ?")
-    .bind(version.title, now, versionId, discoveryId)
-    .run();
-
-  const tagIds = (
-    await env.DB.prepare("SELECT tag_id FROM version_tags WHERE version_id = ?").bind(versionId).all<{ tag_id: number }>()
-  ).results.map((row) => row.tag_id);
-  await replaceDiscoveryTagsCache(env, discoveryId, tagIds);
+  await promoteVersionToFinalized(env, version, body.size_bytes ?? object.size);
 
   const url = `${new URL(request.url).origin}/d/${versionId}`;
   return Response.json({ id: versionId, url, version: version.version_number, title: version.title });

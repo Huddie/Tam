@@ -3,6 +3,7 @@ docstring for the one-line pitch; this module covers the mechanics.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -81,10 +82,24 @@ def upload(
     `capture_git=False` -- best-effort, never raises if not in a git repo
     or `git` isn't installed.
 
+    Re-publishing byte-identical content is cheap, not just correct: the
+    server hashes the artifact (sha256, computed here and sent as
+    `content_hash`) and short-circuits before any upload happens if it's
+    already seen those exact bytes -- either as an existing version of THIS
+    SAME discovery (a pure no-op: returns the existing version, uploads
+    nothing, creates nothing) or as some other version's artifact entirely
+    (a genuinely new version row for this discovery, but pointed at the
+    already-existing R2 object instead of re-uploading it). Either way,
+    calling upload() again with unchanged content never re-uploads the same
+    bytes twice.
+
     Raises RuntimeError (from tam.discovery.auth.resolve_token) if no
     publishing token can be found, or (from tam.discovery.http.resolve_api_url)
     if no API URL is configured -- see each for the exact resolution order."""
     html = _read_html(path_or_figure)
+    content_bytes = html.encode("utf-8")
+    content_hash = hashlib.sha256(content_bytes).hexdigest()
+
     resolved_token = resolve_token(token)
     client = DiscoveryClient(resolved_token, api_url=api_url, timeout=timeout)
 
@@ -97,16 +112,27 @@ def upload(
         "tags": tags or [],
         "metadata": metadata or {},
         "source_file": source_file,
+        "content_hash": content_hash,
     }
     if capture_git:
         version_fields.update(capture_git_info())
 
     created = client.create_version(discovery_id, **version_fields)
+
+    # already_exists means the server fully handled this (either a no-op
+    # re-publish, or an immediate finalize against an already-existing R2
+    # object) -- created IS the finished result, nothing left to upload.
+    if created.get("already_exists"):
+        return UploadResult(
+            url=created["url"],
+            id=created["version_id"],
+            version=created["version"],
+            title=created["title"],
+            type=discovery.get("type", type),
+        )
+
     version_id = created["version_id"]
-
-    content_bytes = html.encode("utf-8")
     client.upload_artifact(created["upload_url"], created.get("upload_headers", {}), content_bytes)
-
     finalized = client.finalize_version(discovery_id, version_id, size_bytes=len(content_bytes))
 
     return UploadResult(

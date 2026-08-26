@@ -451,4 +451,26 @@ tbody tr:hover td {
   color: var(--danger);
 }
 
+/* Phone-width layout tweaks. Nothing structural changes here -- flex-wrap
+   and .table-wrap above already handle most of it -- this just tightens
+   spacing that's fine on desktop but wastes precious width on a narrow
+   screen. */
+@media (max-width: 640px) {
+  .topnav {
+    gap: 1rem;
+    padding: 0.6rem 0.85rem;
+  }
+  .page {
+    margin: 1.5rem auto;
+    padding: 0 0.85rem 2rem;
+  }
+  .toolbar input,
+  .toolbar select {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .pager-btn {
+    padding: 0.4rem 0.6rem;
+  }
+}
 

@@ -45,4 +45,5 @@ export interface VersionRow {
   r2_key: string;
   size_bytes: number | null;
   metadata_json: string | null;
+  content_hash: string | null;
 }

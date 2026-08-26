@@ -153,3 +153,54 @@ def test_upload_accepts_a_plotly_like_figure_instead_of_a_path(fake_client):
     assert result.url == "https://discovery.example.com/d/abc"
     _, _discovery_id, _version_id, size_bytes = fake_client["client"].calls[3]
     assert size_bytes == len(b"<html>fig</html>")
+
+
+def test_upload_sends_a_sha256_content_hash_of_the_actual_bytes(tmp_path, fake_client):
+    import hashlib
+
+    html_path = tmp_path / "report.html"
+    html_path.write_text("<html>hi</html>")
+
+    upload(html_path, title="T")
+
+    _, _discovery_id, version_fields = fake_client["client"].calls[1]
+    assert version_fields["content_hash"] == hashlib.sha256(b"<html>hi</html>").hexdigest()
+
+
+def test_upload_short_circuits_on_already_exists_without_uploading_or_finalizing(tmp_path, monkeypatch):
+    """When the server recognizes the content_hash (see createVersion()'s
+    own dedup shortcuts) it returns already_exists=True with the finished
+    result inline -- upload() must treat that as done, not proceed to PUT
+    bytes or call finalize_version() at all."""
+
+    class _DedupingFakeClient(_FakeClient):
+        def create_version(self, discovery_id, **fields):
+            self.calls.append(("create_version", discovery_id, fields))
+            return {"version_id": "ver-existing", "already_exists": True, "url": "https://discovery.example.com/d/existing", "version": 3, "title": "T"}
+
+        def upload_artifact(self, *args, **kwargs):
+            raise AssertionError("upload_artifact() must not be called when already_exists is True")
+
+        def finalize_version(self, *args, **kwargs):
+            raise AssertionError("finalize_version() must not be called when already_exists is True")
+
+    holder = {}
+
+    def factory(token, api_url=None, timeout=30.0):
+        client = _DedupingFakeClient(token, api_url, timeout)
+        holder["client"] = client
+        return client
+
+    monkeypatch.setattr(_upload_module, "DiscoveryClient", factory)
+    monkeypatch.setattr(_upload_module, "resolve_token", lambda explicit: explicit or "tamdisc_test")
+    monkeypatch.setattr(_upload_module, "capture_git_info", lambda: {})
+
+    html_path = tmp_path / "report.html"
+    html_path.write_text("<html>hi</html>")
+
+    result = upload(html_path, title="T")
+
+    assert result.url == "https://discovery.example.com/d/existing"
+    assert result.id == "ver-existing"
+    assert result.version == 3
+    assert [call[0] for call in holder["client"].calls] == ["create_discovery", "create_version"]

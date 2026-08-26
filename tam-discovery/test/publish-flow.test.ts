@@ -20,13 +20,36 @@ function authed(path: string, init: RequestInit = {}) {
   });
 }
 
+// A stand-in sha256-shaped hash for tests that don't care about a REAL
+// digest, just that it's 64 hex chars and (by default) unique per call --
+// tests that specifically want two calls to share content pass the same
+// value explicitly instead of relying on this default.
+function randomHash(): string {
+  return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+}
+
 async function publishFullVersion(discoveryId: string, body: Record<string, unknown>) {
+  const contentHash = (body.content_hash as string | undefined) ?? randomHash();
   const createRes = await authed(`/api/publish/discoveries/${discoveryId}/versions`, {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, content_hash: contentHash }),
   });
   expect(createRes.status).toBe(200);
-  const created = await createRes.json<{ version_id: string; upload_url: string; upload_headers: Record<string, string> }>();
+  const created = await createRes.json<{
+    version_id: string;
+    upload_url?: string;
+    upload_headers?: Record<string, string>;
+    already_exists?: boolean;
+    url?: string;
+    version?: number;
+    title?: string;
+  }>();
+
+  // Already deduped (see createVersion()'s own content_hash shortcuts) --
+  // nothing to upload or finalize, the response IS the final result.
+  if (!created.upload_url) {
+    return { created, finalized: { id: created.version_id, url: created.url!, version: created.version!, title: created.title! } };
+  }
 
   // The presigned PUT URL points at R2's real S3-compatible endpoint, which
   // Miniflare doesn't serve over HTTP -- simulate "the CLI's PUT already
@@ -114,6 +137,68 @@ describe("two-phase publish flow", () => {
     ).json<{ discovery_id: string }>();
 
     expect(second.discovery_id).toBe(first.discovery_id);
+  });
+
+  it("re-publishing identical content under the same discovery does nothing new -- same version, no upload", async () => {
+    const discovery = await (
+      await authed("/api/publish/discoveries", { method: "POST", body: JSON.stringify({ title: "Dedup test" }) })
+    ).json<{ discovery_id: string }>();
+
+    const hash = randomHash();
+    const first = await publishFullVersion(discovery.discovery_id, { title: "Dedup test", content_hash: hash });
+    expect(first.finalized.version).toBe(1);
+
+    // Second call never even gets an upload_url -- createVersion() should
+    // recognize the exact same discovery+hash and short-circuit entirely.
+    const secondRes = await authed(`/api/publish/discoveries/${discovery.discovery_id}/versions`, {
+      method: "POST",
+      body: JSON.stringify({ title: "Dedup test", content_hash: hash }),
+    });
+    const second = await secondRes.json<{ version_id: string; already_exists?: boolean; version?: number; upload_url?: string }>();
+
+    expect(second.already_exists).toBe(true);
+    expect(second.upload_url).toBeUndefined();
+    expect(second.version_id).toBe(first.created.version_id);
+    expect(second.version).toBe(1);
+
+    // Still exactly one version row for this discovery -- the duplicate
+    // call created nothing.
+    const { results } = await env.DB.prepare("SELECT id FROM discovery_versions WHERE discovery_id = ?")
+      .bind(discovery.discovery_id)
+      .all();
+    expect(results).toHaveLength(1);
+  });
+
+  it("reuses the R2 object across different discoveries with the same content, but still creates a real version row", async () => {
+    const discoveryA = await (
+      await authed("/api/publish/discoveries", { method: "POST", body: JSON.stringify({ title: "Discovery A" }) })
+    ).json<{ discovery_id: string }>();
+    const discoveryB = await (
+      await authed("/api/publish/discoveries", { method: "POST", body: JSON.stringify({ title: "Discovery B" }) })
+    ).json<{ discovery_id: string }>();
+
+    const sharedHash = randomHash();
+    const a = await publishFullVersion(discoveryA.discovery_id, { title: "Discovery A", content_hash: sharedHash });
+
+    // B publishes the identical bytes -- createVersion() should see the R2
+    // object already exists and finalize immediately, no upload_url.
+    const bRes = await authed(`/api/publish/discoveries/${discoveryB.discovery_id}/versions`, {
+      method: "POST",
+      body: JSON.stringify({ title: "Discovery B", content_hash: sharedHash }),
+    });
+    const b = await bRes.json<{ version_id: string; already_exists?: boolean; upload_url?: string; version?: number }>();
+
+    expect(b.already_exists).toBe(true);
+    expect(b.upload_url).toBeUndefined();
+    expect(b.version_id).not.toBe(a.created.version_id); // a genuinely new, distinct version...
+    expect(b.version).toBe(1); // ...its own version 1, since it's a different discovery
+
+    const [rowA, rowB] = await Promise.all([
+      env.DB.prepare("SELECT r2_key, status FROM discovery_versions WHERE id = ?").bind(a.created.version_id).first<{ r2_key: string; status: string }>(),
+      env.DB.prepare("SELECT r2_key, status FROM discovery_versions WHERE id = ?").bind(b.version_id).first<{ r2_key: string; status: string }>(),
+    ]);
+    expect(rowB!.r2_key).toBe(rowA!.r2_key); // ...backed by the exact same R2 object
+    expect(rowB!.status).toBe("finalized");
   });
 });
 
