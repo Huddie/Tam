@@ -86,11 +86,16 @@ class MinuteBarStore(ABC):
         return None
 
 
-def _with_retries(func: Callable[[], _T], attempts: int = 3, base_delay: float = 1.0) -> _T:
+def _with_retries(func: Callable[[], _T], attempts: int = 5, base_delay: float = 2.0) -> _T:
     """Retries `func` up to `attempts` times with exponential backoff --
-    hardening specifically against the kind of transient, non-retriable-by-
-    boto3-itself failure already observed against R2 in production (an
-    "internal error" on an operation that otherwise succeeded). Re-raises
+    hardening against both a transient, non-retriable-by-boto3-itself R2
+    failure (an "internal error" on an operation that otherwise succeeded)
+    AND a plain transient network blip (DNS resolution failure, WiFi drop,
+    laptop sleep/wake) -- confirmed in production for both: a multi-hour
+    unattended backfill hit a DNS NameResolutionError partway through and
+    needs a retry window generous enough to actually ride that out, not
+    just the ~3 seconds the original 3-attempt/1s-base default gave it.
+    5 attempts at 2/4/8/16s backoff is ~30s of total retry window. Re-raises
     the last exception if every attempt fails; never swallows a genuine,
     persistent error silently."""
     last_exc: Optional[Exception] = None

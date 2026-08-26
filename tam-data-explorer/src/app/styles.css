@@ -135,7 +135,6 @@ table {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 2px;
-  overflow: hidden;
   font-variant-numeric: tabular-nums;
 }
 th,

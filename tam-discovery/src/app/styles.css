@@ -139,7 +139,6 @@ table {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 2px;
-  overflow: hidden;
   font-variant-numeric: tabular-nums;
 }
 th,
@@ -400,9 +399,18 @@ tbody tr:hover td {
   display: inline-block;
 }
 .menu-dropdown-toggle {
-  padding: 0.2rem 0.5rem;
-  font-size: 1rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.5rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+}
+.menu-dropdown-toggle:hover {
+  background: var(--bg-subtle);
+  border-color: transparent;
+  color: var(--text);
 }
 .menu-dropdown-menu {
   position: absolute;
