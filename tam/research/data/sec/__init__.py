@@ -25,7 +25,6 @@ instead.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union
 
 import pandas as pd
@@ -36,15 +35,6 @@ from .provider import SecProvider
 from .store import SecStore
 
 __all__ = ["SEC", "SecStore", "SecProvider", "Manifest", "normalize_facts"]
-
-# The last-resort link in SEC's connection chain (see _connect() below) --
-# same "data/" convention scripts/backfill_sp500_eod.py's own --root
-# default already uses for a local Parquet tree.
-_DEFAULT_LOCAL_ROOT = "data"
-
-
-def _default_local_root_if_present() -> Optional[str]:
-    return _DEFAULT_LOCAL_ROOT if Path(_DEFAULT_LOCAL_ROOT).is_dir() else None
 
 
 class SEC:
@@ -58,13 +48,16 @@ class SEC:
     explorer_client.resolve_token()'s own (see that module's own
     docstring): an explicit override (`local_root=` or any
     tam.marketdata.duckdb_query.open_duckdb() kwarg, e.g. `bucket=`) wins
-    outright if given; otherwise a `TAM_PAT` personal token (explicit
+    outright if given -- otherwise a `TAM_PAT` personal token (explicit
     `token=` -> env var/.env -> Colab secret -> saved
-    ~/.config/tam-data-explorer/token) -- the same self-service path this
-    project recommends for daily_bars/eod_bars in an ordinary notebook, no
-    raw R2 account credentials needed; otherwise a local `data/` directory
-    if one happens to exist. Only raises if NONE of those produced
-    anything usable."""
+    ~/.config/tam-data-explorer/token), the same self-service, READ-ONLY
+    path this project recommends for daily_bars/eod_bars in an ordinary
+    notebook. `SEC` never writes anything (every method here is a SELECT;
+    ingestion is scripts/backfill_sec_facts.py's/SecStore's job, using
+    real R2 admin credentials, a completely separate concern) -- so a
+    read-only token is exactly the right amount of access, not a
+    limitation to work around. Raises a clear, actionable error if
+    NEITHER an explicit override nor a token resolves to anything."""
 
     def __init__(
         self,
@@ -84,44 +77,59 @@ class SEC:
 
     def _connect(self):
         if self._con is None:
-            from ....marketdata.duckdb_query import open_duckdb
-
             if self._local_root is not None or self._open_duckdb_kwargs:
                 # Explicit local_root (tests, local dev) or raw R2
                 # credentials/bucket override requested -- wins outright,
                 # same as tam.marketdata.duckdb_query's own module
                 # docstring recommends for ingestion scripts.
+                from ....marketdata.duckdb_query import open_duckdb
+
                 self._con = open_duckdb(local_root=self._local_root, **self._open_duckdb_kwargs)
             else:
+                # Default: the same self-service TAM_PAT token path
+                # NOTEBOOK.md recommends for daily_bars/eod_bars -- mints a
+                # short-lived, read-only R2 credential behind the scenes,
+                # no raw R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/... needed. Only
+                # tam.marketdata.explorer_client's own SqlConnection
+                # actually knows how to refresh that credential as it
+                # nears expiry, which is why this delegates to it instead
+                # of duplicating that logic here. No further fallback --
+                # silently reading whatever happens to be in a local
+                # `data/` directory if the token isn't configured would be
+                # more likely to confuse (stale/unrelated local fixtures)
+                # than help; better to fail clearly right here.
                 from ....marketdata.explorer_client import connect, resolve_token
 
                 token = resolve_token(self._token, required=False)
-                if token is not None:
-                    # The same self-service TAM_PAT token path NOTEBOOK.md
-                    # recommends for daily_bars/eod_bars -- mints a short-
-                    # lived, read-only R2 credential behind the scenes, no
-                    # raw R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/... needed. Only
-                    # tam.marketdata.explorer_client's own SqlConnection
-                    # actually knows how to refresh that credential as it
-                    # nears expiry, which is why this delegates to it
-                    # instead of duplicating that logic here.
-                    self._con = connect(token=token, api_url=self._api_url, ttl_seconds=self._ttl_seconds)
-                else:
-                    local_root = _default_local_root_if_present()
-                    if local_root is None:
-                        raise RuntimeError(
-                            "No way to connect to the SEC data lake. Checked, in order: an explicit "
-                            "token=/local_root=/bucket= override, a TAM_PAT personal token (env var/.env, "
-                            "Colab secret, or ~/.config/tam-data-explorer/token), and a local "
-                            f"'{_DEFAULT_LOCAL_ROOT}/' directory. Pick one:\n"
-                            "  1. Pass token=... directly, or set the TAM_PAT environment variable "
-                            "(create one at https://data.tamquant.com/settings/tokens).\n"
-                            "  2. Pass local_root=... pointing at a local Parquet tree (containing sec/).\n"
-                            "  3. Pass bucket=... plus R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY "
-                            "env vars for raw R2 admin access."
-                        )
-                    self._con = open_duckdb(local_root=local_root)
+                if token is None:
+                    raise RuntimeError(
+                        "No TAM_PAT personal token found (checked an explicit token=, the TAM_PAT "
+                        "environment variable/.env file, a Colab secret, and "
+                        "~/.config/tam-data-explorer/token). Pick one:\n"
+                        "  1. Pass token=... directly, or set the TAM_PAT environment variable "
+                        "(create one at https://data.tamquant.com/settings/tokens).\n"
+                        "  2. Pass local_root=... pointing at a local Parquet tree (containing sec/).\n"
+                        "  3. Pass bucket=... plus R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY "
+                        "env vars for raw R2 admin access."
+                    )
+                self._con = connect(token=token, api_url=self._api_url, ttl_seconds=self._ttl_seconds)
         return self._con
+
+    def _resolve_ciks(self, tickers: Sequence[Union[str, int]]) -> List[int]:
+        """Resolves every one of `tickers` to its real integer CIK via ONE
+        small query against the (tiny) reference table, BEFORE building
+        the main financials()/filings() query -- so that query can bind
+        the real ints directly into its own WHERE clause instead of
+        calling sec_cik(...) inline against the big scan. Confirmed live
+        via EXPLAIN: a bound int gets pushed all the way into the Parquet
+        scan as a real row-group-pruning filter ("Filters: cik=..."),
+        while sec_cik(?) called inline forces a runtime join/subquery
+        DuckDB can't push into the scan at all -- the difference between
+        fetching a few matching row groups over the network and pulling
+        every row of every file first, then filtering."""
+        placeholders = ", ".join("sec_cik(?)" for _ in tickers)
+        row = self._connect().execute(f"SELECT {placeholders}", [str(t) for t in tickers]).fetchone()
+        return list(row)
 
     def query(self, sql: str) -> pd.DataFrame:
         """Raw SQL access to every sec_* macro (and minute_bars/eod_bars,
@@ -165,9 +173,10 @@ class SEC:
         params: List[Any] = []
 
         if tickers:
-            placeholders = ", ".join("sec_cik(?)" for _ in tickers)
+            ciks = self._resolve_ciks(tickers)
+            placeholders = ", ".join("?" for _ in ciks)
             where.append(f"cik IN ({placeholders})")
-            params.extend(str(t) for t in tickers)
+            params.extend(ciks)
         if statement:
             where.append("statement = ?")
             params.append(statement)
@@ -226,8 +235,8 @@ class SEC:
         params: List[Any] = []
 
         if ticker is not None:
-            where.append("cik = sec_cik(?)")
-            params.append(str(ticker))
+            where.append("cik = ?")
+            params.append(self._resolve_ciks([ticker])[0])
         if forms:
             placeholders = ", ".join("?" for _ in forms)
             where.append(f"form IN ({placeholders})")
