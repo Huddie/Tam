@@ -166,9 +166,30 @@ class SecStore:
         import pyarrow as pa
         import pyarrow.parquet as pq
 
+        if schema.CIK in df.columns:
+            # Row-group-level pruning -- the mechanism that lets a query
+            # for ONE company skip DOWNLOADING most of a shared, multi-
+            # company file, not just filter it after fetching -- only
+            # works if a row group's cik range is narrow. Confirmed live:
+            # pyarrow's default write puts an ENTIRE file in ONE row
+            # group regardless of size (its own min/max cik stats then
+            # span the whole file, so there's nothing to skip). Sorting
+            # by cik first clusters each company's rows into a contiguous
+            # block; capping row_group_size well below a typical file's
+            # row count then gives DuckDB real row groups to skip between.
+            df = df.sort_values(schema.CIK, kind="stable").reset_index(drop=True)
+
         table = pa.Table.from_pandas(df, schema=schema.pyarrow_schema(df.columns.tolist()), preserve_index=False)
         buffer = io.BytesIO()
-        pq.write_table(table, buffer)
+        # Target a roughly FIXED NUMBER of row groups regardless of file
+        # size, not a fixed absolute row count -- a small financials
+        # partition (thousands of rows) and a big facts partition (up to
+        # ~1M rows) both need real per-company pruning granularity, but
+        # one constant row_group_size would either be too coarse for the
+        # small files or produce excessive per-row-group metadata
+        # overhead for the big ones.
+        row_group_size = max(1, len(table) // 64) if len(table) else 1
+        pq.write_table(table, buffer, row_group_size=row_group_size)
         self._write_bytes(key, buffer.getvalue())
 
     def _upsert_by_cik(self, key: str, cik: int, new_rows: pd.DataFrame, columns: List[str]) -> None:

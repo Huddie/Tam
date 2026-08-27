@@ -141,16 +141,16 @@ class SEC:
                 self._con = connect(token=token, api_url=self._api_url, ttl_seconds=self._ttl_seconds)
         return self._con
 
-    @lru_cache(maxsize=None)
-    def _resolve_cik(self, ticker: str) -> int:
-        """Resolves one ticker/CIK-string to its real int CIK --
-        memoized via functools.lru_cache (keyed on (self, ticker), so
-        each SEC instance gets its own cache) since a ticker's CIK is
-        effectively permanent (SEC doesn't reassign one to a different
-        company) and .financials()/.filings() are commonly called for
-        the same ticker(s) repeatedly within one notebook session (income
-        statement, then balance sheet, then cash flow) -- repeat calls
-        skip the reference-table round trip entirely after the first.
+    def _resolve_cik_uncached(self, ticker: str) -> int:
+        """Resolves one ticker/CIK-string to its real int CIK. Wrapped by
+        __init__ in a PER-INSTANCE functools.lru_cache (see __init__'s
+        own comment on why per-instance, not a class-level decorator)
+        since a ticker's CIK is effectively permanent (SEC doesn't
+        reassign one to a different company) and .financials()/
+        .filings() are commonly called for the same ticker(s) repeatedly
+        within one notebook session (income statement, then balance
+        sheet, then cash flow) -- repeat calls skip the reference-table
+        round trip entirely after the first.
 
         Binding the resolved int directly into the CALLER's own query --
         rather than calling sec_cik(...) inline against the big
@@ -180,7 +180,7 @@ class SEC:
 
     def _resolve_ciks(self, tickers: Sequence[Union[str, int]]) -> List[int]:
         """Resolves each of `tickers` (tickers or raw CIKs, mixed freely)
-        to its real integer CIK -- see _resolve_cik()'s own docstring for
+        to its real integer CIK -- see _resolve_cik_uncached()'s own docstring for
         the caching/pushdown rationale."""
         return [self._resolve_cik(str(t)) for t in tickers]
 
@@ -284,7 +284,7 @@ class SEC:
         else:
             sql = f"{base} ORDER BY cik, line_item, end_date, start_date"
 
-        return self._connect().execute(sql, params).df()
+        return self._execute(sql, params, schema.FINANCIALS_COLUMNS)
 
     def filings(
         self,
@@ -325,4 +325,4 @@ class SEC:
             {clause}
             ORDER BY filed_date
         """
-        return self._connect().execute(sql, params).df()
+        return self._execute(sql, params, schema.SUBMISSIONS_COLUMNS)
