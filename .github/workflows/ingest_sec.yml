@@ -1,0 +1,74 @@
+name: Ingest SEC Filings
+
+# Incremental backfill of the SEC XBRL/filings data lake
+# (tam.research.data.sec) into the R2 Parquet lake, under sec/... -- see
+# NOTEBOOK.md's "Querying SEC fundamentals" section and
+# scripts/backfill_sec_facts.py's own docstring. Tests must pass before this
+# runs at all (same `needs: test` gating pattern as
+# ingest_eod_bars.yml/ingest_minute_bars.yml).
+#
+# Runs daily via `schedule:` (11:00 UTC, staggered after Ingest EOD Bars/
+# Ingest Minute Bars so the three pipelines' R2 writes don't overlap), plus
+# workflow_dispatch for an on-demand run. Every run re-checks each curated-
+# universe company's cheap submissions.json regardless, but only refetches
+# the heavier companyfacts.json for a company with a genuinely NEW filing
+# since the manifest's last recorded run (see backfill_sec_facts.py's own
+# docstring and tam/research/data/sec/manifest.py) -- so after the initial
+# backfill, a normal day's run is a few hundred cheap requests, not a full
+# re-fetch of the whole curated universe.
+#
+# Needs the SAME R2 repository secrets ingest_eod_bars.yml/
+# ingest_minute_bars.yml already use (Settings -> Secrets and variables ->
+# Actions): R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+# -- plus one new one specific to this workflow: SEC_IDENTITY (SEC's own
+# documented User-Agent policy, e.g. "Your Name your.email@example.com" --
+# see tam/research/data/sec/provider.py's docstring). Without SEC_IDENTITY,
+# a run fails fast with a clear error rather than sending SEC an
+# unidentified request.
+#
+# A failed run is safe to just re-trigger (or wait for tomorrow's scheduled
+# run) -- the manifest-based incremental check means nothing gets
+# corrupted or double-counted by a partial/failed run, same resumability
+# guarantee as the EOD/minute-bar pipelines.
+"on":
+  schedule:
+    - cron: "0 11 * * *"
+  workflow_dispatch: {}
+
+env:
+  UV_DEFAULT_INDEX: https://pypi.org/simple
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.11"
+
+      - run: uv sync --extra dev --extra live --extra notebook --extra quantstats --extra pitindex --extra marketdata --extra sec
+
+      - run: uv run pytest tests/ -q -W ignore::UserWarning
+
+  ingest:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      SEC_IDENTITY: ${{ secrets.SEC_IDENTITY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.11"
+
+      - run: uv sync --extra marketdata --extra pitindex --extra sec
+
+      - name: SEC curated universe (S&P 500 historical, 20 years)
+        run: uv run python scripts/backfill_sec_facts.py --workers 4

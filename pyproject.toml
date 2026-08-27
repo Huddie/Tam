@@ -86,6 +86,17 @@ marketdata = [
 fred = [
     "fredapi>=0.5",
 ]
+# tam.research.data.sec.normalize imports edgar.standardization directly
+# (a pure-Python concept-name-mapping table, no network/heavy XBRL parsing
+# of its own) to reuse EdgarTools' own maintained synonym groups instead
+# of a hand-rolled, smaller alias table -- see that module's own docstring
+# for why. tam.research.data.sec.provider fetches raw data directly from
+# SEC's own JSON APIs (not through EdgarTools), so this extra is scoped to
+# the concept-standardization use only, not a dependency of the whole
+# subpackage.
+sec = [
+    "edgartools>=5.0",
+]
 
 [build-system]
 requires = ["setuptools>=68"]

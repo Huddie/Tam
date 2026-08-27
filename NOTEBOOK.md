@@ -347,6 +347,42 @@ built lazily on first `.get()` call -- `import tam` or referencing
 `tam.Fred.Datasets` never requires a key to be configured, only actually
 fetching a series does.
 
+### SEC fundamentals (XBRL facts, financial statements, filings)
+
+```python
+!pip install -q "tam-quant[sec]"
+```
+
+`tam.research.data.sec` is its own small R2-backed data lake (same bucket,
+under `sec/`) -- raw XBRL facts (full fidelity: taxonomy, unit, accession
+number, filed date, ...) and a derived, normalized `financials` layer
+(long format: one row per line item, e.g. `revenue`/`net_income`/
+`total_assets`). Not exposed as `tam.SEC` at the top level like `tam.Fred`
+-- import the class explicitly instead:
+
+```python
+from tam.research.data.sec import SEC
+
+sec = SEC()   # reads from R2 via the usual R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET secrets
+
+sec.financials(tickers=["AAPL", "MSFT"], statement="income_statement", start=2015)
+sec.filings(ticker="AAPL", forms=["10-K", "10-Q"], start="2015-01-01")
+sec.query("SELECT cik, fiscal_year, value FROM sec_stmt('income_statement') WHERE line_item = 'revenue'")
+```
+
+Every `SEC` method takes tickers OR raw CIKs interchangeably (`"AAPL"` or
+`320193` both work) -- resolved via the same `sec/reference/
+company_tickers.parquet` file EdgarTools' own ticker resolution is backed
+by. Already wired into `connect()`/`open_duckdb()` above too, so the same
+macros work directly in raw SQL over either connection:
+
+```python
+con.sql("SELECT * FROM sec_stmt('income_statement', 'AAPL') ORDER BY fiscal_year").df()
+con.sql("SELECT * FROM sec_stmt('income_statement') WHERE line_item = 'revenue'").df()   # every company at once
+con.sql("SELECT * FROM sec_facts('AAPL')").df()        # raw XBRL, full fidelity
+con.sql("SELECT * FROM sec_filings('AAPL')").df()      # filing metadata: accession number, form, filed date, ...
+```
+
 ### Plotting raw time series (price + indicator overlays, FRED series, ...)
 
 `tam.backtest.tearsheet`'s chart classes (`CumulativeReturnsChart`, `DrawdownChart`,

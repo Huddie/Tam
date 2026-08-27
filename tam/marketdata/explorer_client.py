@@ -221,6 +221,7 @@ class SqlConnection:
         )
         con.sql(f"SET VARIABLE minute_root = 's3://{credentials['bucket']}/minute'")
         con.sql(f"SET VARIABLE eod_root = 's3://{credentials['bucket']}/eod'")
+        con.sql(f"SET VARIABLE sec_root = 's3://{credentials['bucket']}/sec'")
         self._expires_at = _parse_expires_at(credentials["expiresAt"])
 
     def _ensure_fresh(self) -> None:
@@ -249,10 +250,12 @@ def connect(
     ttl_seconds: Optional[int] = None,
     timeout: float = 30.0,
 ) -> SqlConnection:
-    """A SQL connection over the FULL minute-bar lake -- same macros as
-    tam.marketdata.duckdb_query.open_duckdb() (daily_bars, weekly_bars,
-    rollup_bars, daily_returns, rolling_volatility -- see that module's own
-    docstring), authenticated via your personal token instead of raw R2
+    """A SQL connection over ALL THREE lakes (minute bars, tam.data's
+    end-of-day lake, and tam.research.data.sec's XBRL/filings lake) -- same
+    macros as tam.marketdata.duckdb_query.open_duckdb() (daily_bars,
+    weekly_bars, rollup_bars, daily_returns, rolling_volatility, eod_bars,
+    sec_facts, sec_financials, sec_stmt, sec_filings -- see that module's
+    own docstring), authenticated via your personal token instead of raw R2
     account credentials, and self-refreshing (see SqlConnection above) so it
     keeps working across a long notebook session rather than just expiring
     partway through. `ttl_seconds` (default 900, capped at 3600
