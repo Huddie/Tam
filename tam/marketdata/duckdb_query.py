@@ -26,6 +26,21 @@ DuckDB's CREATE MACRO doesn't support that (confirmed live:
 `CatalogException: already exists` on a second same-name macro even with
 a different arity) -- one signature with a default covers both shapes.
 
+Every one of those macros' read_parquet() calls appends a `substr(coalesce(
+try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)` (always an empty string) to
+the glob path -- NOT dead code. Confirmed live: DuckDB eagerly resolves
+(and errors on zero matches for) a table macro's read_parquet() glob AT
+`CREATE MACRO` TIME, UNLESS the path expression textually references the
+macro's own parameter somewhere -- purely syntactic, not about the actual
+resolved value (a defaulted `sym := 'X'` used directly in a path still
+defers; an unrelated `ticker_or_cik` used only in a later `WHERE` clause
+does not). Without this no-op reference, `open_duckdb()` against a bucket/
+local_root that doesn't have a `sec/` prefix YET (e.g. before the first
+SEC backfill has ever run, or any EOD-only/minute-only test fixture) would
+fail to even construct a connection at all -- caught live by this
+project's own pre-existing marketdata test suite the first time these
+macros shipped.
+
 All three lakes live in the same bucket under different prefixes
 ("minute/"/"eod/"/"sec/"), so one open_duckdb() call queries all of them.
 
@@ -97,25 +112,37 @@ CREATE OR REPLACE MACRO sec_cik(ticker_or_cik) AS (
     CASE
         WHEN try_cast(ticker_or_cik AS BIGINT) IS NOT NULL THEN try_cast(ticker_or_cik AS BIGINT)
         ELSE (
-            SELECT cik FROM read_parquet(getvariable('sec_root') || '/reference/company_tickers.parquet')
+            SELECT cik FROM read_parquet(
+                getvariable('sec_root') || '/reference/company_tickers.parquet'
+                || substr(coalesce(try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)
+            )
             WHERE upper(ticker) = upper(try_cast(ticker_or_cik AS VARCHAR)) LIMIT 1
         )
     END
 );
 
 CREATE OR REPLACE MACRO sec_facts(ticker_or_cik := NULL) AS TABLE
-    SELECT * FROM read_parquet(getvariable('sec_root') || '/facts/*/*.parquet')
+    SELECT * FROM read_parquet(
+        getvariable('sec_root') || '/facts/*/*.parquet'
+        || substr(coalesce(try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)
+    )
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
 
 CREATE OR REPLACE MACRO sec_financials(ticker_or_cik := NULL) AS TABLE
-    SELECT * FROM read_parquet(getvariable('sec_root') || '/financials/*.parquet')
+    SELECT * FROM read_parquet(
+        getvariable('sec_root') || '/financials/*.parquet'
+        || substr(coalesce(try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)
+    )
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
 
 CREATE OR REPLACE MACRO sec_stmt(sheet_name, ticker_or_cik := NULL) AS TABLE
     SELECT * FROM sec_financials(ticker_or_cik) WHERE statement = sheet_name;
 
 CREATE OR REPLACE MACRO sec_filings(ticker_or_cik := NULL) AS TABLE
-    SELECT * FROM read_parquet(getvariable('sec_root') || '/submissions/*.parquet')
+    SELECT * FROM read_parquet(
+        getvariable('sec_root') || '/submissions/*.parquet'
+        || substr(coalesce(try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)
+    )
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
 """
 
