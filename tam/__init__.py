@@ -12,10 +12,19 @@
 
     # Chain charts into one composite Plotly figure:
     c1(series) | c2(series) | c3(series)
+
+    # Resolve a third-party secret (env var, or a Colab secret) without
+    # hardcoding it in a notebook cell -- see tam.secrets for the full
+    # resolution order:
+    from fredapi import Fred
+    fred = Fred(api_key=tam.Secrets["FRED_API_KEY"])
 """
 from __future__ import annotations
 
 from .registry import Registry
+from .secrets import Secrets
+
+__all__ = ["Registry", "Secrets", "get"]
 
 
 def get(base_type, name: str | None = None):

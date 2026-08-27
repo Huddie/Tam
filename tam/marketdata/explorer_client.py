@@ -30,15 +30,14 @@ from __future__ import annotations
 
 import io
 import os
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
 import requests
-from dotenv import dotenv_values, find_dotenv
 
+from ..secrets import Secrets
 from .duckdb_query import _register_macros
 
 # TAM_PAT ("personal access token"), not something Data-Explorer-specific --
@@ -63,24 +62,6 @@ def credentials_file_path() -> Path:
     return Path.home() / ".config" / "tam-data-explorer" / "token"
 
 
-def _from_colab() -> Optional[str]:
-    """Same broad-except pattern as tam.discovery.auth._from_colab -- only
-    attempted when actually running in Colab; any failure (no such secret,
-    no notebook access granted yet) just falls through to the next
-    resolution source."""
-    if "google.colab" not in sys.modules:
-        return None
-    try:
-        from google.colab import userdata  # type: ignore
-    except ImportError:
-        return None
-    try:
-        value = userdata.get(_ENV_VAR)
-    except Exception:
-        return None
-    return value or None
-
-
 def _from_file() -> Optional[str]:
     try:
         text = credentials_file_path().read_text().strip()
@@ -89,29 +70,14 @@ def _from_file() -> Optional[str]:
     return text or None
 
 
-def _from_dotenv() -> Optional[str]:
-    """python-dotenv's own find_dotenv() walks up from the current working
-    directory looking for a .env file (so this works whether a script runs
-    from a project's root or one of its subdirectories); dotenv_values()
-    just parses it into a dict without touching os.environ, since loading
-    the WHOLE file into the process environment is a bigger behavior change
-    than "find my token" calls for."""
-    path = find_dotenv(usecwd=True)
-    if not path:
-        return None
-    return dotenv_values(path).get(_ENV_VAR) or None
-
-
 def resolve_token(explicit: Optional[str] = None) -> str:
-    """Resolution order: explicit kwarg -> TAM_PAT env var
-    (directly, or via a .env file) -> Colab secret (same name,
-    auto-detected -- nothing to configure differently just because you're
-    in Colab) -> ~/.config/tam-data-explorer/token. Raises a clear,
-    actionable RuntimeError listing every option if none of them produced
-    anything."""
+    """Resolution order: explicit kwarg -> TAM_PAT via tam.Secrets (env var,
+    directly or via a .env file, then a Colab secret if running in Colab)
+    -> ~/.config/tam-data-explorer/token. Raises a clear, actionable
+    RuntimeError listing every option if none of them produced anything."""
     if explicit:
         return explicit
-    value = os.environ.get(_ENV_VAR) or _from_dotenv() or _from_colab() or _from_file()
+    value = Secrets.get(_ENV_VAR) or _from_file()
     if value:
         return value
     raise RuntimeError(
