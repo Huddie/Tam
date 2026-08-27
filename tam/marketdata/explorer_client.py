@@ -37,7 +37,7 @@ from typing import Any, Optional
 import pandas as pd
 import requests
 
-from ..secrets import Secrets
+from ..secrets import Secrets, resolve_chain
 from .duckdb_query import _register_macros
 
 # TAM_PAT ("personal access token"), not something Data-Explorer-specific --
@@ -70,24 +70,29 @@ def _from_file() -> Optional[str]:
     return text or None
 
 
-def resolve_token(explicit: Optional[str] = None) -> str:
+def resolve_token(explicit: Optional[str] = None, *, required: bool = True) -> Optional[str]:
     """Resolution order: explicit kwarg -> TAM_PAT via tam.Secrets (env var,
     directly or via a .env file, then a Colab secret if running in Colab)
-    -> ~/.config/tam-data-explorer/token. Raises a clear, actionable
-    RuntimeError listing every option if none of them produced anything."""
-    if explicit:
-        return explicit
-    value = Secrets.get(_ENV_VAR) or _from_file()
-    if value:
-        return value
-    raise RuntimeError(
-        "No Data Explorer personal token found. Pick one:\n"
-        "  1. Pass token=... directly.\n"
-        f"  2. Set the {_ENV_VAR} environment variable (directly, or via a .env file).\n"
-        f"  3. In Colab: add a secret named {_ENV_VAR} via the key-icon panel.\n"
-        f"  4. Save it as plain text to {credentials_file_path()}.\n"
-        "Create a token at https://data.tamquant.com/settings/tokens (requires GitHub login)."
+    -> ~/.config/tam-data-explorer/token. `required=True` (the default)
+    raises a clear, actionable RuntimeError listing every option if none
+    of them produced anything. Pass `required=False` to get None back
+    instead, e.g. to try this chain first and fall back to something
+    else entirely if it comes up empty."""
+    value = resolve_chain(
+        lambda: explicit,
+        lambda: Secrets.get(_ENV_VAR),
+        _from_file,
     )
+    if value is None and required:
+        raise RuntimeError(
+            "No Data Explorer personal token found. Pick one:\n"
+            "  1. Pass token=... directly.\n"
+            f"  2. Set the {_ENV_VAR} environment variable (directly, or via a .env file).\n"
+            f"  3. In Colab: add a secret named {_ENV_VAR} via the key-icon panel.\n"
+            f"  4. Save it as plain text to {credentials_file_path()}.\n"
+            "Create a token at https://data.tamquant.com/settings/tokens (requires GitHub login)."
+        )
+    return value
 
 
 def _headers(token: Optional[str]) -> dict:

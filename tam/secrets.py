@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Optional
+from typing import Callable, Optional
 
 from dotenv import dotenv_values, find_dotenv
 
@@ -95,3 +95,23 @@ class _Secrets:
 
 
 Secrets = _Secrets()
+
+
+def resolve_chain(*sources: Callable[[], Optional[str]]) -> Optional[str]:
+    """Chain-of-responsibility primitive: try each zero-arg callable in
+    `sources`, in order, returning the first one that comes back with
+    something other than None. This is the shared shape behind every
+    credential/config resolver in this codebase -- `Secrets.get()` above
+    is one fixed instance of it (env var -> .env -> Colab secret);
+    tam.marketdata.credentials.resolve_r2_credentials() and
+    tam.marketdata.explorer_client.resolve_token() build their own longer
+    chains (explicit kwarg -> ... -> a saved config file) out of this same
+    primitive instead of each hand-rolling their own if/elif ladder.
+    Individual sources (env var lookup, Colab secret lookup, a saved-file
+    read, ...) stay as small independent functions per module -- only the
+    "try these in order" glue is shared here."""
+    for source in sources:
+        value = source()
+        if value is not None:
+            return value
+    return None

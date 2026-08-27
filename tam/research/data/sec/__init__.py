@@ -6,12 +6,13 @@ XBRL-parsing path for the raw facts themselves).
 
     from tam.research.data.sec import SEC
 
-    sec = SEC()                                    # reads from R2 by default
+    sec = SEC()                                    # self-service TAM_PAT token, no admin R2 credentials needed
     sec.financials(tickers=["AAPL", "MSFT"], start=2015)
     sec.filings(ticker="AAPL", forms=["10-K", "10-Q"], start="2015-01-01")
     sec.query("SELECT cik, fiscal_year, value FROM sec_stmt('income_statement') WHERE line_item = 'revenue'")
 
     sec = SEC(local_root="data")                   # reads local Parquet instead -- no network
+    sec = SEC(bucket="tam-data")                   # raw R2 account credentials instead of a personal token
 
 Thin wrappers over the SQL macros tam.marketdata.duckdb_query.open_duckdb()
 registers (sec_facts/sec_financials/sec_stmt/sec_filings/sec_cik) -- see
@@ -24,6 +25,7 @@ instead.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union
 
 import pandas as pd
@@ -35,16 +37,48 @@ from .store import SecStore
 
 __all__ = ["SEC", "SecStore", "SecProvider", "Manifest", "normalize_facts"]
 
+# The last-resort link in SEC's connection chain (see _connect() below) --
+# same "data/" convention scripts/backfill_sp500_eod.py's own --root
+# default already uses for a local Parquet tree.
+_DEFAULT_LOCAL_ROOT = "data"
+
+
+def _default_local_root_if_present() -> Optional[str]:
+    return _DEFAULT_LOCAL_ROOT if Path(_DEFAULT_LOCAL_ROOT).is_dir() else None
+
 
 class SEC:
-    """Holds one lazily-created DuckDB connection (via
-    tam.marketdata.duckdb_query.open_duckdb) and builds parameterized SQL
+    """Holds one lazily-created SQL connection and builds parameterized SQL
     against its sec_* macros -- every `tickers`/`forms`/`start`/`end`
     value is bound as a real DuckDB query parameter (`?`), never string-
     interpolated into the SQL text, so an odd ticker/form string can't
-    corrupt or inject into the query."""
+    corrupt or inject into the query.
 
-    def __init__(self, **open_duckdb_kwargs: Any):
+    Connection resolution is a chain, same shape as tam.marketdata.
+    explorer_client.resolve_token()'s own (see that module's own
+    docstring): an explicit override (`local_root=` or any
+    tam.marketdata.duckdb_query.open_duckdb() kwarg, e.g. `bucket=`) wins
+    outright if given; otherwise a `TAM_PAT` personal token (explicit
+    `token=` -> env var/.env -> Colab secret -> saved
+    ~/.config/tam-data-explorer/token) -- the same self-service path this
+    project recommends for daily_bars/eod_bars in an ordinary notebook, no
+    raw R2 account credentials needed; otherwise a local `data/` directory
+    if one happens to exist. Only raises if NONE of those produced
+    anything usable."""
+
+    def __init__(
+        self,
+        *,
+        token: Optional[str] = None,
+        api_url: Optional[str] = None,
+        ttl_seconds: Optional[int] = None,
+        local_root: Optional[str] = None,
+        **open_duckdb_kwargs: Any,
+    ):
+        self._token = token
+        self._api_url = api_url
+        self._ttl_seconds = ttl_seconds
+        self._local_root = local_root
         self._open_duckdb_kwargs = open_duckdb_kwargs
         self._con = None
 
@@ -52,7 +86,41 @@ class SEC:
         if self._con is None:
             from ....marketdata.duckdb_query import open_duckdb
 
-            self._con = open_duckdb(**self._open_duckdb_kwargs)
+            if self._local_root is not None or self._open_duckdb_kwargs:
+                # Explicit local_root (tests, local dev) or raw R2
+                # credentials/bucket override requested -- wins outright,
+                # same as tam.marketdata.duckdb_query's own module
+                # docstring recommends for ingestion scripts.
+                self._con = open_duckdb(local_root=self._local_root, **self._open_duckdb_kwargs)
+            else:
+                from ....marketdata.explorer_client import connect, resolve_token
+
+                token = resolve_token(self._token, required=False)
+                if token is not None:
+                    # The same self-service TAM_PAT token path NOTEBOOK.md
+                    # recommends for daily_bars/eod_bars -- mints a short-
+                    # lived, read-only R2 credential behind the scenes, no
+                    # raw R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/... needed. Only
+                    # tam.marketdata.explorer_client's own SqlConnection
+                    # actually knows how to refresh that credential as it
+                    # nears expiry, which is why this delegates to it
+                    # instead of duplicating that logic here.
+                    self._con = connect(token=token, api_url=self._api_url, ttl_seconds=self._ttl_seconds)
+                else:
+                    local_root = _default_local_root_if_present()
+                    if local_root is None:
+                        raise RuntimeError(
+                            "No way to connect to the SEC data lake. Checked, in order: an explicit "
+                            "token=/local_root=/bucket= override, a TAM_PAT personal token (env var/.env, "
+                            "Colab secret, or ~/.config/tam-data-explorer/token), and a local "
+                            f"'{_DEFAULT_LOCAL_ROOT}/' directory. Pick one:\n"
+                            "  1. Pass token=... directly, or set the TAM_PAT environment variable "
+                            "(create one at https://data.tamquant.com/settings/tokens).\n"
+                            "  2. Pass local_root=... pointing at a local Parquet tree (containing sec/).\n"
+                            "  3. Pass bucket=... plus R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY "
+                            "env vars for raw R2 admin access."
+                        )
+                    self._con = open_duckdb(local_root=local_root)
         return self._con
 
     def query(self, sql: str) -> pd.DataFrame:

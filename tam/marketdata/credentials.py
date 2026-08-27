@@ -6,7 +6,12 @@ these too. Kept independent of tam.discovery.auth itself (that module
 resolves ONE bearer token for a Cloudflare-Worker-mediated API; this
 resolves several raw S3-style credential fields for direct R2 access -- a
 different enough shape that sharing code across them would mean more
-indirection than it saves) rather than importing from it.
+indirection than it saves) rather than importing from it. The "try these
+in order" GLUE, though, is genuinely generic (no domain logic in it at
+all) -- see _resolve_field()'s use of tam.secrets.resolve_chain() -- while
+each individual source (env var, .env file, Colab secret, saved file)
+stays its own small independent function here, per this module's own
+"small independent pieces" convention.
 
 R2 access needs the full layered treatment (down to a saved file and a Colab
 secret) because it's read from a research notebook, not just a local/CI
@@ -25,6 +30,8 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import dotenv_values, find_dotenv
+
+from ..secrets import resolve_chain
 
 _FIELD_ENV_VARS = {
     "account_id": "R2_ACCOUNT_ID",
@@ -86,19 +93,14 @@ def _from_dotenv(env_var: str) -> Optional[str]:
 
 
 def _resolve_field(field: str, explicit: Optional[str]) -> Optional[str]:
-    if explicit:
-        return explicit
     env_var = _FIELD_ENV_VARS[field]
-    env_value = os.environ.get(env_var)
-    if env_value:
-        return env_value
-    dotenv_value = _from_dotenv(env_var)
-    if dotenv_value:
-        return dotenv_value
-    colab_value = _from_colab(env_var)
-    if colab_value:
-        return colab_value
-    return _from_file(field)
+    return resolve_chain(
+        lambda: explicit,
+        lambda: os.environ.get(env_var),
+        lambda: _from_dotenv(env_var),
+        lambda: _from_colab(env_var),
+        lambda: _from_file(field),
+    )
 
 
 @dataclass(frozen=True)
