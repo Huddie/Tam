@@ -142,19 +142,31 @@ class SecStore:
         _with_retries(_put)
 
     def _read_parquet(self, key: str, columns: List[str]) -> pd.DataFrame:
+        """Reads `key`, then backfills any of `columns` NOT present in the
+        file as a null column, rather than raising -- a file written
+        before a later addition to a *_COLUMNS list (see schema.py)
+        genuinely doesn't have that column yet; treating it as null (not
+        a hard KeyError) lets an upsert's read-existing-then-merge step
+        succeed on legacy data and get fully replaced on the next write,
+        the same tolerant-of-schema-growth spirit as Manifest's own
+        corrupt-manifest handling."""
         body = self._read_bytes(key)
         if body is None:
             return pd.DataFrame(columns=columns)
         import pyarrow.parquet as pq
 
         table = pq.read_table(io.BytesIO(body))
-        return table.to_pandas()[columns]
+        df = table.to_pandas()
+        for column in columns:
+            if column not in df.columns:
+                df[column] = None
+        return df[columns]
 
     def _write_parquet(self, key: str, df: pd.DataFrame) -> None:
         import pyarrow as pa
         import pyarrow.parquet as pq
 
-        table = pa.Table.from_pandas(df, preserve_index=False)
+        table = pa.Table.from_pandas(df, schema=schema.pyarrow_schema(df.columns.tolist()), preserve_index=False)
         buffer = io.BytesIO()
         pq.write_table(table, buffer)
         self._write_bytes(key, buffer.getvalue())
@@ -192,6 +204,24 @@ class SecStore:
         if df.empty:
             return
         self._upsert_by_cik(self._submissions_key(fiscal_year), cik, df, schema.SUBMISSIONS_COLUMNS)
+
+    def list_submissions_partitions(self) -> List[int]:
+        """Every fiscal_year with an actual submissions object on R2 right
+        now -- same reasoning as list_facts_partitions() below, used by
+        scripts/reconcile_sec_parquet_schema.py."""
+        prefix = f"{self._prefix}/submissions/"
+
+        def _list() -> List[int]:
+            years = []
+            paginator = self._client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    name = obj["Key"][len(prefix) :]
+                    if name.endswith(".parquet"):
+                        years.append(int(name[: -len(".parquet")]))
+            return years
+
+        return _with_retries(_list)
 
     # -- raw XBRL facts ---------------------------------------------------------
 

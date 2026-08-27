@@ -50,7 +50,7 @@ class SEC:
 
     def _connect(self):
         if self._con is None:
-            from ...marketdata.duckdb_query import open_duckdb
+            from ....marketdata.duckdb_query import open_duckdb
 
             self._con = open_duckdb(**self._open_duckdb_kwargs)
         return self._con
@@ -69,13 +69,30 @@ class SEC:
         line_items: Optional[Sequence[str]] = None,
         start: Optional[Union[str, int]] = None,
         end: Optional[Union[str, int]] = None,
+        dedupe_periods: bool = True,
     ) -> pd.DataFrame:
         """Normalized financials (long format: one row per line item), for
         any combination of `tickers` (tickers or raw CIKs, mixed freely),
         `statement` ("income_statement"/"balance_sheet"/"cash_flow", ...),
         `line_items` ("revenue"/"net_income"/...), and a `fiscal_year`
         range via `start`/`end`. Omitting all of them returns every
-        company/period on record."""
+        company/period on record.
+
+        `start_date`/`end_date`/`filed_date` come back as real dates --
+        cast in the SQL DuckDB runs, not pandas afterward -- and rows are
+        pre-sorted by (cik, line_item, end_date); no post-fetch
+        pd.to_datetime()/sort_values() needed.
+
+        `dedupe_periods=True` (the default): a single filing often
+        reports BOTH a discrete-quarter figure and a year-to-date
+        cumulative one under the SAME end_date for the same line item --
+        SEC's own fiscal_year/fiscal_period labels don't distinguish them
+        (see normalize.py's own docstring). This keeps only the SHORTEST
+        reported duration per (cik, line_item, end_date) -- the discrete
+        period -- via a window function, pushed into the query itself,
+        not a pandas groupby after fetching. Pass False to get every
+        period SEC reported, duplicates and all (e.g. if you specifically
+        want the YTD figures too)."""
         where: List[str] = []
         params: List[Any] = []
 
@@ -98,7 +115,32 @@ class SEC:
             params.append(int(end))
 
         clause = f"WHERE {' AND '.join(where)}" if where else ""
-        return self._connect().execute(f"SELECT * FROM sec_financials() {clause}", params).df()
+        base = f"""
+            SELECT cik, fiscal_year, fiscal_period,
+                   try_cast(start_date AS DATE) AS start_date,
+                   try_cast(end_date AS DATE) AS end_date,
+                   accession_number,
+                   try_cast(filed_date AS DATE) AS filed_date,
+                   statement, line_item, concept, value
+            FROM sec_financials()
+            {clause}
+        """
+        if dedupe_periods:
+            sql = f"""
+                SELECT * EXCLUDE (_period_rank) FROM (
+                    SELECT *, row_number() OVER (
+                        PARTITION BY cik, line_item, end_date
+                        ORDER BY end_date - start_date
+                    ) AS _period_rank
+                    FROM ({base})
+                )
+                WHERE _period_rank = 1
+                ORDER BY cik, line_item, end_date
+            """
+        else:
+            sql = f"{base} ORDER BY cik, line_item, end_date, start_date"
+
+        return self._connect().execute(sql, params).df()
 
     def filings(
         self,
@@ -109,7 +151,9 @@ class SEC:
     ) -> pd.DataFrame:
         """Filing metadata (accession number, form, filed date, period of
         report, ...) for one company, optionally scoped to specific
-        `forms` and a filed-date range."""
+        `forms` and a filed-date range. `filed_date`/`period_of_report`
+        come back as real dates (cast in SQL), rows pre-sorted
+        chronologically."""
         where: List[str] = []
         params: List[Any] = []
 
@@ -128,4 +172,13 @@ class SEC:
             params.append(str(end))
 
         clause = f"WHERE {' AND '.join(where)}" if where else ""
-        return self._connect().execute(f"SELECT * FROM sec_filings() {clause}", params).df()
+        sql = f"""
+            SELECT cik, accession_number, form,
+                   try_cast(filed_date AS DATE) AS filed_date,
+                   try_cast(period_of_report AS DATE) AS period_of_report,
+                   primary_document, is_xbrl
+            FROM sec_filings()
+            {clause}
+            ORDER BY filed_date
+        """
+        return self._connect().execute(sql, params).df()

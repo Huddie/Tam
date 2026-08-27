@@ -383,6 +383,45 @@ con.sql("SELECT * FROM sec_facts('AAPL')").df()        # raw XBRL, full fidelity
 con.sql("SELECT * FROM sec_filings('AAPL')").df()      # filing metadata: accession number, form, filed date, ...
 ```
 
+`sec.financials()`/`sec.filings()` (the Python wrappers, not the raw SQL
+macros above) do a couple of things for you that raw SQL doesn't:
+`start_date`/`end_date`/`filed_date`/`period_of_report` come back as real
+dates (cast in the query itself, not pandas afterward), rows are
+pre-sorted, and -- the one genuinely non-obvious part -- a single filing
+often reports BOTH a discrete-quarter figure and a year-to-date cumulative
+one under the SAME `end_date` for the same `line_item` (SEC's own
+`fiscal_year`/`fiscal_period` labels don't distinguish them). `financials()`
+defaults to keeping only the shortest reported duration per
+`(cik, line_item, end_date)` -- the discrete period -- via a window
+function pushed into the query; pass `dedupe_periods=False` to get every
+period SEC reported instead (e.g. if you specifically want the YTD
+figures too).
+
+`line_items` accepts any of EdgarTools' ~60 canonical concept names --
+`revenue`, `net_income`, `cost_of_revenue`, `gross_profit`,
+`operating_income`, `ebitda`, `earnings_per_share_basic`/
+`earnings_per_share_diluted`, `operating_cash_flow`/`investing_cash_flow`/
+`financing_cash_flow`/`free_cash_flow`, `total_assets`/`total_liabilities`/
+`stockholders_equity`, and more (see `edgar.standardization.
+get_synonym_groups().list_groups()` for the full, current list) -- a plot-
+ready quarterly trend is then just:
+
+```python
+import pandas as pd
+from tam.research.data.sec import SEC
+from tam.backtest.tearsheet import timeseries
+
+sec = SEC()
+financials = sec.financials(tickers=["AAPL"], line_items=["revenue", "net_income", "operating_cash_flow"])
+
+def series_for(line_item: str, label: str, n: int = 32) -> pd.Series:
+    rows = financials[financials["line_item"] == line_item].sort_values("end_date")
+    return rows.set_index("end_date")["value"].tail(n).rename(label)
+
+timeseries([series_for("revenue", "Revenue"), series_for("net_income", "Net Income"),
+            series_for("operating_cash_flow", "Operating Cash Flow")], title="AAPL fundamentals")
+```
+
 ### Plotting raw time series (price + indicator overlays, FRED series, ...)
 
 `tam.backtest.tearsheet`'s chart classes (`CumulativeReturnsChart`, `DrawdownChart`,
