@@ -40,6 +40,21 @@ function TableIcon() {
   );
 }
 
+/** Hive-style partition directory name ("key=value", e.g. this bucket's own
+ * sec/facts/taxonomy=us-gaap/fiscal_year=2023/ layout) -- null for an
+ * ordinary, non-partitioned folder name. Generic (not SEC-specific): any
+ * dataset that adopts this same DuckDB/Parquet convention gets the same
+ * cleaned-up display for free. */
+function parseHivePartition(segment: string): { key: string; value: string } | null {
+  const eq = segment.indexOf("=");
+  if (eq <= 0) return null;
+  return { key: segment.slice(0, eq), value: segment.slice(eq + 1) };
+}
+
+function formatPartitionKey(key: string): string {
+  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function Breadcrumb({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix: string) => void }) {
   const parts = prefix.split("/").filter(Boolean);
   return (
@@ -47,10 +62,11 @@ function Breadcrumb({ prefix, onNavigate }: { prefix: string; onNavigate: (prefi
       <a onClick={() => onNavigate("")}>tam-data</a>
       {parts.map((part, index) => {
         const partPrefix = parts.slice(0, index + 1).join("/") + "/";
+        const partition = parseHivePartition(part);
         return (
           <span key={partPrefix}>
             {" / "}
-            <a onClick={() => onNavigate(partPrefix)}>{part}</a>
+            <a onClick={() => onNavigate(partPrefix)}>{partition ? partition.value : part}</a>
           </span>
         );
       })}
@@ -246,6 +262,17 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
   const visibleObjects = showHidden ? result.objects : result.objects.filter((o) => !isUnderscored(o.key));
   const hiddenCount = result.prefixes.length + result.objects.length - visiblePrefixes.length - visibleObjects.length;
 
+  // If every visible folder at this level is the SAME Hive partition key
+  // (e.g. all "fiscal_year=...") name the level once above the list instead
+  // of repeating "fiscal_year=" on every single row -- a folder that isn't
+  // partitioned this way, or a level mixing different keys, falls back to
+  // showing each folder's full name as before.
+  const prefixPartitions = visiblePrefixes.map((p) => parseHivePartition(basename(p)));
+  const sharedPartitionKey =
+    prefixPartitions.length > 0 && prefixPartitions.every((p) => p?.key === prefixPartitions[0]?.key)
+      ? prefixPartitions[0]?.key ?? null
+      : null;
+
   return (
     <>
       <Breadcrumb prefix={prefix} onNavigate={onNavigate} />
@@ -279,17 +306,24 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
       </div>
 
       <div className="browse-list">
-        {visiblePrefixes.map((childPrefix) => (
-          <div className="browse-row" key={childPrefix}>
-            {selecting && (
-              <input type="checkbox" checked={selected.has(childPrefix)} onChange={() => toggleSelected(childPrefix)} />
-            )}
-            <a onClick={() => (selecting ? toggleSelected(childPrefix) : onNavigate(childPrefix))}>
-              {childPrefix.replace(prefix, "")}
-            </a>
-            <span className="size muted">folder</span>
-          </div>
-        ))}
+        {sharedPartitionKey && (
+          <p className="muted" style={{ fontSize: "0.8rem", margin: "0 0 0.4rem" }}>
+            Grouped by <strong>{formatPartitionKey(sharedPartitionKey)}</strong>
+          </p>
+        )}
+        {visiblePrefixes.map((childPrefix) => {
+          const partition = parseHivePartition(basename(childPrefix));
+          const label = sharedPartitionKey && partition ? partition.value : childPrefix.replace(prefix, "");
+          return (
+            <div className="browse-row" key={childPrefix}>
+              {selecting && (
+                <input type="checkbox" checked={selected.has(childPrefix)} onChange={() => toggleSelected(childPrefix)} />
+              )}
+              <a onClick={() => (selecting ? toggleSelected(childPrefix) : onNavigate(childPrefix))}>{label}</a>
+              <span className="size muted">folder</span>
+            </div>
+          );
+        })}
         {visibleObjects.map((object) => {
           const isTable = object.key.endsWith(".parquet");
           const name = object.key.replace(prefix, "");

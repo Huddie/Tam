@@ -72,6 +72,17 @@ def _cik_padded(cik: int) -> str:
     return f"{cik:010d}"
 
 
+def _coerce_value(val: object) -> Optional[float]:
+    """SEC's raw `val` is JSON, so pandas builds this column as a Python
+    object (mixed int/float/None) -- pyarrow then infers int64 for it on
+    write, which overflows on the rare mis-tagged/mis-scaled XBRL fact
+    (observed live: one real EBAY fact broke `PyLong is too large to fit
+    int64`). Casting to a plain Python float here, at the JSON boundary,
+    keeps the column a clean float64 the way FACTS_COLUMNS already
+    documents it -- no int64 range to overflow."""
+    return None if val is None else float(val)
+
+
 class SecProvider:
     """`identity` is the required SEC User-Agent string (e.g. "Your Name
     your.email@example.com") -- SEC's own documented policy, same
@@ -173,7 +184,7 @@ class SecProvider:
                                 schema.FRAME: entry.get("frame"),
                                 schema.DIMENSIONS: None,  # see module docstring -- not available from this endpoint
                                 schema.CONTEXT_ID: None,
-                                schema.VALUE: entry.get("val"),
+                                schema.VALUE: _coerce_value(entry.get("val")),
                             }
                         )
         return pd.DataFrame(rows, columns=schema.FACTS_COLUMNS)
