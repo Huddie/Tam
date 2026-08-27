@@ -25,16 +25,33 @@ instead.
 """
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any, List, Optional, Sequence, Union
 
 import pandas as pd
 
+from . import schema
 from .manifest import Manifest
 from .normalize import normalize_facts
 from .provider import SecProvider
 from .store import SecStore
 
 __all__ = ["SEC", "SecStore", "SecProvider", "Manifest", "normalize_facts"]
+
+
+def _is_missing_glob_error(exc: Exception, *path_hints: str) -> bool:
+    """True if `exc` is DuckDB's own "IO Error: No files found that match
+    the pattern ..." -- confirmed live (this session) as the exact,
+    consistent wording for a Parquet glob matching zero files, e.g.
+    before a given layer's first backfill. If `path_hints` are given,
+    they must ALL also appear in the message -- e.g. "reference", to
+    distinguish "the reference table itself is missing" (a real
+    configuration problem) from "this OTHER layer just has no rows yet"
+    (a legitimate, expected state that should return empty, not raise)."""
+    message = str(exc)
+    if "No files found that match the pattern" not in message:
+        return False
+    return all(hint in message for hint in path_hints)
 
 
 class SEC:
@@ -74,6 +91,15 @@ class SEC:
         self._local_root = local_root
         self._open_duckdb_kwargs = open_duckdb_kwargs
         self._con = None
+        # A PER-INSTANCE cache (built here, not a @lru_cache on the method
+        # itself) -- decorating the method directly would share ONE cache
+        # across every SEC instance ever created, keyed on (self, ticker),
+        # which keeps every one of those instances (and its DuckDB
+        # connection) alive for the rest of the process. Binding a fresh
+        # lru_cache to this instance's own bound method instead means the
+        # cache -- and the `self` reference inside it -- is freed the
+        # moment this SEC instance is.
+        self._resolve_cik = lru_cache(maxsize=None)(self._resolve_cik_uncached)
 
     def _connect(self):
         if self._con is None:
@@ -115,21 +141,62 @@ class SEC:
                 self._con = connect(token=token, api_url=self._api_url, ttl_seconds=self._ttl_seconds)
         return self._con
 
-    def _resolve_ciks(self, tickers: Sequence[Union[str, int]]) -> List[int]:
-        """Resolves every one of `tickers` to its real integer CIK via ONE
-        small query against the (tiny) reference table, BEFORE building
-        the main financials()/filings() query -- so that query can bind
-        the real ints directly into its own WHERE clause instead of
-        calling sec_cik(...) inline against the big scan. Confirmed live
-        via EXPLAIN: a bound int gets pushed all the way into the Parquet
+    @lru_cache(maxsize=None)
+    def _resolve_cik(self, ticker: str) -> int:
+        """Resolves one ticker/CIK-string to its real int CIK --
+        memoized via functools.lru_cache (keyed on (self, ticker), so
+        each SEC instance gets its own cache) since a ticker's CIK is
+        effectively permanent (SEC doesn't reassign one to a different
+        company) and .financials()/.filings() are commonly called for
+        the same ticker(s) repeatedly within one notebook session (income
+        statement, then balance sheet, then cash flow) -- repeat calls
+        skip the reference-table round trip entirely after the first.
+
+        Binding the resolved int directly into the CALLER's own query --
+        rather than calling sec_cik(...) inline against the big
+        financials/facts/submissions scan -- is also what makes THAT
+        scan's own cik filter pushdown-able at all. Confirmed live via
+        EXPLAIN: a bound int gets pushed all the way into the Parquet
         scan as a real row-group-pruning filter ("Filters: cik=..."),
         while sec_cik(?) called inline forces a runtime join/subquery
-        DuckDB can't push into the scan at all -- the difference between
+        DuckDB can't push into the scan -- the difference between
         fetching a few matching row groups over the network and pulling
-        every row of every file first, then filtering."""
-        placeholders = ", ".join("sec_cik(?)" for _ in tickers)
-        row = self._connect().execute(f"SELECT {placeholders}", [str(t) for t in tickers]).fetchone()
-        return list(row)
+        every row of every file first, then filtering. lru_cache doesn't
+        cache a call that raises, so a transient failure here (or a
+        genuinely missing reference table) is never cached as if it
+        were a resolved value."""
+        try:
+            row = self._connect().execute("SELECT sec_cik(?)", [ticker]).fetchone()
+        except Exception as exc:
+            if _is_missing_glob_error(exc, "reference"):
+                raise RuntimeError(
+                    "No sec/reference/company_tickers.parquet found -- nothing has been "
+                    "backfilled yet, or --refresh-reference has never been run (see "
+                    "scripts/backfill_sec_facts.py). Pass a raw CIK (an int, or an int-like "
+                    "string) instead of a ticker to sidestep this lookup entirely."
+                ) from exc
+            raise
+        return row[0]
+
+    def _resolve_ciks(self, tickers: Sequence[Union[str, int]]) -> List[int]:
+        """Resolves each of `tickers` (tickers or raw CIKs, mixed freely)
+        to its real integer CIK -- see _resolve_cik()'s own docstring for
+        the caching/pushdown rationale."""
+        return [self._resolve_cik(str(t)) for t in tickers]
+
+    def _execute(self, sql: str, params: List[Any], columns: List[str]) -> pd.DataFrame:
+        """Runs `sql`/`params`, returning an EMPTY DataFrame (with the
+        right `columns`) instead of raising when the underlying Parquet
+        glob matches literally zero files -- a legitimate, expected state
+        before this layer's first backfill, not an error. Any other
+        DuckDB failure (a real network/credential/permission problem)
+        still raises."""
+        try:
+            return self._connect().execute(sql, params).df()
+        except Exception as exc:
+            if _is_missing_glob_error(exc):
+                return pd.DataFrame(columns=columns)
+            raise
 
     def query(self, sql: str) -> pd.DataFrame:
         """Raw SQL access to every sec_* macro (and minute_bars/eod_bars,
