@@ -104,18 +104,18 @@ CREATE OR REPLACE MACRO sec_cik(ticker_or_cik) AS (
 );
 
 CREATE OR REPLACE MACRO sec_facts(ticker_or_cik := NULL) AS TABLE
-    SELECT * FROM read_parquet(getvariable('sec_root') || '/facts/*/*/*.parquet')
+    SELECT * FROM read_parquet(getvariable('sec_root') || '/facts/*/*.parquet')
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
 
 CREATE OR REPLACE MACRO sec_financials(ticker_or_cik := NULL) AS TABLE
-    SELECT * FROM read_parquet(getvariable('sec_root') || '/financials/*/*.parquet')
+    SELECT * FROM read_parquet(getvariable('sec_root') || '/financials/*.parquet')
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
 
 CREATE OR REPLACE MACRO sec_stmt(sheet_name, ticker_or_cik := NULL) AS TABLE
     SELECT * FROM sec_financials(ticker_or_cik) WHERE statement = sheet_name;
 
 CREATE OR REPLACE MACRO sec_filings(ticker_or_cik := NULL) AS TABLE
-    SELECT * FROM read_parquet(getvariable('sec_root') || '/submissions/*/*.parquet')
+    SELECT * FROM read_parquet(getvariable('sec_root') || '/submissions/*.parquet')
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
 """
 

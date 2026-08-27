@@ -52,7 +52,7 @@ function parseHivePartition(segment: string): { key: string; value: string } | n
 }
 
 function formatPartitionKey(key: string): string {
-  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return key.replace(/_/g, "-");
 }
 
 function Breadcrumb({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix: string) => void }) {
@@ -295,6 +295,7 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
         ) : (
           prefix && <ExportDropdown selection={{ prefixes: [prefix] }} label="Export this folder" />
         )}
+        {sharedPartitionKey && <span className="tag">({formatPartitionKey(sharedPartitionKey)})</span>}
         <div style={{ marginLeft: "auto" }}>
           <OptionsMenu
             showExtensions={showExtensions}
@@ -306,11 +307,6 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
       </div>
 
       <div className="browse-list">
-        {sharedPartitionKey && (
-          <p className="muted" style={{ fontSize: "0.8rem", margin: "0 0 0.4rem" }}>
-            Grouped by <strong>{formatPartitionKey(sharedPartitionKey)}</strong>
-          </p>
-        )}
         {visiblePrefixes.map((childPrefix) => {
           const partition = parseHivePartition(basename(childPrefix));
           const label = sharedPartitionKey && partition ? partition.value : childPrefix.replace(prefix, "");

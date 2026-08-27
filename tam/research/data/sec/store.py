@@ -11,7 +11,17 @@ data/sec's package docstring and the approved plan for the full reasoning):
   CIK-as-directory would recreate the "millions of tiny files" problem
   this design deliberately avoids (SEC filings are sparse -- a handful a
   year per company -- unlike the daily price bars tam.data/tam.marketdata
-  partition by symbol).
+  partition by symbol). The partition value lives in the FILENAME
+  (`facts/us-gaap/2023.parquet`, `financials/2023.parquet`), not a Hive-
+  style `key=value/` directory (`facts/taxonomy=us-gaap/fiscal_year=2023/
+  facts.parquet`) -- the same `<symbol>/<year>.parquet` convention
+  tam.data.storage/tam.marketdata.store already use elsewhere in this
+  bucket. `taxonomy`/`fiscal_year` are already real, explicit columns
+  inside every facts/financials row (see schema.py's FACTS_COLUMNS/
+  FINANCIALS_COLUMNS) -- Hive partitioning's own auto-derived-column trick
+  would only have been reproducing data already present, not adding
+  anything a query needs; dropping it removes a confusing extra directory
+  level for no loss.
 - raw_filings: one object per (accession_number, document) -- the
   progressive, on-demand-only cache; never bulk-populated.
 
@@ -173,7 +183,7 @@ class SecStore:
     # -- submissions (filing metadata) ----------------------------------------
 
     def _submissions_key(self, fiscal_year: int) -> str:
-        return f"{self._prefix}/submissions/fiscal_year={fiscal_year}/filings.parquet"
+        return f"{self._prefix}/submissions/{fiscal_year}.parquet"
 
     def read_submissions(self, fiscal_year: int) -> pd.DataFrame:
         return self._read_parquet(self._submissions_key(fiscal_year), schema.SUBMISSIONS_COLUMNS)
@@ -186,7 +196,7 @@ class SecStore:
     # -- raw XBRL facts ---------------------------------------------------------
 
     def _facts_key(self, taxonomy: str, fiscal_year: int) -> str:
-        return f"{self._prefix}/facts/taxonomy={taxonomy}/fiscal_year={fiscal_year}/facts.parquet"
+        return f"{self._prefix}/facts/{taxonomy}/{fiscal_year}.parquet"
 
     def read_facts(self, taxonomy: str, fiscal_year: int) -> pd.DataFrame:
         return self._read_parquet(self._facts_key(taxonomy, fiscal_year), schema.FACTS_COLUMNS)
@@ -197,11 +207,10 @@ class SecStore:
         self._upsert_by_cik(self._facts_key(taxonomy, fiscal_year), cik, df, schema.FACTS_COLUMNS)
 
     def list_facts_partitions(self) -> List["tuple[str, int]"]:
-        """Every (taxonomy, fiscal_year) pair with an actual facts.parquet
-        object on R2 right now -- scripts/rebuild_sec_financials.py uses
-        this instead of guessing a fixed year range, since the real range
-        depends on how far back the curated universe's backfill actually
-        reached."""
+        """Every (taxonomy, fiscal_year) pair with an actual object on R2
+        right now -- scripts/rebuild_sec_financials.py uses this instead
+        of guessing a fixed year range, since the real range depends on
+        how far back the curated universe's backfill actually reached."""
         prefix = f"{self._prefix}/facts/"
 
         def _list() -> List["tuple[str, int]"]:
@@ -210,8 +219,8 @@ class SecStore:
             for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=prefix):
                 for obj in page.get("Contents", []):
                     parts = obj["Key"][len(prefix) :].split("/")
-                    if len(parts) == 3 and parts[0].startswith("taxonomy=") and parts[1].startswith("fiscal_year="):
-                        partitions.append((parts[0][len("taxonomy=") :], int(parts[1][len("fiscal_year=") :])))
+                    if len(parts) == 2 and parts[1].endswith(".parquet"):
+                        partitions.append((parts[0], int(parts[1][: -len(".parquet")])))
             return partitions
 
         return _with_retries(_list)
@@ -219,7 +228,7 @@ class SecStore:
     # -- normalized financials (derived, rebuildable) --------------------------
 
     def _financials_key(self, fiscal_year: int) -> str:
-        return f"{self._prefix}/financials/fiscal_year={fiscal_year}/financials.parquet"
+        return f"{self._prefix}/financials/{fiscal_year}.parquet"
 
     def read_financials(self, fiscal_year: int) -> pd.DataFrame:
         return self._read_parquet(self._financials_key(fiscal_year), schema.FINANCIALS_COLUMNS)
