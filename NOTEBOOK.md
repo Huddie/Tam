@@ -295,6 +295,98 @@ Functionally equivalent to `connect()` above -- this path exists mainly because
 it's what ingestion jobs already use, and it doesn't depend on `data.tamquant.com`
 being reachable. For an ordinary notebook, prefer the personal-token path.
 
+## Third-party secrets, FRED data, and plotting raw time series
+
+Anything that needs a third-party API key you bring yourself (not a `tam`-issued
+credential like `TAM_PAT`/R2 access, which already have their own dedicated
+resolvers) can go through `tam.Secrets`, which checks the same places Colab
+notebooks and local scripts already expect:
+
+```python
+import tam
+
+fred_key = tam.Secrets["FRED_API_KEY"]          # raises a clear error if not set anywhere
+fred_key = tam.Secrets.get("FRED_API_KEY")      # None instead of raising, if you want to handle it yourself
+```
+
+Resolution order: an environment variable (directly, or via a local `.env` file) --
+then, if running in Colab, a Colab secret of that same name (key-icon panel, left
+sidebar). Nothing to configure differently between local and Colab; the same code
+works in both.
+
+### FRED (Treasury yields, Fed Funds rate, CPI, unemployment, ...)
+
+```python
+!pip install -q "tam-quant[fred]"
+```
+
+Add a Colab secret named exactly `FRED_API_KEY` (a free key from
+[fred.stlouisfed.org](https://fred.stlouisfed.org) -- sign-up takes a couple
+minutes, no approval wait), grant this notebook access to it, then:
+
+```python
+import tam
+
+dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)   # or tam.Fred.get("DGS10") -- same series
+dgs10.name    # "10-Year Treasury Yield", not the raw "DGS10" code
+dgs10.tail()
+```
+
+`tam.Fred.Datasets` covers a handful of commonly-used series as a memory aid
+(`TREASURY_3MO`/`TREASURY_2Y`/`TREASURY_10Y`/`TREASURY_30Y`, `FED_FUNDS_RATE`,
+`FED_FUNDS_EFFECTIVE`, `SOFR`, `CPI`, `UNEMPLOYMENT_RATE`, `YIELD_CURVE_10Y_2Y`) --
+FRED has tens of thousands of series total, so pass any other raw series id
+(a plain string) straight to `.get()` just the same:
+
+```python
+tam.Fred.get("DGS2", start="2015-01-01", end="2024-01-01")   # start/end are optional; omit either for the full available history
+```
+
+The underlying `fredapi` client (and therefore the `FRED_API_KEY` lookup) is
+built lazily on first `.get()` call -- `import tam` or referencing
+`tam.Fred.Datasets` never requires a key to be configured, only actually
+fetching a series does.
+
+### Plotting raw time series (price + indicator overlays, FRED series, ...)
+
+`tam.backtest.tearsheet`'s chart classes (`CumulativeReturnsChart`, `DrawdownChart`,
+...) all normalize their input as an equity curve (% return, drawdown, ...) --
+the right tool for backtest analytics, the wrong one for just plotting raw values
+side by side. `timeseries()` is the same callable/composable chart API with no
+normalization applied:
+
+```python
+from tam.backtest.tearsheet import timeseries
+from tam.strategy.indicators import sma, rsi
+
+close = con.sql("SELECT date, close FROM eod_bars('SPY') ORDER BY date").df().set_index("date")["close"]
+sma_20, sma_50 = sma(close, 20), sma(close, 50)
+rsi_14 = rsi(close, 14)
+
+timeseries([close, sma_20, sma_50], title="SPY + SMA")   # auto-displays in a notebook cell (or call .show())
+```
+
+Accepts a single `pd.Series`, a plain `list` of them (each one's own `.name`
+becomes its legend label -- `sma()`/`rsi()` already come back named `"sma_20"`/
+`"rsi_14"`, so no manual renaming needed), a `{name: series}` dict, or a wide
+`pd.DataFrame` (one column per name).
+
+Chain multiple `timeseries()` calls with `|` for series on genuinely different
+scales (RSI's 0-100 range doesn't belong on the same axis as price) -- each call
+becomes its own subplot row in one composite figure, same as chaining any other
+chart in this module:
+
+```python
+timeseries([close, sma_20, sma_50], title="Price") | timeseries(rsi_14, title="RSI")
+```
+
+FRED series plot the same way, no special-casing needed -- `tam.Fred.get(...)`
+already returns a plain named `pd.Series`:
+
+```python
+timeseries([tam.Fred.get(tam.Fred.Datasets.TREASURY_2Y), tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)], title="Treasury Yields")
+```
+
 ## Publishing dashboards to Discovery
 
 Any Plotly figure -- or an already-rendered `.html` file -- can be published to

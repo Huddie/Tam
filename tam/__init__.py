@@ -30,8 +30,8 @@
 """
 from __future__ import annotations
 
-from .fred import Fred
 from .registry import Registry
+from .research.data.fred import Fred
 from .secrets import Secrets
 
 __all__ = ["Fred", "Registry", "Secrets", "get"]

@@ -13,6 +13,11 @@ The underlying fredapi.Fred client (and therefore the FRED_API_KEY lookup)
 is built LAZILY on first use, not at import time -- `from tam import Fred`
 or referencing `Fred.Datasets` never requires an API key to be configured;
 only actually calling `.get(...)` does.
+
+Lives under tam.research.data (not tam.data/tam.marketdata, which are
+specifically equity/security price data) -- FRED is macro/economic data,
+a different category, with room for e.g. an eventual tam.research.data.sec
+alongside it.
 """
 from __future__ import annotations
 
@@ -22,7 +27,7 @@ from typing import Optional, Union
 
 import pandas as pd
 
-from .secrets import Secrets
+from ...secrets import Secrets
 
 
 class _Datasets(str, Enum):
