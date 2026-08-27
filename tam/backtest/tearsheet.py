@@ -47,8 +47,16 @@ Chain multiple charts with | to produce a single composite Plotly figure:
     - pd.Series             (one portfolio, name used as portfolio id)
     - Dict[str, pd.Series]  (explicit {name: curve} mapping)
     - pd.DataFrame          (one named curve per column)
+    - List[pd.Series]       (each item's own .name used as its key)
 
-All three are automatically wrapped into a Report via Report.from_curves().
+All four are automatically wrapped into a Report via Report.from_curves().
+
+For plotting RAW series (a price alongside its own SMA/RSI, a FRED series,
+anything that isn't an equity curve needing return/drawdown normalization),
+use timeseries() instead of one of the equity-curve-semantic charts above:
+
+    timeseries([close, sma(close, 20), sma(close, 50)])
+    timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")
 """
 from __future__ import annotations
 
@@ -143,14 +151,28 @@ class TearsheetMetric(ABC):
 # Standalone / chained rendering helpers
 # ---------------------------------------------------------------------------
 
-_SeriesInput = Union[pd.Series, Dict[str, pd.Series], pd.DataFrame]
+_SeriesInput = Union[pd.Series, Dict[str, pd.Series], pd.DataFrame, List[pd.Series]]
 
 
 def _to_report(series: _SeriesInput) -> Report:
-    """Convert any accepted series shape into a Report for chart.render()."""
+    """Convert any accepted series shape into a Report for chart.render().
+    Accepts a single (optionally named) pd.Series, a {name: series} dict, a
+    wide DataFrame (one column per name), or a plain list of pd.Series --
+    each one's own .name becomes its key (e.g. tam.strategy.indicators.sma()
+    already comes back named "sma_20", so `timeseries([close, sma(close,
+    20)])` just works with no manual renaming); an unnamed one in a list
+    falls back to "series_N", same leniency as a single bare Series
+    falling back to "portfolio"."""
     if isinstance(series, pd.Series):
         name = series.name or "portfolio"
         return Report.from_curves({str(name): series})
+    if isinstance(series, (list, tuple)):
+        curves: Dict[str, pd.Series] = {}
+        for item in series:
+            if not isinstance(item, pd.Series):
+                raise TypeError(f"each item in a list passed to a chart must be a pd.Series, got {type(item).__name__}")
+            curves[str(item.name) if item.name is not None else f"series_{len(curves)}"] = item
+        return Report.from_curves(curves)
     return Report.from_curves(series)
 
 
@@ -287,6 +309,47 @@ def _factor_input(report: Report, portfolio_id: str) -> pd.DataFrame:
 
 
 # ---- charts -----------------------------------------------------------------
+
+
+@Registry.register(TearsheetChart, "timeseries")
+class TimeSeriesChart(TearsheetChart):
+    """Plots each named series RAW -- no return/drawdown normalization,
+    unlike every other chart in this module. This is the general-purpose
+    "just plot these lines together" chart (a price series next to its own
+    SMA/RSI overlays, a FRED series, anything that isn't an equity curve),
+    not registered in DEFAULT_CHARTS since it has nothing to do with a
+    backtest tearsheet specifically -- `timeseries()` below is the
+    ergonomic standalone entry point most callers should use instead of
+    constructing this directly."""
+
+    def __init__(self, title: str = "Time Series"):
+        self.title = title
+
+    def render(self, report: Report) -> go.Figure:
+        fig = go.Figure()
+        for portfolio_id in report.portfolio_ids():
+            curve = report.equity_curve(portfolio_id)
+            fig.add_trace(go.Scatter(x=curve.index, y=curve.values, mode="lines", name=portfolio_id))
+        fig.update_layout(title=self.title, template="plotly_white")
+        return fig
+
+
+def timeseries(series: _SeriesInput, title: str = "Time Series") -> ChartCall:
+    """The standalone/composable entry point for plotting raw series
+    together -- same call/compose contract as every TearsheetChart here
+    (this module's own docstring above covers the general pattern):
+
+        timeseries(close)                                     # one line, uses close.name
+        timeseries([close, sma(close, 20), sma(close, 50)])    # several, each using its own .name
+        timeseries({"SPY": close, "SMA 20": sma_20})           # explicit names
+        timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")  # two rows, one figure
+
+    Different scales (e.g. price vs. a 0-100 RSI) belong on SEPARATE calls
+    chained with `|`, not lumped into one timeseries(...) call -- each
+    ChartCall gets its own y-axis when composed into a ChartPipeline (see
+    ChartPipeline.render()'s per-subplot axis handling), a plain overlay
+    within one timeseries(...) call shares a single axis."""
+    return TimeSeriesChart(title=title)(series)
 
 
 @Registry.register(TearsheetChart, "cumulative_returns")

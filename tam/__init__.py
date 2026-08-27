@@ -13,18 +13,28 @@
     # Chain charts into one composite Plotly figure:
     c1(series) | c2(series) | c3(series)
 
+    # Plot raw series (price + indicator overlays, a FRED series, ...) --
+    # see tam.backtest.tearsheet.timeseries for the full pattern:
+    from tam.backtest.tearsheet import timeseries
+    timeseries([close, sma_20]) | timeseries(rsi_14, title="RSI")
+
     # Resolve a third-party secret (env var, or a Colab secret) without
     # hardcoding it in a notebook cell -- see tam.secrets for the full
     # resolution order:
-    from fredapi import Fred
-    fred = Fred(api_key=tam.Secrets["FRED_API_KEY"])
+    from fredapi import Fred as _FredApi
+    fred = _FredApi(api_key=tam.Secrets["FRED_API_KEY"])
+
+    # Or skip fredapi entirely -- tam.Fred wraps it, resolving the API key
+    # via tam.Secrets internally:
+    dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)
 """
 from __future__ import annotations
 
+from .fred import Fred
 from .registry import Registry
 from .secrets import Secrets
 
-__all__ = ["Registry", "Secrets", "get"]
+__all__ = ["Fred", "Registry", "Secrets", "get"]
 
 
 def get(base_type, name: str | None = None):
