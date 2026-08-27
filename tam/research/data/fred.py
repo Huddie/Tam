@@ -21,13 +21,38 @@ alongside it.
 """
 from __future__ import annotations
 
+import time
 from datetime import date
 from enum import Enum
-from typing import Optional, Union
+from typing import Dict, Optional, Tuple, Union
 
 import pandas as pd
 
 from ...secrets import Secrets
+
+_CACHE_TTL_SECONDS = 24 * 60 * 60  # 1 day -- FRED series update at most daily, no reason to re-fetch more often than that
+
+
+def _with_retries(func, attempts: int = 5, base_delay: float = 2.0):
+    """Retries `func()` up to `attempts` times with exponential backoff --
+    same reasoning as tam.data.storage's/tam.marketdata.store's own copies
+    of this (a third-party client call failing is usually a transient
+    network blip, worth riding out rather than failing the whole notebook
+    cell over). Duplicated here rather than imported -- small independent
+    pieces per subpackage, matching this codebase's existing convention.
+    Catches broadly (not just specific exception types) since fredapi's
+    own exception hierarchy for "transient network issue" vs. "bad series
+    id" isn't something worth depending on tightly here."""
+    last_exc = None
+    for attempt in range(attempts):
+        try:
+            return func()
+        except Exception as exc:  # noqa: BLE001 -- any transient network error should retry
+            last_exc = exc
+            if attempt < attempts - 1:
+                time.sleep(base_delay * (2**attempt))
+    assert last_exc is not None
+    raise last_exc
 
 
 class _Datasets(str, Enum):
@@ -68,6 +93,7 @@ class _Fred:
 
     def __init__(self) -> None:
         self._client = None  # lazy fredapi.Fred, built on first get()
+        self._cache: Dict[Tuple[str, Optional[str], Optional[str]], Tuple[float, pd.Series]] = {}
 
     def _resolve_client(self):
         if self._client is None:
@@ -94,13 +120,31 @@ class _Fred:
         into tam.backtest.tearsheet.timeseries()/plots with a readable
         legend entry instead of a raw FRED code). `start`/`end` are passed
         straight through to fredapi (omit either for "no bound" -- FRED's
-        own default is the series' full available history)."""
+        own default is the series' full available history).
+
+        Cached in memory for _CACHE_TTL_SECONDS (1 day) per (series_id,
+        start, end) -- FRED series update at most daily, so re-running the
+        same notebook cell repeatedly (a common pattern while iterating on
+        a chart) doesn't re-hit the network every time. Returns a COPY
+        each call either way, so a caller mutating the result in place
+        never corrupts the cached copy."""
         raw_id = series_id.value if isinstance(series_id, _Datasets) else series_id
+        start_key = start.isoformat() if isinstance(start, date) else start
+        end_key = end.isoformat() if isinstance(end, date) else end
+        cache_key = (raw_id, start_key, end_key)
+
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            cached_at, cached_series = cached
+            if time.monotonic() - cached_at < _CACHE_TTL_SECONDS:
+                return cached_series.copy()
+
         client = self._resolve_client()
-        series = client.get_series(raw_id, observation_start=start, observation_end=end)
+        series = _with_retries(lambda: client.get_series(raw_id, observation_start=start, observation_end=end))
         series.name = self.name_for(series_id)
         series.index.name = "date"
-        return series
+        self._cache[cache_key] = (time.monotonic(), series)
+        return series.copy()
 
 
 Fred = _Fred()

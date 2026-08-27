@@ -10,10 +10,17 @@ immutable by default -- every call creates a new version; pass the same
     result = upload("report.html", title="Earnings Reaction", tags=["earnings"])
     print(result.url)
 
+Also accepts anything satisfying the Uploadable protocol (a Plotly Figure,
+or a tam.backtest.tearsheet ChartCall/ChartPipeline -- see Uploadable's own
+docstring) directly, no need to render to a file first:
+
+    from tam.backtest.tearsheet import timeseries
+    upload(timeseries(my_series), title="...")
+
 Needs a publishing token -- see tam.discovery.auth for how one gets found
 automatically (env var, Colab secret, or `upload-discovery login`'s saved
 file), or run `upload-discovery login` once first.
 """
-from .upload import UploadResult, upload
+from .upload import Uploadable, UploadResult, upload
 
-__all__ = ["upload", "UploadResult"]
+__all__ = ["upload", "UploadResult", "Uploadable"]

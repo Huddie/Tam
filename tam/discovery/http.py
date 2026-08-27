@@ -7,6 +7,7 @@ full API this is a client for).
 from __future__ import annotations
 
 import os
+import time
 from typing import Optional
 
 import requests
@@ -23,6 +24,31 @@ def resolve_api_url(explicit: Optional[str] = None) -> str:
     return explicit or os.environ.get(_ENV_VAR) or _DEFAULT_API_URL
 
 
+def _with_retries(func, attempts: int = 3, base_delay: float = 1.0):
+    """Retries `func()` on a transient failure -- a dropped connection/
+    timeout, or a 5xx (server-side, likely transient) response -- with
+    exponential backoff. Does NOT retry a 4xx (bad request, expired/
+    revoked token, not found, ...): that's a real, non-transient problem
+    a retry would just repeat, not fix, and silently masking e.g. a 401
+    behind 3 retries would only make a real auth failure slower to
+    surface. Re-raises the last exception once every attempt is
+    exhausted."""
+    last_exc: Optional[Exception] = None
+    for attempt in range(attempts):
+        try:
+            return func()
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code < 500:
+                raise
+            last_exc = exc
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as exc:
+            last_exc = exc
+        if attempt < attempts - 1:
+            time.sleep(base_delay * (2**attempt))
+    assert last_exc is not None
+    raise last_exc
+
+
 class DiscoveryClient:
     """A requests.Session pre-configured with the bearer token and base
     URL, plus the specific endpoints tam.discovery calls."""
@@ -34,9 +60,12 @@ class DiscoveryClient:
         self._session.headers["Authorization"] = f"Bearer {token}"
 
     def _request(self, method: str, path: str, **kwargs) -> requests.Response:
-        response = self._session.request(method, f"{self._base_url}{path}", timeout=self._timeout, **kwargs)
-        response.raise_for_status()
-        return response
+        def _do() -> requests.Response:
+            response = self._session.request(method, f"{self._base_url}{path}", timeout=self._timeout, **kwargs)
+            response.raise_for_status()
+            return response
+
+        return _with_retries(_do)
 
     def whoami(self) -> dict:
         return self._request("GET", "/api/publish/whoami").json()
@@ -72,5 +101,11 @@ class DiscoveryClient:
         URL carries its own signature-based auth; sending a bearer token
         here would be meaningless and the URL is typically a different
         host entirely)."""
-        response = requests.put(upload_url, data=content, headers=upload_headers or {}, timeout=self._timeout)
-        response.raise_for_status()
+
+        def _do() -> requests.Response:
+            response = requests.put(upload_url, data=content, headers=upload_headers or {}, timeout=self._timeout)
+            response.raise_for_status()
+            return response
+
+        _with_retries(_do)
+

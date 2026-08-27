@@ -80,9 +80,9 @@ marketdata = [
 ]
 # tam.Fred wraps this -- kept as its own small extra (not a hard dependency)
 # since it's a third-party API integration nothing else in this package
-# depends on; tam.fred itself only imports fredapi lazily inside Fred.get(),
-# so `import tam`/referencing `tam.Fred.Datasets` never requires this to be
-# installed, only actually fetching a series does.
+# depends on; tam.research.data.fred itself only imports fredapi lazily
+# inside Fred.get(), so `import tam`/referencing `tam.Fred.Datasets` never
+# requires this to be installed, only actually fetching a series does.
 fred = [
     "fredapi>=0.5",
 ]

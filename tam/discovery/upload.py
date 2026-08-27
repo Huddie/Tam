@@ -6,11 +6,31 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Protocol, Union, runtime_checkable
 
 from .auth import resolve_token
 from .git_info import capture_git_info
 from .http import DiscoveryClient
+
+
+@runtime_checkable
+class Uploadable(Protocol):
+    """Anything tam.discovery.upload() can publish directly, alongside a
+    plain path to an existing .html file: must produce a self-contained
+    HTML string via to_html(full_html=..., include_plotlyjs=...) -- the
+    exact signature plotly.graph_objects.Figure already has, and the one
+    tam.backtest.tearsheet.ChartCall/ChartPipeline both implement by
+    delegating to their own rendered Figure.
+
+    A Protocol (structural typing), not an ABC, on purpose -- go.Figure is
+    a third-party type we can't make literally inherit from a base class
+    of ours; @runtime_checkable lets `isinstance(x, Uploadable)` still work
+    against it based on shape alone, same as this module's previous plain
+    `hasattr(x, "to_html")` check, just self-documenting and checkable by
+    callers/type-checkers instead of implicit.
+    """
+
+    def to_html(self, *args: Any, **kwargs: Any) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -22,16 +42,15 @@ class UploadResult:
     type: str
 
 
-def _read_html(path_or_figure: Any) -> str:
+def _read_html(path_or_figure: Union[str, Path, Uploadable]) -> str:
     """The artifact's HTML text, however it was given: an existing .html
-    file's contents (path_or_figure is path-like), or a Plotly Figure's own
-    to_html() output. Figure detection is duck-typed (hasattr(...,
-    "to_html")) rather than a hard `import plotly.graph_objects` check --
-    keeps this module importable in an environment without plotly, even
-    though plotly is already a tam-quant base dependency, for the common
-    case of publishing an already-rendered .html file with no plotly
-    object in scope at all."""
-    if hasattr(path_or_figure, "to_html"):
+    file's contents (path_or_figure is path-like), or an Uploadable's own
+    to_html() output (a Plotly Figure, a ChartCall/ChartPipeline, or any
+    other object satisfying that Protocol). Keeps this module importable
+    in an environment without plotly, even though plotly is already a
+    tam-quant base dependency, for the common case of publishing an
+    already-rendered .html file with no plotly object in scope at all."""
+    if isinstance(path_or_figure, Uploadable):
         # CDN mode (not inline): every Discovery viewer already needs
         # internet access to reach the site itself, so there's no offline-
         # viewing requirement -- inlining plotly.js would just add several
@@ -46,14 +65,15 @@ def _read_html(path_or_figure: Any) -> str:
     if not path.is_file():
         raise ValueError(
             f"{path} is not a file -- tam.discovery.upload() publishes a single .html "
-            "file or a Plotly Figure, not a directory (multi-file artifacts aren't "
+            "file or anything satisfying the Uploadable protocol (a Plotly Figure, a "
+            "ChartCall/ChartPipeline, ...), not a directory (multi-file artifacts aren't "
             "supported yet)"
         )
     return path.read_text(encoding="utf-8")
 
 
 def upload(
-    path_or_figure: Union[str, Path, Any],
+    path_or_figure: Union[str, Path, Uploadable],
     *,
     title: str,
     type: str = "dashboard",

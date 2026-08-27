@@ -194,6 +194,15 @@ class ChartCall:
         """Display the figure (calls fig.show(), works in notebooks + scripts)."""
         self.render().show()
 
+    def to_html(self, *args, **kwargs) -> str:
+        """Passes through to the rendered go.Figure's own to_html() -- this
+        is what makes `tam.discovery.upload(timeseries(...), ...)` work
+        without an explicit `.render()` first: upload() duck-types any
+        object with a to_html() method as a Figure (hasattr(x, "to_html")),
+        and without this, a bare ChartCall/ChartPipeline would instead be
+        (wrongly) treated as a file path."""
+        return self.render().to_html(*args, **kwargs)
+
     def __or__(self, other: Union[ChartCall, ChartPipeline]) -> ChartPipeline:
         if isinstance(other, ChartPipeline):
             return ChartPipeline([self] + other._calls)
@@ -281,6 +290,12 @@ class ChartPipeline:
     def show(self) -> None:
         """Display the composite figure."""
         self.render().show()
+
+    def to_html(self, *args, **kwargs) -> str:
+        """Same reasoning as ChartCall.to_html() -- lets a composed
+        pipeline (c1(series) | c2(series)) go straight into
+        tam.discovery.upload() too, not just a single ChartCall."""
+        return self.render().to_html(*args, **kwargs)
 
     def _repr_mimebundle_(self, **kwargs):
         return self.render()._repr_mimebundle_(**kwargs)  # type: ignore[attr-defined]
