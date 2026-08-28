@@ -259,8 +259,8 @@ def connect(
     end-of-day lake, and tam.research.data.sec's XBRL/filings lake) -- same
     macros as tam.marketdata.duckdb_query.open_duckdb() (daily_bars,
     weekly_bars, rollup_bars, daily_returns, rolling_volatility, eod_bars,
-    sec_facts, sec_financials, sec_stmt, sec_filings -- see that module's
-    own docstring), authenticated via your personal token instead of raw R2
+    sec_facts, sec_financials, sec_stmt, sec_filings, sec_companies -- see
+    that module's own docstring), authenticated via your personal token instead of raw R2
     account credentials, and self-refreshing (see SqlConnection above) so it
     keeps working across a long notebook session rather than just expiring
     partway through. `ttl_seconds` (default 900, capped at 3600

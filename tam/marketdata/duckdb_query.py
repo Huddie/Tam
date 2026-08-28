@@ -15,13 +15,15 @@ much longer/different symbol history (minute bars only go back as far as
 the flat-file vendor's own retention; EOD via yfinance can go back decades).
 
 Also registers the SEC macros (`sec_facts`, `sec_financials`, `sec_stmt`,
-`sec_filings`) over tam.research.data.sec's OWN lake (sec/... -- raw XBRL
-facts, normalized financials, filing metadata; see that subpackage for the
-full schema/partitioning rationale). Every one accepts an OPTIONAL
-`ticker_or_cik` (a ticker string, a raw CIK int, or a CIK-as-string --
-resolved via `sec_cik()`, verified against real data before writing this):
-omit it for every company at once (narrow yourself with `WHERE cik = ...`),
-or pass it to scope to one company. NOT overloaded by argument count --
+`sec_filings`, `sec_companies`) over tam.research.data.sec's OWN lake
+(sec/... -- raw XBRL facts, normalized financials, filing metadata; see
+that subpackage for the full schema/partitioning rationale). Every one
+except `sec_companies` (the ticker/CIK/name reference table itself, with
+nothing to scope it by) accepts an OPTIONAL `ticker_or_cik` (a ticker
+string, a raw CIK int, or a CIK-as-string -- resolved via `sec_cik()`,
+verified against real data before writing this): omit it for every
+company at once (narrow yourself with `WHERE cik = ...`), or pass it to
+scope to one company. NOT overloaded by argument count --
 DuckDB's CREATE MACRO doesn't support that (confirmed live:
 `CatalogException: already exists` on a second same-name macro even with
 a different arity) -- one signature with a default covers both shapes.
@@ -144,6 +146,9 @@ CREATE OR REPLACE MACRO sec_filings(ticker_or_cik := NULL) AS TABLE
         || substr(coalesce(try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)
     )
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
+
+CREATE OR REPLACE MACRO sec_companies() AS TABLE
+    SELECT * FROM read_parquet(getvariable('sec_root') || '/reference/company_tickers.parquet');
 """
 
 
@@ -185,7 +190,7 @@ def open_duckdb(
     """A fresh DuckDB connection ready to query all three Parquet lakes --
     the minute-bar lake (minute_bars(sym) and its rollup macros), tam.data's
     end-of-day lake (eod_bars(sym)), and tam.research.data.sec's XBRL/
-    filings lake (sec_facts/sec_financials/sec_stmt/sec_filings).
+    filings lake (sec_facts/sec_financials/sec_stmt/sec_filings/sec_companies).
 
     Reads from R2 by default -- `credentials` resolves the usual way
     (tam.marketdata.credentials.resolve_r2_credentials: kwarg -> env var ->

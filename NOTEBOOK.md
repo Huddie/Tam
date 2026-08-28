@@ -388,6 +388,7 @@ con.sql("SELECT * FROM sec_stmt('income_statement', 'AAPL') ORDER BY fiscal_year
 con.sql("SELECT * FROM sec_stmt('income_statement') WHERE line_item = 'revenue'").df()   # every company at once
 con.sql("SELECT * FROM sec_facts('AAPL')").df()        # raw XBRL, full fidelity
 con.sql("SELECT * FROM sec_filings('AAPL')").df()      # filing metadata: accession number, form, filed date, ...
+con.sql("SELECT * FROM sec_companies() WHERE ticker = 'AAPL'").df()   # ticker/CIK/name reference table
 ```
 
 `Sec.financials()`/`Sec.filings()` (the Python wrappers, not the raw SQL
@@ -404,14 +405,27 @@ function pushed into the query; pass `dedupe_periods=False` to get every
 period SEC reported instead (e.g. if you specifically want the YTD
 figures too).
 
-`line_items` accepts any of EdgarTools' ~60 canonical concept names --
-`revenue`, `net_income`, `cost_of_revenue`, `gross_profit`,
+Every input you have to pick a value for has a matching discovery method
+that returns the real, legal options as a dataframe -- so you never have
+to guess or go source-diving:
+
+```python
+Sec.companies(search="apple")                       # find a ticker/CIK: cik, ticker, entity_name
+Sec.statements()                                     # valid statement= values
+Sec.line_items(tickers=["AAPL"], search="rev")       # valid line_items= values for THIS company, ranked by fact_count
+Sec.line_item_catalog(statement="balance_sheet")     # every line item we know how to normalize, whether or not AAPL reports it
+Sec.concepts("revenue", tickers=["AAPL"])             # which raw XBRL tags rolled up into "revenue", per company
+Sec.forms(tickers=["AAPL"])                          # valid forms= values for filings(), ranked by count
+```
+
+`line_items` accepts any canonical line-item name our normalization layer
+knows -- `revenue`, `net_income`, `cost_of_revenue`, `gross_profit`,
 `operating_income`, `ebitda`, `earnings_per_share_basic`/
 `earnings_per_share_diluted`, `operating_cash_flow`/`investing_cash_flow`/
 `financing_cash_flow`/`free_cash_flow`, `total_assets`/`total_liabilities`/
-`stockholders_equity`, and more (see `edgar.standardization.
-get_synonym_groups().list_groups()` for the full, current list) -- a plot-
-ready quarterly trend is then just:
+`stockholders_equity`, and more -- `Sec.line_items()`/`Sec.line_item_catalog()`
+above are the current, authoritative list; a plot-ready quarterly trend is
+then just:
 
 ```python
 import pandas as pd

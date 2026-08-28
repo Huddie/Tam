@@ -78,7 +78,11 @@ FACTS_COLUMNS = [
     VALUE,
 ]
 
-STATEMENT = "statement"  # "income_statement" | "balance_sheet" | "cash_flow_statement"
+STATEMENT = "statement"  # see Sec.statements() for the real, current set of values -- sourced
+# directly from EdgarTools' own concept categories (normalize.py), not a fixed list worth
+# duplicating in a comment here (confirmed live: it's ["balance_sheet", "cash_flow",
+# "income_statement", "metrics"], not the 3-way "cash_flow_statement"-suffixed guess this
+# comment used to make).
 LINE_ITEM = "line_item"  # normalized name: "revenue" | "net_income" | "total_assets" | ...
 
 FINANCIALS_COLUMNS = [

@@ -1,4 +1,4 @@
-.PHONY: build publish version clean publish-discovery publish-data-explorer publish-sites
+.PHONY: build publish version clean publish-discovery publish-data-explorer publish-sites docs
 
 # Bumps pyproject.toml's version to the next patch release above whatever's
 # currently live on PyPI (queries the index; falls back to the existing
@@ -37,3 +37,9 @@ publish-data-explorer:
 	cd tam-data-explorer && npm run deploy
 
 publish-sites: publish-discovery publish-data-explorer
+
+# Local equivalent of .github/workflows/docs.yml's build step -- that
+# workflow also pushes docs/_build/html to the gh-pages branch, which this
+# doesn't do.
+docs:
+	uv run --extra docs sphinx-build -b html docs docs/_build/html

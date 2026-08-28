@@ -6,7 +6,11 @@ XBRL-parsing path for the raw facts themselves).
 
     from tam.research.data.sec import Sec
 
+    Sec.companies(search="apple")                           # find a ticker/CIK -- ["AAPL", 320193, "Apple Inc."]
+    Sec.statements()                                        # valid statement= values
+    Sec.line_items(tickers=["AAPL"], search="rev")          # valid line_items= values for this company
     Sec.financials(tickers=["AAPL", "MSFT"], start=2015)    # no construction needed -- a shared default instance
+    Sec.forms(tickers=["AAPL"])                             # valid forms= values for this company
     Sec.filings(ticker="AAPL", forms=["10-K", "10-Q"], start="2015-01-01")
     Sec.query("SELECT cik, fiscal_year, value FROM sec_stmt('income_statement') WHERE line_item = 'revenue'")
 
@@ -14,10 +18,20 @@ XBRL-parsing path for the raw facts themselves).
     sec = Sec(bucket="tam-data")                   # raw R2 account credentials instead of a personal token
     sec.financials(...)                            # this instance's OWN connection, separate from the shared default
 
+Every parameter a caller must pick a value for has a matching discovery
+method returning the real, legal options as a dataframe: `companies()`
+for `tickers=`/`ticker=`, `statements()` for `statement=`, `line_items()`
+for `line_items=` (plus `line_item_catalog()` for the full theoretical
+catalog and `concepts()` for raw-tag traceability), `forms()` for
+`forms=`. None of these guess -- `companies()`/`line_items()`/`concepts()`/
+`forms()` query the real ingested data; `statements()`/`line_item_catalog()`
+are local lookups over the same concept table `normalize_facts()` itself
+uses.
+
 Thin wrappers over the SQL macros tam.marketdata.duckdb_query.open_duckdb()
-registers (sec_facts/sec_financials/sec_stmt/sec_filings/sec_cik) -- see
-that module's own docstring for the full macro set and how ticker-or-CIK
-resolution works. Not exposed as `tam.Sec` at the top level (unlike
+registers (sec_facts/sec_financials/sec_stmt/sec_filings/sec_companies/
+sec_cik) -- see that module's own docstring for the full macro set and how
+ticker-or-CIK resolution works. Not exposed as `tam.Sec` at the top level (unlike
 `tam.Secrets`/`tam.Fred`) -- normalize.py imports edgartools' concept-
 standardization table eagerly, a heavier dependency than fredapi, so
 `import tam` itself should stay cheap; use this explicit submodule import
@@ -32,7 +46,7 @@ import pandas as pd
 
 from . import schema
 from .manifest import Manifest
-from .normalize import normalize_facts
+from .normalize import _synonyms, normalize_facts
 from .provider import SecProvider
 from .store import SecStore
 
@@ -253,6 +267,121 @@ class Sec:
         return self._connect().sql(sql).df()
 
     @_default_or_bound
+    def companies(self, search: Optional[str] = None) -> pd.DataFrame:
+        """Every ticker/CIK/company name on record -- the reference table
+        every other method's `tickers=`/`ticker=` values come from.
+        `search` matches (case-insensitively) as a substring of EITHER the
+        ticker or the company name; omit it to list every company."""
+        where = ""
+        params: List[Any] = []
+        if search:
+            where = "WHERE ticker ILIKE ? OR entity_name ILIKE ?"
+            pattern = f"%{search}%"
+            params = [pattern, pattern]
+        sql = f"""
+            SELECT cik, ticker, entity_name
+            FROM sec_companies()
+            {where}
+            ORDER BY ticker
+        """
+        return self._execute(sql, params, schema.REFERENCE_COLUMNS)
+
+    @_default_or_bound
+    def statements(self) -> pd.DataFrame:
+        """The fixed, small set of valid `statement=` values accepted by
+        `financials()`/`line_items()`/`line_item_catalog()` -- a pure local
+        lookup (no query, no network) over the same concept-standardization
+        table `normalize_facts()` itself uses to categorize every concept,
+        not a separately-maintained list that could drift out of sync."""
+        values = sorted({_synonyms.get_group(name).category for name in _synonyms.list_groups()})
+        return pd.DataFrame({schema.STATEMENT: values})
+
+    @_default_or_bound
+    def line_item_catalog(self, statement: Optional[str] = None) -> pd.DataFrame:
+        """Every line-item name `normalize_facts()` knows how to produce,
+        independent of whether any ingested company actually has data for
+        it yet -- the full theoretical catalog, optionally filtered to one
+        `statement` (see `Sec.statements()` for valid values). Pure local
+        lookup, no query, no network -- the "browse everything we know how
+        to normalize" companion to `line_items()`'s "what does THIS
+        company actually have"."""
+        rows = [
+            {schema.LINE_ITEM: name, schema.STATEMENT: _synonyms.get_group(name).category}
+            for name in _synonyms.list_groups()
+        ]
+        catalog = pd.DataFrame(rows, columns=[schema.LINE_ITEM, schema.STATEMENT])
+        if statement:
+            catalog = catalog[catalog[schema.STATEMENT] == statement]
+        return catalog.sort_values(schema.LINE_ITEM).reset_index(drop=True)
+
+    @_default_or_bound
+    def line_items(
+        self,
+        tickers: Optional[Sequence[Union[str, int]]] = None,
+        search: Optional[str] = None,
+        statement: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Which line items actually have data for `tickers` (or every
+        company on record, if omitted), ranked by how well-populated each
+        one is -- answers "what can I actually pass to
+        financials(line_items=[...])" from real ingested data, not a guess
+        from the full theoretical catalog (`line_item_catalog()` is that).
+        `search` narrows by a case-insensitive substring of the line item
+        name; `statement` narrows to one statement (see `Sec.statements()`
+        for valid values). The `concepts` column shows which raw XBRL
+        concept(s) actually rolled up into each line item -- pass one of
+        them, or the line item itself, to `Sec.concepts()` for the
+        reverse, per-company breakdown."""
+        where: List[str] = []
+        params: List[Any] = []
+
+        if tickers:
+            ciks = self._resolve_ciks(tickers)
+            placeholders = ", ".join("?" for _ in ciks)
+            where.append(f"cik IN ({placeholders})")
+            params.extend(ciks)
+        if search:
+            where.append("line_item ILIKE ?")
+            params.append(f"%{search}%")
+        if statement:
+            where.append("statement = ?")
+            params.append(statement)
+
+        clause = f"WHERE {' AND '.join(where)}" if where else ""
+        sql = f"""
+            SELECT statement, line_item,
+                   list(DISTINCT concept) AS concepts,
+                   count(*) AS fact_count
+            FROM sec_financials()
+            {clause}
+            GROUP BY statement, line_item
+            ORDER BY fact_count DESC
+        """
+        return self._execute(sql, params, [schema.STATEMENT, schema.LINE_ITEM, "concepts", "fact_count"])
+
+    @_default_or_bound
+    def concepts(self, line_item: str, tickers: Optional[Sequence[Union[str, int]]] = None) -> pd.DataFrame:
+        """Which raw XBRL concepts actually rolled up into `line_item`
+        (see `Sec.line_items()` for valid values), and for which
+        companies -- the reverse lookup from `line_items()`'s own
+        `concepts` column, for when you already know the line item and
+        want to trace it back to the raw tag(s)."""
+        where = ["line_item = ?"]
+        params: List[Any] = [line_item]
+        if tickers:
+            ciks = self._resolve_ciks(tickers)
+            placeholders = ", ".join("?" for _ in ciks)
+            where.append(f"cik IN ({placeholders})")
+            params.extend(ciks)
+        sql = f"""
+            SELECT DISTINCT cik, concept
+            FROM sec_financials()
+            WHERE {' AND '.join(where)}
+            ORDER BY cik, concept
+        """
+        return self._execute(sql, params, [schema.CIK, schema.CONCEPT])
+
+    @_default_or_bound
     def financials(
         self,
         tickers: Optional[Sequence[Union[str, int]]] = None,
@@ -263,11 +392,12 @@ class Sec:
         dedupe_periods: bool = True,
     ) -> pd.DataFrame:
         """Normalized financials (long format: one row per line item), for
-        any combination of `tickers` (tickers or raw CIKs, mixed freely),
-        `statement` ("income_statement"/"balance_sheet"/"cash_flow", ...),
-        `line_items` ("revenue"/"net_income"/...), and a `fiscal_year`
-        range via `start`/`end`. Omitting all of them returns every
-        company/period on record.
+        any combination of `tickers` (tickers or raw CIKs, mixed freely --
+        see `Sec.companies()` to find one), `statement` (see
+        `Sec.statements()` for valid values), `line_items` (see
+        `Sec.line_items()` for what this company/these companies actually
+        report), and a `fiscal_year` range via `start`/`end`. Omitting all
+        of them returns every company/period on record.
 
         `start_date`/`end_date`/`filed_date` come back as real dates --
         cast in the SQL DuckDB runs, not pandas afterward -- and rows are
@@ -344,9 +474,9 @@ class Sec:
     ) -> pd.DataFrame:
         """Filing metadata (accession number, form, filed date, period of
         report, ...) for one company, optionally scoped to specific
-        `forms` and a filed-date range. `filed_date`/`period_of_report`
-        come back as real dates (cast in SQL), rows pre-sorted
-        chronologically."""
+        `forms` (see `Sec.forms()` for valid values) and a filed-date
+        range. `filed_date`/`period_of_report` come back as real dates
+        (cast in SQL), rows pre-sorted chronologically."""
         where: List[str] = []
         params: List[Any] = []
 
@@ -375,3 +505,26 @@ class Sec:
             ORDER BY filed_date
         """
         return self._execute(sql, params, schema.SUBMISSIONS_COLUMNS)
+
+    @_default_or_bound
+    def forms(self, tickers: Optional[Sequence[Union[str, int]]] = None) -> pd.DataFrame:
+        """Which filing forms actually have data for `tickers` (or every
+        company on record, if omitted), ranked by count -- answers "what
+        can I actually pass to filings(forms=[...])" from real ingested
+        data, not a guess at SEC's own form-type list."""
+        where: List[str] = []
+        params: List[Any] = []
+        if tickers:
+            ciks = self._resolve_ciks(tickers)
+            placeholders = ", ".join("?" for _ in ciks)
+            where.append(f"cik IN ({placeholders})")
+            params.extend(ciks)
+        clause = f"WHERE {' AND '.join(where)}" if where else ""
+        sql = f"""
+            SELECT form, count(*) AS filing_count
+            FROM sec_filings()
+            {clause}
+            GROUP BY form
+            ORDER BY filing_count DESC
+        """
+        return self._execute(sql, params, [schema.FORM, "filing_count"])
