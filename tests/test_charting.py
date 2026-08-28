@@ -261,19 +261,82 @@ def test_overlay_axis_right_puts_a_series_on_the_secondary_axis():
     assert fig.layout.yaxis2.side == "right"
 
 
-def test_timeseries_invert_reverses_its_own_standalone_axis():
-    fig = timeseries(_series("a"), invert=True).render()
+def test_invert_reverses_its_own_standalone_axis():
+    fig = timeseries(_series("a")).invert().render()
+    assert fig.layout.yaxis.autorange == "reversed"
+
+
+def test_invert_twice_cancels_back_to_normal():
+    fig = timeseries(_series("a")).invert().invert().render()
+    assert fig.layout.yaxis.autorange is None
+
+
+def test_invert_works_on_any_chart_not_just_timeseries():
+    fig = rect([(date(2024, 1, 1), date(2024, 1, 5))]).invert().render()
     assert fig.layout.yaxis.autorange == "reversed"
 
 
 def test_overlay_invert_flips_the_axis_a_member_actually_ends_up_on():
-    """invert=True on the RIGHT-axis member must flip yaxis2, not the
-    LEFT axis shared by the other member -- confirmed by asserting the
-    left axis stays untouched."""
-    overlay = timeseries(_series("a", start_value=100.0)) & timeseries(_series("b", start_value=5.0), axis="right", invert=True)
+    """.invert() on the RIGHT-axis member must flip yaxis2, not the LEFT
+    axis shared by the other member -- confirmed by asserting the left
+    axis stays untouched."""
+    overlay = timeseries(_series("a", start_value=100.0)) & timeseries(_series("b", start_value=5.0), axis="right").invert()
     fig = overlay.render()
     assert fig.layout.yaxis2.autorange == "reversed"
     assert fig.layout.yaxis.autorange is None
+
+
+def test_invert_returns_a_new_call_leaving_the_original_untouched():
+    original = timeseries(_series("a"))
+    inverted = original.invert()
+    assert original.render().layout.yaxis.autorange is None
+    assert inverted.render().layout.yaxis.autorange == "reversed"
+
+
+def test_invert_composes_with_pipe_after_being_called():
+    pipeline = timeseries(_series("a")).invert() | timeseries(_series("b"))
+    fig = pipeline.render()
+    assert fig.layout.yaxis.autorange == "reversed"
+    assert fig.layout.yaxis2.autorange is None
+
+
+def test_axis_title_labels_the_axis_this_call_ends_up_on():
+    overlay = timeseries(_series("a"), axis_title="Points") & timeseries(_series("b"), axis="right", axis_title="%")
+    fig = overlay.render()
+    assert fig.layout.yaxis.title.text == "Points"
+    assert fig.layout.yaxis2.title.text == "%"
+
+
+def test_overlay_with_secondary_axis_moves_legend_inside_to_avoid_clipping():
+    """Regression: Plotly's default legend floats to the right of the
+    plot, which is exactly where a secondary axis's own title/ticks live
+    too -- confirmed live, they collide and the legend gets clipped off
+    the right edge of the figure. A dual-axis overlay should default to a
+    horizontal legend inside the top of the plot instead, with no action
+    needed from the caller."""
+    overlay = timeseries(_series("a")) & timeseries(_series("b"), axis="right")
+    fig = overlay.render()
+    assert fig.layout.legend.orientation == "h"
+    assert fig.layout.margin.r == 60
+
+
+def test_overlay_without_secondary_axis_leaves_the_default_legend_alone():
+    overlay = timeseries(_series("a")) & timeseries(_series("b"))
+    fig = overlay.render()
+    assert fig.layout.legend.orientation is None
+
+
+def test_pipeline_with_a_secondary_axis_row_moves_legend_inside_to_avoid_clipping():
+    pipeline = (timeseries(_series("a")) & timeseries(_series("b"), axis="right")) | timeseries(_series("c"))
+    fig = pipeline.render()
+    assert fig.layout.legend.orientation == "h"
+    assert fig.layout.margin.r == 60
+
+
+def test_pipeline_without_any_secondary_axis_leaves_the_default_legend_alone():
+    pipeline = timeseries(_series("a")) | timeseries(_series("b"))
+    fig = pipeline.render()
+    assert fig.layout.legend.orientation is None
 
 
 def test_overlay_does_not_let_a_shape_only_members_axis_styling_leak_onto_a_shared_real_axis():

@@ -195,21 +195,49 @@ class ChartCall:
     row each; chain with `&` to produce a ChartOverlay that renders all
     charts into the SAME panel instead (see ChartOverlay)."""
 
-    def __init__(self, chart: Chart, data: Any, *, axis: str = "left", layer: Optional[int] = None) -> None:
+    def __init__(
+        self, chart: Chart, data: Any, *, axis: str = "left", layer: Optional[int] = None, inverted: bool = False
+    ) -> None:
         self._chart = chart
         self._data = data
         self.axis = axis
         self.layer = 0 if layer is None else layer
         self._layer_explicit = layer is not None
+        self.inverted = inverted
+
+    def _copy(self, **overrides: Any) -> ChartCall:
+        """A copy with any of axis/layer/inverted overridden --
+        `_layer_explicit` always carries over from `self` unchanged
+        regardless of what `overrides` contains, which is exactly what
+        both `_with_layer()` (override the number, keep whether it was
+        ever explicit) and `invert()` (don't touch layer at all) need."""
+        copy = ChartCall(
+            self._chart,
+            self._data,
+            axis=overrides.get("axis", self.axis),
+            layer=overrides.get("layer", self.layer if self._layer_explicit else None),
+            inverted=overrides.get("inverted", self.inverted),
+        )
+        copy._layer_explicit = self._layer_explicit
+        return copy
 
     def _with_layer(self, layer: int) -> ChartCall:
         """A copy with `layer` overridden -- `_layer_explicit` is left as
         it was, so an auto-assigned layer stays open to being recomputed
         by a LATER `&` (e.g. combining two already-resolved overlays), while
         a layer the caller actually typed stays a fixed anchor forever."""
-        copy = ChartCall(self._chart, self._data, axis=self.axis, layer=layer)
-        copy._layer_explicit = self._layer_explicit
-        return copy
+        return self._copy(layer=layer)
+
+    def invert(self) -> ChartCall:
+        """Toggles this chart's own axis direction -- chainable, and
+        cancels out on repeat: `.invert()` flips it, `.invert().invert()`
+        is back to normal, same as double negation. Returns a NEW
+        ChartCall (this one is left untouched); applied generically in
+        render() below, so it works on any Chart, not just TimeSeriesChart
+        -- ChartPipeline/ChartOverlay already copy whatever "yaxis"
+        properties the rendered figure ends up with onto the shared axis,
+        so this needs no separate plumbing in either of those."""
+        return self._copy(inverted=not self.inverted)
 
     @property
     def title(self) -> str:
@@ -217,7 +245,10 @@ class ChartCall:
 
     def render(self) -> go.Figure:
         """Build and return the Plotly figure for this chart."""
-        return self._chart.render(self._data)
+        fig = self._chart.render(self._data)
+        if self.inverted:
+            fig.update_layout(yaxis=dict(autorange="reversed"))
+        return fig
 
     def show(self) -> None:
         """Display the figure (calls fig.show(), works in notebooks + scripts)."""
@@ -374,7 +405,16 @@ class ChartOverlay:
                 excluded = ("domain", "anchor", "overlaying", "side")
                 getattr(fig.layout, target_y_key).update({k: v for k, v in src_yaxis.items() if k not in excluded})
 
-        fig.update_layout(title=self.title, showlegend=True)
+        layout_kwargs: Dict[str, Any] = {"title": self.title, "showlegend": True}
+        if needs_secondary:
+            # A right-hand axis puts its own title/ticks in the space Plotly's
+            # default legend (floating to the right of the plot) also wants --
+            # confirmed live: they collide and the legend gets clipped. A
+            # horizontal legend INSIDE the top of the plot, plus a little
+            # extra right margin for the secondary axis, avoids both at once.
+            layout_kwargs["legend"] = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+            layout_kwargs["margin"] = dict(r=60)
+        fig.update_layout(**layout_kwargs)
         return _apply_theme(fig)
 
     def show(self) -> None:
@@ -437,6 +477,7 @@ class ChartPipeline:
             if not has_table and "yaxis2" in sub.layout.to_plotly_json():
                 spec["secondary_y"] = True
             specs.append([spec])
+        has_any_secondary = any(spec[0].get("secondary_y") for spec in specs)
 
         composite = make_subplots(
             rows=n,
@@ -507,10 +548,16 @@ class ChartPipeline:
                     excluded = ("domain", "anchor", "overlaying")
                     secondary_subplot.yaxis.update({k: v for k, v in src_axis.items() if k not in excluded})
 
-        composite.update_layout(
-            height=max(350 * n, 600),
-            showlegend=True,
-        )
+        layout_kwargs: Dict[str, Any] = {"height": max(350 * n, 600), "showlegend": True}
+        if has_any_secondary:
+            # Same reasoning as ChartOverlay.render()'s own version of this --
+            # a right-hand axis in any row collides with Plotly's default
+            # (floating-right) legend and gets clipped; a horizontal legend
+            # inside the top of the composite, plus extra right margin, fixes
+            # every row at once rather than needing a per-row workaround.
+            layout_kwargs["legend"] = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+            layout_kwargs["margin"] = dict(r=60)
+        composite.update_layout(**layout_kwargs)
         return _apply_theme(composite)
 
     def show(self) -> None:
@@ -533,10 +580,10 @@ class TimeSeriesChart(Chart):
     `timeseries()` below is the ergonomic standalone entry point most
     callers should use instead of constructing this directly."""
 
-    def __init__(self, title: str = "Time Series", invert: bool = False, color: Optional[str] = None):
+    def __init__(self, title: str = "Time Series", color: Optional[str] = None, axis_title: Optional[str] = None):
         self.title = title
-        self._invert = invert
         self._color = color
+        self._axis_title = axis_title
 
     def render(self, series: _SeriesInput) -> go.Figure:
         fig = go.Figure()
@@ -544,12 +591,8 @@ class TimeSeriesChart(Chart):
             line = dict(color=self._color) if self._color else None
             fig.add_trace(go.Scatter(x=curve.index, y=curve.values, mode="lines", name=name, line=line))
         fig.update_layout(title=self.title)
-        if self._invert:
-            # Picked up automatically by ChartPipeline's/ChartOverlay's own
-            # axis-property-copy step (both already copy this figure's
-            # "yaxis" properties onto whichever shared axis this call ends
-            # up on) -- no separate plumbing needed in either of those.
-            fig.update_layout(yaxis=dict(autorange="reversed"))
+        if self._axis_title:
+            fig.update_layout(yaxis=dict(title=self._axis_title))
         return _apply_theme(fig)
 
 
@@ -559,8 +602,8 @@ def timeseries(
     *,
     axis: str = "left",
     layer: Optional[int] = None,
-    invert: bool = False,
     color: Optional[str] = None,
+    axis_title: Optional[str] = None,
 ) -> ChartCall:
     """The standalone/composable entry point for plotting raw series
     together -- same call/compose contract as every Chart here (this
@@ -570,22 +613,28 @@ def timeseries(
         timeseries([close, sma(close, 20), sma(close, 50)])    # several, each using its own .name
         timeseries({"SPY": close, "SMA 20": sma_20})           # explicit names
         timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")  # two rows, one figure
-        timeseries(spy) & timeseries(yield_, axis="right", invert=True)     # ONE row, dual y-axis overlay, yield axis flipped
-        timeseries(spy, color="white")                        # explicit line color, applied to every curve this call plots
+        timeseries(spy) & timeseries(yield_, axis="right").invert()     # ONE row, dual y-axis overlay, yield axis flipped
+        timeseries(spy, color="white", axis_title="Points")   # explicit line color + this axis' own title
 
     Different scales (e.g. price vs. a 0-100 RSI) can go on SEPARATE rows
     chained with `|`, or on the SAME row via `&` with `axis="right"` for
-    one of them (a dual-axis overlay) -- `axis`/`layer`/`invert` only
+    one of them (a dual-axis overlay) -- `axis`/`layer`/`axis_title` only
     matter for the latter; see ChartOverlay for what `axis`/`layer`
-    control. `invert=True` flips this series' own axis direction (e.g. a
-    yield you want displayed as visually "inverted" against a price).
+    control. To flip a series' own axis direction (e.g. a yield you want
+    displayed as visually "inverted" against a price), chain `.invert()`
+    onto the returned ChartCall rather than passing a kwarg here --
+    `timeseries(yield_).invert()`; it toggles, so `.invert().invert()`
+    cancels back to normal, and it works the same way on ANY chart, not
+    just this one. `axis_title` labels whichever axis (left or right)
+    this call ends up on -- set it once per side, on any ONE of the calls
+    sharing that side; the LAST one applied wins if more than one sets it.
     `color` sets every curve THIS call plots to the same explicit color
     (omit it to keep Plotly's own auto-cycling palette); for per-curve
     colors within one multi-series call, set them on the returned figure
     directly instead (`fig = timeseries(df).render(); ...`). For a global
     dark/light look across every chart instead of per-line colors, see
     `set_theme()`."""
-    return TimeSeriesChart(title=title, invert=invert, color=color)(series, axis=axis, layer=layer)
+    return TimeSeriesChart(title=title, color=color, axis_title=axis_title)(series, axis=axis, layer=layer)
 
 
 _Region = Tuple[Any, Any]
