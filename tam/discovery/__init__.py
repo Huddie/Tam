@@ -11,10 +11,10 @@ immutable by default -- every call creates a new version; pass the same
     print(result.url)
 
 Also accepts anything satisfying the Uploadable protocol (a Plotly Figure,
-or a tam.backtest.tearsheet ChartCall/ChartPipeline -- see Uploadable's own
+or a tam.charting ChartCall/ChartPipeline -- see Uploadable's own
 docstring) directly, no need to render to a file first:
 
-    from tam.backtest.tearsheet import timeseries
+    from tam.charting import timeseries
     upload(timeseries(my_series), title="...")
 
 Needs a publishing token -- see tam.discovery.auth for how one gets found

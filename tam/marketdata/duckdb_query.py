@@ -151,6 +151,28 @@ def _register_macros(con: "duckdb.DuckDBPyConnection") -> None:
     con.sql(_MACROS)
 
 
+def _configure_connection(con: "duckdb.DuckDBPyConnection") -> None:
+    """Disables DuckDB's own progress bar, then registers every SQL macro
+    via _register_macros(). The progress bar isn't just cosmetic noise --
+    confirmed live (a real Colab notebook session) that leaving it
+    enabled corrupts a SUBSEQUENT Plotly chart's rendering in the SAME
+    cell (an empty chart frame, no traces drawn, no Python-visible error
+    anywhere): DuckDB's progress bar writes directly to the underlying
+    stdout FILE DESCRIPTOR in native code, bypassing Python's own
+    sys.stdout entirely (redirecting sys.stdout never reveals it --
+    confirmed live, that capture came back completely empty even while
+    the bug was reproducing). Jupyter/Colab's own output capture still
+    picks it up at the fd level, and that raw, dynamically-redrawn
+    (carriage-return-based) content getting interleaved into the same
+    cell's output stream as a LATER rich-display call is what breaks the
+    chart. Disabling it here means every open_duckdb()/explorer_client
+    connection is safe by default -- nobody querying
+    tam.research.data.sec or tam.marketdata from a notebook should have
+    to discover this themselves."""
+    con.sql("SET enable_progress_bar = false; SET enable_progress_bar_print = false;")
+    _register_macros(con)
+
+
 def open_duckdb(
     *,
     bucket: Optional[str] = None,
@@ -204,6 +226,6 @@ def open_duckdb(
     con.sql(f"SET VARIABLE minute_root = '{minute_root}'")
     con.sql(f"SET VARIABLE eod_root = '{eod_root}'")
     con.sql(f"SET VARIABLE sec_root = '{sec_root}'")
-    _register_macros(con)
+    _configure_connection(con)
     return con
 

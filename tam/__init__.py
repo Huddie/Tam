@@ -14,8 +14,8 @@
     c1(series) | c2(series) | c3(series)
 
     # Plot raw series (price + indicator overlays, a FRED series, ...) --
-    # see tam.backtest.tearsheet.timeseries for the full pattern:
-    from tam.backtest.tearsheet import timeseries
+    # see tam.charting.timeseries for the full pattern:
+    from tam.charting import timeseries
     timeseries([close, sma_20]) | timeseries(rsi_14, title="RSI")
 
     # Resolve a third-party secret (env var, or a Colab secret) without

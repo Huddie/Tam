@@ -19,7 +19,7 @@ class Uploadable(Protocol):
     plain path to an existing .html file: must produce a self-contained
     HTML string via to_html(full_html=..., include_plotlyjs=...) -- the
     exact signature plotly.graph_objects.Figure already has, and the one
-    tam.backtest.tearsheet.ChartCall/ChartPipeline both implement by
+    tam.charting.ChartCall/ChartPipeline both implement by
     delegating to their own rendered Figure.
 
     A Protocol (structural typing), not an ABC, on purpose -- go.Figure is

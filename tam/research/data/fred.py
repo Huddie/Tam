@@ -117,7 +117,7 @@ class _Fred:
         """Fetches `series_id` (a raw FRED id like "DGS10", or a
         Fred.Datasets member) as a pandas Series indexed by date, named
         with its human-readable label when known (so it flows straight
-        into tam.backtest.tearsheet.timeseries()/plots with a readable
+        into tam.charting.timeseries()/plots with a readable
         legend entry instead of a raw FRED code). `start`/`end` are passed
         straight through to fredapi (omit either for "no bound" -- FRED's
         own default is the series' full available history).

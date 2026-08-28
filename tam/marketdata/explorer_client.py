@@ -38,7 +38,7 @@ import pandas as pd
 import requests
 
 from ..secrets import Secrets, resolve_chain
-from .duckdb_query import _register_macros
+from .duckdb_query import _configure_connection
 
 # TAM_PAT ("personal access token"), not something Data-Explorer-specific --
 # the same token also authenticates against Discovery (tam.discovery.auth
@@ -208,7 +208,7 @@ class SqlConnection:
         con = duckdb.connect()
         con.sql("INSTALL httpfs; LOAD httpfs;")
         self._apply_credentials(con)
-        _register_macros(con)
+        _configure_connection(con)
         return con
 
     def _apply_credentials(self, con: Any) -> None:

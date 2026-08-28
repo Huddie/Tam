@@ -409,7 +409,7 @@ ready quarterly trend is then just:
 ```python
 import pandas as pd
 from tam.research.data.sec import SEC
-from tam.backtest.tearsheet import timeseries
+from tam.charting import timeseries
 
 sec = SEC()
 financials = sec.financials(tickers=["AAPL"], line_items=["revenue", "net_income", "operating_cash_flow"])
@@ -427,11 +427,12 @@ timeseries([series_for("revenue", "Revenue"), series_for("net_income", "Net Inco
 `tam.backtest.tearsheet`'s chart classes (`CumulativeReturnsChart`, `DrawdownChart`,
 ...) all normalize their input as an equity curve (% return, drawdown, ...) --
 the right tool for backtest analytics, the wrong one for just plotting raw values
-side by side. `timeseries()` is the same callable/composable chart API with no
-normalization applied:
+side by side. `timeseries()` (in `tam.charting`, since it's a general-purpose
+plotting entry point, not backtest-specific) is the same callable/composable
+chart API with no normalization applied:
 
 ```python
-from tam.backtest.tearsheet import timeseries
+from tam.charting import timeseries
 from tam.strategy.indicators import sma, rsi
 
 close = con.sql("SELECT date, close FROM eod_bars('SPY') ORDER BY date").df().set_index("date")["close"]
