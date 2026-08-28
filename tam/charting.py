@@ -266,7 +266,19 @@ class ChartOverlay:
             for shape in sub.layout.shapes:
                 shape_dict = shape.to_plotly_json()
                 shape_dict.pop("xref", None)
-                shape_dict.pop("yref", None)
+                # add_vrect()'s own default is "y domain" (span 0-1 of the
+                # panel's drawn height regardless of data scale) -- dropping
+                # yref entirely instead of restoring that would leave it
+                # defaulting to a bare data-coordinate reference. Confirmed
+                # live: for a real price series (e.g. SPY, ~90-770), a shape
+                # left at data-coordinate y0=0/y1=1 became a razor-thin
+                # sliver near zero and dragged the axis's own autorange
+                # around with it, instead of shading the full row. "y domain"
+                # (not "y2 domain") on purpose -- primary and secondary axes
+                # share the identical physical plot rectangle in ONE
+                # (non-subplot) figure, so either reference lands in the same
+                # place; anchoring to the primary one is simplest.
+                shape_dict["yref"] = "y domain"
                 if trace_layers:
                     shape_dict["layer"] = "below" if call.layer <= min(trace_layers) else "above"
                 fig.add_shape(shape_dict)
@@ -364,6 +376,8 @@ class ChartPipeline:
         )
 
         for row_idx, sub in enumerate(sub_figs, start=1):
+            subplot = composite.get_subplot(row=row_idx, col=1)
+
             for trace in sub.data:
                 # A trace on the source figure's OWN secondary axis (yaxis="y2")
                 # needs secondary_y=True here too, or it lands on this row's
@@ -377,12 +391,22 @@ class ChartPipeline:
             # Re-adding via add_shape(..., row=, col=) lets Plotly recompute
             # the right xref/yref for THIS row itself; passing through the
             # original xref/yref instead would anchor every shape to row 1's
-            # axes regardless of which row it actually came from.
+            # axes regardless of which row it actually came from. BUT
+            # add_shape(row=,col=) resolves yref to a bare data-coordinate
+            # reference (e.g. "y3"), not the "y3 domain" the ORIGINAL shape
+            # had (add_vrect()'s own default, meaning "span 0-1 of this
+            # axis's own drawn height regardless of data scale") -- confirmed
+            # live: without forcing " domain" back on, a rect meant to shade
+            # the full row height instead became a razor-thin sliver near
+            # y=0 in whatever data units that row's real trace happens to
+            # use, and dragged the axis's own autorange around with it.
             for shape in sub.layout.shapes:
                 shape_dict = shape.to_plotly_json()
                 shape_dict.pop("xref", None)
                 shape_dict.pop("yref", None)
                 composite.add_shape(shape_dict, row=row_idx, col=1)
+                if hasattr(subplot, "yaxis"):
+                    composite.layout.shapes[-1].yref = f"{subplot.yaxis.plotly_name.replace('yaxis', 'y')} domain"
 
             # Copy per-subplot layout props (yaxis titles, types, tick formats)
             # from the source figure's single-panel layout into the right slot
@@ -393,7 +417,6 @@ class ChartPipeline:
             # yaxis2 for its own secondary axis), so a fixed suffix scheme
             # breaks the moment any earlier row has a secondary axis at all.
             src_layout = sub.layout.to_plotly_json()
-            subplot = composite.get_subplot(row=row_idx, col=1)
             if hasattr(subplot, "xaxis"):  # SubplotXY -- not a table cell (SubplotDomain has no axes)
                 for axis_obj, src_key in ((subplot.xaxis, "xaxis"), (subplot.yaxis, "yaxis")):
                     src_axis = src_layout.get(src_key, {})
