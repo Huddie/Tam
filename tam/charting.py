@@ -47,6 +47,14 @@ series can be plotted without importing anything backtest-related):
     timeseries([close, sma(close, 20), sma(close, 50)])
     timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")
     timeseries(spy) | rect(divergence_blocks, title="Divergence") | timeseries(yield_)
+
+Every chart above renders under the current global theme ("light" by
+default, matching each one's previous plain plotly_white styling) --
+set_theme("dark") switches every chart from then on for the rest of the
+process, or `%load_ext tam.charting` + `%darkmode`/`%lightmode`/
+`%theme dark` for the same thing as a notebook-cell magic instead of a
+Python call. Per-line coloring is separate: `timeseries(series,
+color="white")`.
 """
 from __future__ import annotations
 
@@ -87,6 +95,69 @@ def _to_curves(series: _SeriesInput) -> Dict[str, pd.Series]:
     if isinstance(series, pd.DataFrame):
         return {str(name): series[name] for name in series.columns}
     return dict(series)
+
+
+_THEMES: Dict[str, Dict[str, Any]] = {
+    "light": {"template": "plotly_white"},
+    "dark": {
+        "template": "plotly_dark",
+        "paper_bgcolor": "#12121f",
+        "plot_bgcolor": "#12121f",
+        "font": {"color": "white"},
+    },
+}
+_current_theme = "light"
+
+
+def set_theme(name: str) -> None:
+    """Sets the theme EVERY chart in this process renders with from now on
+    (until changed again, or the process restarts) -- "light" (the
+    default; matches every chart's previous plain plotly_white styling)
+    or "dark". Global and process-wide on purpose, not a per-call
+    `theme=` kwarg: set once at the top of a notebook rather than passing
+    it to every timeseries()/rect() call for the rest of the session."""
+    if name not in _THEMES:
+        raise ValueError(f"unknown theme {name!r}; available: {sorted(_THEMES)}")
+    global _current_theme
+    _current_theme = name
+
+
+def _apply_theme(fig: go.Figure) -> go.Figure:
+    fig.update_layout(**_THEMES[_current_theme])
+    return fig
+
+
+def _theme_magic(line: str) -> None:
+    set_theme(line.strip())
+
+
+def _darkmode_magic(_line: str) -> None:
+    set_theme("dark")
+
+
+def _lightmode_magic(_line: str) -> None:
+    set_theme("light")
+
+
+def load_ipython_extension(ipython) -> None:
+    """`%load_ext tam.charting` -- registers `%theme <name>`, `%darkmode`,
+    `%lightmode` as line magics (notebook-cell sugar over set_theme()):
+
+        %load_ext tam.charting
+        %darkmode                  # same as set_theme("dark")
+        %lightmode                 # same as set_theme("light")
+        %theme dark                # same as set_theme("dark") -- line magics are
+                                    # space-separated ("%theme dark"), not "%theme=dark"
+
+    Deliberately does NOT import IPython at module scope -- same reasoning
+    as tam.notebook.magic's own load_ipython_extension (see that module's
+    docstring): this only ever runs from INSIDE IPython's own %load_ext
+    machinery, which always passes a live `ipython` shell object in, so
+    there's nothing to import here -- `import tam.charting` itself stays
+    safe even where IPython isn't installed."""
+    ipython.register_magic_function(_theme_magic, "line", "theme")
+    ipython.register_magic_function(_darkmode_magic, "line", "darkmode")
+    ipython.register_magic_function(_lightmode_magic, "line", "lightmode")
 
 
 class Chart(ABC):
@@ -303,8 +374,8 @@ class ChartOverlay:
                 excluded = ("domain", "anchor", "overlaying", "side")
                 getattr(fig.layout, target_y_key).update({k: v for k, v in src_yaxis.items() if k not in excluded})
 
-        fig.update_layout(title=self.title, template="plotly_white", showlegend=True)
-        return fig
+        fig.update_layout(title=self.title, showlegend=True)
+        return _apply_theme(fig)
 
     def show(self) -> None:
         self.render().show()
@@ -437,11 +508,10 @@ class ChartPipeline:
                     secondary_subplot.yaxis.update({k: v for k, v in src_axis.items() if k not in excluded})
 
         composite.update_layout(
-            template="plotly_white",
             height=max(350 * n, 600),
             showlegend=True,
         )
-        return composite
+        return _apply_theme(composite)
 
     def show(self) -> None:
         """Display the composite figure."""
@@ -463,26 +533,34 @@ class TimeSeriesChart(Chart):
     `timeseries()` below is the ergonomic standalone entry point most
     callers should use instead of constructing this directly."""
 
-    def __init__(self, title: str = "Time Series", invert: bool = False):
+    def __init__(self, title: str = "Time Series", invert: bool = False, color: Optional[str] = None):
         self.title = title
         self._invert = invert
+        self._color = color
 
     def render(self, series: _SeriesInput) -> go.Figure:
         fig = go.Figure()
         for name, curve in _to_curves(series).items():
-            fig.add_trace(go.Scatter(x=curve.index, y=curve.values, mode="lines", name=name))
-        fig.update_layout(title=self.title, template="plotly_white")
+            line = dict(color=self._color) if self._color else None
+            fig.add_trace(go.Scatter(x=curve.index, y=curve.values, mode="lines", name=name, line=line))
+        fig.update_layout(title=self.title)
         if self._invert:
             # Picked up automatically by ChartPipeline's/ChartOverlay's own
             # axis-property-copy step (both already copy this figure's
             # "yaxis" properties onto whichever shared axis this call ends
             # up on) -- no separate plumbing needed in either of those.
             fig.update_layout(yaxis=dict(autorange="reversed"))
-        return fig
+        return _apply_theme(fig)
 
 
 def timeseries(
-    series: _SeriesInput, title: str = "Time Series", *, axis: str = "left", layer: Optional[int] = None, invert: bool = False
+    series: _SeriesInput,
+    title: str = "Time Series",
+    *,
+    axis: str = "left",
+    layer: Optional[int] = None,
+    invert: bool = False,
+    color: Optional[str] = None,
 ) -> ChartCall:
     """The standalone/composable entry point for plotting raw series
     together -- same call/compose contract as every Chart here (this
@@ -493,14 +571,21 @@ def timeseries(
         timeseries({"SPY": close, "SMA 20": sma_20})           # explicit names
         timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")  # two rows, one figure
         timeseries(spy) & timeseries(yield_, axis="right", invert=True)     # ONE row, dual y-axis overlay, yield axis flipped
+        timeseries(spy, color="white")                        # explicit line color, applied to every curve this call plots
 
     Different scales (e.g. price vs. a 0-100 RSI) can go on SEPARATE rows
     chained with `|`, or on the SAME row via `&` with `axis="right"` for
     one of them (a dual-axis overlay) -- `axis`/`layer`/`invert` only
     matter for the latter; see ChartOverlay for what `axis`/`layer`
     control. `invert=True` flips this series' own axis direction (e.g. a
-    yield you want displayed as visually "inverted" against a price)."""
-    return TimeSeriesChart(title=title, invert=invert)(series, axis=axis, layer=layer)
+    yield you want displayed as visually "inverted" against a price).
+    `color` sets every curve THIS call plots to the same explicit color
+    (omit it to keep Plotly's own auto-cycling palette); for per-curve
+    colors within one multi-series call, set them on the returned figure
+    directly instead (`fig = timeseries(df).render(); ...`). For a global
+    dark/light look across every chart instead of per-line colors, see
+    `set_theme()`."""
+    return TimeSeriesChart(title=title, invert=invert, color=color)(series, axis=axis, layer=layer)
 
 
 _Region = Tuple[Any, Any]

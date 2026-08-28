@@ -20,10 +20,22 @@ from tam.charting import (
     TimeSeriesChart,
     ZScoreDivergence,
     find_divergence,
+    load_ipython_extension,
     rect,
+    set_theme,
     timeseries,
 )
+import tam.charting as charting
 from tam.registry import Registry
+
+
+@pytest.fixture(autouse=True)
+def _reset_theme():
+    """set_theme() is deliberately global/process-wide (see its own
+    docstring) -- reset it after every test so one test's %darkmode
+    doesn't leak into the next test's assumptions about the default."""
+    yield
+    charting._current_theme = "light"
 
 
 def _series(name="a", start_value=100.0):
@@ -353,3 +365,88 @@ def test_find_divergence_result_is_directly_usable_by_rect():
     regions = find_divergence(a, b, ZScoreDivergence(threshold=1.0, window=10))
     fig = rect(regions).render()
     assert len(fig.layout.shapes) == len(regions)
+
+
+def test_default_theme_is_light():
+    fig = timeseries(_series()).render()
+    assert fig.layout.template.layout.paper_bgcolor in (None, "white", "#FFFFFF")
+
+
+def test_set_theme_dark_changes_every_subsequent_chart():
+    set_theme("dark")
+    fig = timeseries(_series()).render()
+    assert fig.layout.paper_bgcolor == "#12121f"
+    assert fig.layout.font.color == "white"
+
+
+def test_set_theme_applies_across_pipeline_and_overlay_too():
+    set_theme("dark")
+    assert timeseries(_series("a")).render().layout.paper_bgcolor == "#12121f"
+    pipeline_fig = (timeseries(_series("a")) | timeseries(_series("b"))).render()
+    assert pipeline_fig.layout.paper_bgcolor == "#12121f"
+    overlay_fig = (timeseries(_series("a")) & timeseries(_series("b"))).render()
+    assert overlay_fig.layout.paper_bgcolor == "#12121f"
+
+
+def test_set_theme_invalid_name_raises():
+    with pytest.raises(ValueError):
+        set_theme("neon")
+
+
+def test_timeseries_color_applies_to_the_line():
+    fig = timeseries(_series(), color="white").render()
+    assert fig.data[0].line.color == "white"
+
+
+def test_timeseries_no_color_leaves_plotlys_default_cycling():
+    fig = timeseries(_series()).render()
+    assert fig.data[0].line.color is None
+
+
+class _FakeIPython:
+    def __init__(self):
+        self.registered = []
+
+    def register_magic_function(self, func, magic_kind, magic_name):
+        self.registered.append((func, magic_kind, magic_name))
+
+
+def test_load_ipython_extension_registers_theme_magics_as_line_magics():
+    ipython = _FakeIPython()
+
+    load_ipython_extension(ipython)
+
+    names = {name for _, _, name in ipython.registered}
+    assert names == {"theme", "darkmode", "lightmode"}
+    assert all(kind == "line" for _, kind, _ in ipython.registered)
+
+
+def test_darkmode_magic_sets_the_dark_theme():
+    ipython = _FakeIPython()
+    load_ipython_extension(ipython)
+    darkmode_magic = next(func for func, _, name in ipython.registered if name == "darkmode")
+
+    darkmode_magic("")
+
+    assert timeseries(_series()).render().layout.paper_bgcolor == "#12121f"
+
+
+def test_lightmode_magic_resets_to_the_light_theme():
+    set_theme("dark")
+    ipython = _FakeIPython()
+    load_ipython_extension(ipython)
+    lightmode_magic = next(func for func, _, name in ipython.registered if name == "lightmode")
+
+    lightmode_magic("")
+
+    assert charting._current_theme == "light"
+
+
+def test_theme_magic_parses_its_line_argument():
+    ipython = _FakeIPython()
+    load_ipython_extension(ipython)
+    theme_magic = next(func for func, _, name in ipython.registered if name == "theme")
+
+    theme_magic("dark")
+
+    assert charting._current_theme == "dark"
