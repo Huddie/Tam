@@ -463,18 +463,27 @@ class TimeSeriesChart(Chart):
     `timeseries()` below is the ergonomic standalone entry point most
     callers should use instead of constructing this directly."""
 
-    def __init__(self, title: str = "Time Series"):
+    def __init__(self, title: str = "Time Series", invert: bool = False):
         self.title = title
+        self._invert = invert
 
     def render(self, series: _SeriesInput) -> go.Figure:
         fig = go.Figure()
         for name, curve in _to_curves(series).items():
             fig.add_trace(go.Scatter(x=curve.index, y=curve.values, mode="lines", name=name))
         fig.update_layout(title=self.title, template="plotly_white")
+        if self._invert:
+            # Picked up automatically by ChartPipeline's/ChartOverlay's own
+            # axis-property-copy step (both already copy this figure's
+            # "yaxis" properties onto whichever shared axis this call ends
+            # up on) -- no separate plumbing needed in either of those.
+            fig.update_layout(yaxis=dict(autorange="reversed"))
         return fig
 
 
-def timeseries(series: _SeriesInput, title: str = "Time Series", *, axis: str = "left", layer: Optional[int] = None) -> ChartCall:
+def timeseries(
+    series: _SeriesInput, title: str = "Time Series", *, axis: str = "left", layer: Optional[int] = None, invert: bool = False
+) -> ChartCall:
     """The standalone/composable entry point for plotting raw series
     together -- same call/compose contract as every Chart here (this
     module's own docstring above covers the general pattern):
@@ -483,13 +492,15 @@ def timeseries(series: _SeriesInput, title: str = "Time Series", *, axis: str = 
         timeseries([close, sma(close, 20), sma(close, 50)])    # several, each using its own .name
         timeseries({"SPY": close, "SMA 20": sma_20})           # explicit names
         timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")  # two rows, one figure
-        timeseries(spy) & timeseries(yield_, axis="right")     # ONE row, dual y-axis overlay (see ChartOverlay)
+        timeseries(spy) & timeseries(yield_, axis="right", invert=True)     # ONE row, dual y-axis overlay, yield axis flipped
 
     Different scales (e.g. price vs. a 0-100 RSI) can go on SEPARATE rows
     chained with `|`, or on the SAME row via `&` with `axis="right"` for
-    one of them (a dual-axis overlay) -- `axis`/`layer` only matter for
-    the latter; see ChartOverlay for what they control."""
-    return TimeSeriesChart(title=title)(series, axis=axis, layer=layer)
+    one of them (a dual-axis overlay) -- `axis`/`layer`/`invert` only
+    matter for the latter; see ChartOverlay for what `axis`/`layer`
+    control. `invert=True` flips this series' own axis direction (e.g. a
+    yield you want displayed as visually "inverted" against a price)."""
+    return TimeSeriesChart(title=title, invert=invert)(series, axis=axis, layer=layer)
 
 
 _Region = Tuple[Any, Any]

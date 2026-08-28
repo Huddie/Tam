@@ -210,6 +210,20 @@ def test_rect_composes_with_timeseries_and_preserves_shapes_in_composite():
     assert len(fig.data) == 2
 
 
+def test_rect_composed_via_pipe_uses_a_domain_relative_yref_not_a_data_coordinate():
+    """Regression: add_shape(row=,col=) resolves yref to a bare data-
+    coordinate reference (e.g. "y3"), not add_vrect()'s own default of
+    "y3 domain" (0-1 fraction of the row's own height, independent of
+    whatever scale that row's real data uses). Confirmed live: for a
+    price series with values in the hundreds, a shape left at the bare
+    data-coordinate y0=0/y1=1 became a razor-thin sliver near zero instead
+    of shading the row's full height, and dragged the axis's own
+    autorange around with it."""
+    pipeline = timeseries(_series("a", start_value=500.0)) | rect([(date(2024, 1, 1), date(2024, 1, 5))])
+    fig = pipeline.render()
+    assert fig.layout.shapes[0].yref.endswith(" domain")
+
+
 def test_and_returns_a_chart_overlay():
     overlay = timeseries(_series("a")) & timeseries(_series("b"))
     assert isinstance(overlay, ChartOverlay)
@@ -235,6 +249,21 @@ def test_overlay_axis_right_puts_a_series_on_the_secondary_axis():
     assert fig.layout.yaxis2.side == "right"
 
 
+def test_timeseries_invert_reverses_its_own_standalone_axis():
+    fig = timeseries(_series("a"), invert=True).render()
+    assert fig.layout.yaxis.autorange == "reversed"
+
+
+def test_overlay_invert_flips_the_axis_a_member_actually_ends_up_on():
+    """invert=True on the RIGHT-axis member must flip yaxis2, not the
+    LEFT axis shared by the other member -- confirmed by asserting the
+    left axis stays untouched."""
+    overlay = timeseries(_series("a", start_value=100.0)) & timeseries(_series("b", start_value=5.0), axis="right", invert=True)
+    fig = overlay.render()
+    assert fig.layout.yaxis2.autorange == "reversed"
+    assert fig.layout.yaxis.autorange is None
+
+
 def test_overlay_does_not_let_a_shape_only_members_axis_styling_leak_onto_a_shared_real_axis():
     """Regression: RectChart's own standalone render() hides its axis
     (visible=False, a dummy [0,1] range) since that's meaningless on its
@@ -244,6 +273,20 @@ def test_overlay_does_not_let_a_shape_only_members_axis_styling_leak_onto_a_shar
     overlay = timeseries(_series("a")) & rect([(date(2024, 1, 1), date(2024, 1, 5))], layer=-1)
     fig = overlay.render()
     assert fig.layout.yaxis.visible is not False
+    assert fig.layout.yaxis.range is None
+
+
+def test_overlay_rect_uses_a_domain_relative_yref_not_a_data_coordinate():
+    """Regression: dropping a shape's yref entirely (rather than
+    restoring add_vrect()'s own "y domain" default) left it implicitly
+    data-coordinate-referenced. For a real price series in the hundreds,
+    that turned the shading into a razor-thin sliver near y=0 and pulled
+    the shared axis's own autorange along with it, instead of shading the
+    full panel height as intended."""
+    overlay = timeseries(_series("a", start_value=500.0)) & rect([(date(2024, 1, 1), date(2024, 1, 5))], layer=-1)
+    fig = overlay.render()
+    assert fig.layout.shapes[0].yref == "y domain"
+    assert fig.layout.yaxis.autorange is None
     assert fig.layout.yaxis.range is None
 
 
