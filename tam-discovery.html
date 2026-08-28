@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="tam-data-explorer" href="tam-data-explorer.html"><link rel="prev" title="tam" href="tam.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="tam-data-explorer" href="tam-data-explorer.html"><link rel="prev" title="SEC" href="research-sec.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>tam-discovery - tam</title>
+        <title>Discovery - tam</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -190,9 +190,30 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="tam.html">tam</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">tam-discovery</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks.html">Notebooks (Colab / Jupyter)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Core library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="strategy.html">Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio &amp; Trader</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backtest.html">Backtest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reporting.html">Reporting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="charting.html">Charting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basket.html">Basket research</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data &amp; research</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="marketdata.html">Market data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="research-fred.html">FRED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="research-sec.html">SEC</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Sites</span></p>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Discovery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tam-data-explorer.html">tam-data-explorer</a></li>
 </ul>
 
@@ -232,33 +253,92 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="tam-discovery">
-<h1>tam-discovery<a class="headerlink" href="#tam-discovery" title="Link to this heading">¶</a></h1>
+          <section id="discovery">
+<h1>Discovery<a class="headerlink" href="#discovery" title="Link to this heading">¶</a></h1>
 <p>A private, GitHub-authenticated catalog for publishing and browsing static
 HTML research artifacts — backtest dashboards by default, or any
-self-contained <code class="docutils literal notranslate"><span class="pre">.html</span></code> file. Publishing is immutable: every upload creates a
-new version with its own permanent URL; an optional stable <code class="docutils literal notranslate"><span class="pre">name</span></code> always
+self-contained <code class="docutils literal notranslate"><span class="pre">.html</span></code> file. Publishing is immutable: every upload creates
+a new version with its own permanent URL; an optional stable <code class="docutils literal notranslate"><span class="pre">name</span></code> always
 resolves to the latest version.</p>
-<p>Cloudflare Worker (TypeScript, D1, R2, Access) + React UI, in <code class="docutils literal notranslate"><span class="pre">tam-discovery/</span></code>.
-Full deployment runbook: <a class="reference external" href="https://github.com/Huddie/Tam/blob/main/tam-discovery/README.md">tam-discovery/README.md</a>.</p>
+<p>Cloudflare Worker (TypeScript, D1, R2, Access) + React UI, in
+<code class="docutils literal notranslate"><span class="pre">tam-discovery/</span></code>. This page covers the Python SDK / CLI <code class="docutils literal notranslate"><span class="pre">tam.discovery</span></code>
+talks to it with; for the Worker’s own deployment runbook see
+<a class="reference external" href="https://github.com/Huddie/Tam/blob/main/tam-discovery/README.md">tam-discovery/README.md</a>.</p>
 <section id="publishing-from-python">
 <h2>Publishing from Python<a class="headerlink" href="#publishing-from-python" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.discovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">upload</span>
 
-<span class="n">upload</span><span class="p">(</span><span class="s2">"examples/output/report.html"</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"MA crossover"</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">"demo"</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">upload</span><span class="p">(</span><span class="s2">"report.html"</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Earnings Reaction"</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">"earnings"</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>Publishes anything satisfying the <code class="docutils literal notranslate"><span class="pre">Uploadable</span></code> protocol directly — a
+Plotly <code class="docutils literal notranslate"><span class="pre">Figure</span></code>, or a <a class="reference internal" href="charting.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.charting</span></code></span></a> <code class="docutils literal notranslate"><span class="pre">ChartCall</span></code>/
+<code class="docutils literal notranslate"><span class="pre">ChartPipeline</span></code> — no need to render to a file first:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">timeseries</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.discovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">upload</span>
+
+<span class="n">upload</span><span class="p">(</span><span class="n">timeseries</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Price"</span><span class="p">)</span> <span class="o">|</span> <span class="n">timeseries</span><span class="p">(</span><span class="n">rsi_14</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"RSI"</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s2">"AAPL + RSI"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">upload()</span></code> returns an <code class="docutils literal notranslate"><span class="pre">UploadResult(url,</span> <span class="pre">id,</span> <span class="pre">version,</span> <span class="pre">title,</span> <span class="pre">type)</span></code>.
+Full signature:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">upload</span><span class="p">(</span>
+    <span class="n">path_or_figure</span><span class="p">,</span>             <span class="c1"># a path to a .html file, or an Uploadable</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"dashboard"</span><span class="p">,</span>    <span class="c1"># groups this with other discoveries of the same kind, free-form</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>    <span class="c1"># a stable slug -- publishing again with the same name adds a version, not a new discovery</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">source_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>   <span class="c1"># recorded verbatim as provenance, e.g. the notebook/script that generated this</span>
+    <span class="n">token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>         <span class="c1"># overrides the usual token resolution</span>
+    <span class="n">api_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>       <span class="c1"># overrides TAM_DISCOVERY_API_URL</span>
+    <span class="n">capture_git</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>         <span class="c1"># auto-captures commit/branch/repo/dirty-tree from the CURRENT process's cwd</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Re-publishing byte-identical content is cheap, not just correct: the
+server hashes the artifact and short-circuits before any upload happens if
+it’s already seen those exact bytes — either a pure no-op (same discovery,
+same content) or a new version row pointed at an already-existing R2
+object (different discovery, same content) — never re-uploading the same
+bytes twice.</p>
 </section>
 <section id="publishing-from-the-cli">
 <h2>Publishing from the CLI<a class="headerlink" href="#publishing-from-the-cli" title="Link to this heading">¶</a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">TAM_DISCOVERY_API_URL</span><span class="o">=</span>https://discovery.example.com
 uv<span class="w"> </span>run<span class="w"> </span>upload-discovery<span class="w"> </span>login
-uv<span class="w"> </span>run<span class="w"> </span>upload-discovery<span class="w"> </span>examples/output/report.html<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Smoke test"</span><span class="w"> </span>--tag<span class="w"> </span>demo
+uv<span class="w"> </span>run<span class="w"> </span>upload-discovery<span class="w"> </span>report.html<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Smoke test"</span><span class="w"> </span>--tag<span class="w"> </span>demo<span class="w"> </span>--tag<span class="w"> </span>earnings
 </pre></div>
 </div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>upload-discovery<span class="w"> </span>list<span class="w"> </span>-q<span class="w"> </span><span class="s2">"earnings"</span><span class="w"> </span>--tag<span class="w"> </span>earnings<span class="w"> </span>--sort<span class="w"> </span>updated
+upload-discovery<span class="w"> </span>info<span class="w"> </span>&lt;name-or-id&gt;
+upload-discovery<span class="w"> </span>versions<span class="w"> </span>&lt;name-or-id&gt;
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">upload-discovery</span> <span class="pre">&lt;path&gt;</span> <span class="pre">...</span></code> is shorthand for <code class="docutils literal notranslate"><span class="pre">upload-discovery</span> <span class="pre">publish</span> <span class="pre">&lt;path&gt;</span> <span class="pre">...</span></code> — the subcommand name is optional when the first argument
+looks like a file, not a flag.</p>
 </section>
-<section id="local-development">
-<h2>Local development<a class="headerlink" href="#local-development" title="Link to this heading">¶</a></h2>
+<section id="authentication">
+<h2>Authentication<a class="headerlink" href="#authentication" title="Link to this heading">¶</a></h2>
+<p>Resolution order (<code class="docutils literal notranslate"><span class="pre">tam.discovery.auth.resolve_token</span></code>), same for the Python
+SDK and the CLI:</p>
+<ol class="arabic simple">
+<li><p>An explicit <code class="docutils literal notranslate"><span class="pre">token=</span></code>/<code class="docutils literal notranslate"><span class="pre">--token</span></code> argument.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">TAM_PAT</span></code> environment variable (directly, or via a local <code class="docutils literal notranslate"><span class="pre">.env</span></code>
+file) — the same token also authenticates
+<a class="reference internal" href="tam-data-explorer.html"><span class="std std-doc">Data Explorer</span></a>, hence the generic name.</p></li>
+<li><p>A Colab secret named <code class="docutils literal notranslate"><span class="pre">TAM_PAT</span></code>, if running in Colab.</p></li>
+<li><p>Whatever <code class="docutils literal notranslate"><span class="pre">upload-discovery</span> <span class="pre">login</span></code> last saved to
+<code class="docutils literal notranslate"><span class="pre">~/.config/upload-discovery/token</span></code>.</p></li>
+</ol>
+<p>Create a token at your Discovery site’s <code class="docutils literal notranslate"><span class="pre">/settings/tokens</span></code> page (requires
+GitHub login).</p>
+</section>
+<section id="local-development-the-worker-itself">
+<h2>Local development (the Worker itself)<a class="headerlink" href="#local-development-the-worker-itself" title="Link to this heading">¶</a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>tam-discovery
 npm<span class="w"> </span>install
 npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w">     </span><span class="c1"># wrangler dev -- local Worker + SPA</span>
@@ -282,14 +362,14 @@ npm<span class="w"> </span><span class="nb">test</span><span class="w">        <
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="tam.html">
+          <a class="prev-page" href="research-sec.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">tam</div>
+                <div class="title">SEC</div>
                 
               </div>
             </a>
@@ -323,10 +403,11 @@ npm<span class="w"> </span><span class="nb">test</span><span class="w">        <
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">tam-discovery</a><ul>
+<li><a class="reference internal" href="#">Discovery</a><ul>
 <li><a class="reference internal" href="#publishing-from-python">Publishing from Python</a></li>
 <li><a class="reference internal" href="#publishing-from-the-cli">Publishing from the CLI</a></li>
-<li><a class="reference internal" href="#local-development">Local development</a></li>
+<li><a class="reference internal" href="#authentication">Authentication</a></li>
+<li><a class="reference internal" href="#local-development-the-worker-itself">Local development (the Worker itself)</a></li>
 </ul>
 </li>
 </ul>

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Getting started" href="getting-started.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Backtest" href="backtest.html"><link rel="prev" title="Strategy" href="strategy.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>tam</title>
+        <title>Portfolio &amp; Trader - tam</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -161,7 +161,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">tam</div></a>
+      <a href="index.html"><div class="brand">tam</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -180,7 +180,7 @@
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
       
-      <div class="sidebar-sticky"><a class="sidebar-brand" href="#">
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   <span class="sidebar-brand-text">tam</span>
   
@@ -196,10 +196,10 @@
 <li class="toctree-l1"><a class="reference internal" href="notebooks.html">Notebooks (Colab / Jupyter)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Core library</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="strategy.html">Strategy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio &amp; Trader</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Portfolio &amp; Trader</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backtest.html">Backtest</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reporting.html">Reporting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="charting.html">Charting</a></li>
@@ -235,7 +235,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="_sources/index.md.txt" title="View this page">
+  <a class="muted-link" href="_sources/portfolio.md.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -253,72 +253,38 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="tam">
-<h1>tam<a class="headerlink" href="#tam" title="Link to this heading">¶</a></h1>
-<p>Config-driven event backtesting for stocks/indices, plus two small sites
-built on top of the same market-data lake.</p>
-<p><code class="docutils literal notranslate"><span class="pre">tam</span></code> is published on PyPI as <code class="docutils literal notranslate"><span class="pre">tam-quant</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>tam-quant
+          <section id="portfolio-trader">
+<h1>Portfolio &amp; Trader<a class="headerlink" href="#portfolio-trader" title="Link to this heading">¶</a></h1>
+<p>The book your strategy trades against.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.portfolio.portfolio</span><span class="w"> </span><span class="kn">import</span> <span class="n">Portfolio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.trading.trader</span><span class="w"> </span><span class="kn">import</span> <span class="n">Trader</span>
+
+<span class="n">portfolio</span> <span class="o">=</span> <span class="n">Portfolio</span><span class="p">(</span><span class="n">portfolio_id</span><span class="p">,</span> <span class="n">cash</span><span class="o">=</span><span class="mf">10_000.0</span><span class="p">)</span>   <span class="c1"># tracks cash, positions, trade history</span>
+<span class="n">trader</span> <span class="o">=</span> <span class="n">Trader</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">portfolio</span><span class="p">)</span>           <span class="c1"># just pairs the two together</span>
 </pre></div>
 </div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Get started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks.html">Notebooks (Colab / Jupyter)</a></li>
-</ul>
+<p>You rarely touch <code class="docutils literal notranslate"><span class="pre">TradeGateway</span></code> directly — it’s what <code class="docutils literal notranslate"><span class="pre">self.trade.stocks(...)</span></code>
+inside a <code class="docutils literal notranslate"><span class="pre">Strategy</span></code> actually calls; it resolves <code class="docutils literal notranslate"><span class="pre">Qty</span></code> specs into share
+counts and mutates the right <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>.</p>
+<section id="transaction-costs">
+<h2>Transaction costs<a class="headerlink" href="#transaction-costs" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.portfolio.portfolio</span><span class="w"> </span><span class="kn">import</span> <span class="n">Portfolio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.portfolio.costs</span><span class="w"> </span><span class="kn">import</span> <span class="n">BpsCost</span>
+
+<span class="n">portfolio</span> <span class="o">=</span> <span class="n">Portfolio</span><span class="p">(</span><span class="s2">"main"</span><span class="p">,</span> <span class="n">cash</span><span class="o">=</span><span class="mf">10_000.0</span><span class="p">,</span> <span class="n">cost_model</span><span class="o">=</span><span class="n">BpsCost</span><span class="p">(</span><span class="n">rate</span><span class="o">=</span><span class="mf">0.0005</span><span class="p">))</span>  <span class="c1"># 5bps per fill</span>
+</pre></div>
 </div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Core library</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="strategy.html">Strategy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio &amp; Trader</a></li>
-<li class="toctree-l1"><a class="reference internal" href="backtest.html">Backtest</a></li>
-<li class="toctree-l1"><a class="reference internal" href="reporting.html">Reporting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="charting.html">Charting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="basket.html">Basket research</a></li>
-</ul>
+<p>Applied on every fill, both sides — a round trip (buy then sell, what an
+overnight strategy does daily) costs <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">rate</span></code> of notional. Defaults to
+<code class="docutils literal notranslate"><span class="pre">ZeroCost</span></code> (today’s behavior, unchanged) when omitted.</p>
+<p>Config-driven:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">backtest</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cost_model</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">bps</span><span class="p p-Indicator">,</span><span class="nt"> rate</span><span class="p">:</span><span class="w"> </span><span class="nv">0.0005</span><span class="p p-Indicator">}</span>
+</pre></div>
 </div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Data &amp; research</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="marketdata.html">Market data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="research-fred.html">FRED</a></li>
-<li class="toctree-l1"><a class="reference internal" href="research-sec.html">SEC</a></li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Sites</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="tam-discovery.html">Discovery</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tam-data-explorer.html">tam-data-explorer</a></li>
-</ul>
-</div>
-<section id="the-three-components">
-<h2>The three components<a class="headerlink" href="#the-three-components" title="Link to this heading">¶</a></h2>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Component</p></th>
-<th class="head"><p>What it is</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tam</span></code></p></td>
-<td><p>Python library — data ingestion, strategies, backtesting, reporting</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="tam-discovery.html"><span class="std std-doc">tam-discovery</span></a></p></td>
-<td><p>Private catalog site for publishing backtest report HTML</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="tam-data-explorer.html"><span class="std std-doc">tam-data-explorer</span></a></p></td>
-<td><p>Browser + SQL client for the OHLCV minute-bar lake</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">tam-discovery</span></code> and <code class="docutils literal notranslate"><span class="pre">tam-data-explorer</span></code> are Cloudflare Workers + React UIs
-that <code class="docutils literal notranslate"><span class="pre">tam</span></code> talks to over HTTP — neither is required to use <code class="docutils literal notranslate"><span class="pre">tam</span></code> itself.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Registry(CostModel,</span> <span class="pre">...)</span></code> entry, same pattern as everything else
+pluggable here — register your own for a more realistic model, e.g.
+spread- or size-dependent.</p>
 </section>
 </section>
 
@@ -327,16 +293,26 @@ that <code class="docutils literal notranslate"><span class="pre">tam</span></co
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="getting-started.html">
+          <a class="next-page" href="backtest.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Getting started</div>
+                <div class="title">Backtest</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          
+          <a class="prev-page" href="strategy.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Strategy</div>
+                
+              </div>
+            </a>
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -367,8 +343,8 @@ that <code class="docutils literal notranslate"><span class="pre">tam</span></co
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">tam</a><ul>
-<li><a class="reference internal" href="#the-three-components">The three components</a></li>
+<li><a class="reference internal" href="#">Portfolio &amp; Trader</a><ul>
+<li><a class="reference internal" href="#transaction-costs">Transaction costs</a></li>
 </ul>
 </li>
 </ul>
