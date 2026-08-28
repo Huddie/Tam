@@ -208,3 +208,105 @@ def test_rect_composes_with_timeseries_and_preserves_shapes_in_composite():
     assert len(fig.layout.shapes) == 1
     # The middle row's own traces are empty, but the two timeseries rows still have theirs.
     assert len(fig.data) == 2
+
+
+def test_and_returns_a_chart_overlay():
+    overlay = timeseries(_series("a")) & timeseries(_series("b"))
+    assert isinstance(overlay, ChartOverlay)
+
+
+def test_overlay_renders_all_members_into_one_panel_not_separate_rows():
+    overlay = timeseries(_series("a")) & timeseries(_series("b"))
+    fig = overlay.render()
+    assert len(fig.data) == 2
+    # A single shared panel has no yaxis2/yaxis3 subplot-row axes at all -- both
+    # traces share plain "yaxis" (or leave it unset, i.e. the primary axis).
+    assert getattr(fig.data[0], "yaxis", None) in (None, "y")
+    assert getattr(fig.data[1], "yaxis", None) in (None, "y")
+
+
+def test_overlay_axis_right_puts_a_series_on_the_secondary_axis():
+    overlay = timeseries(_series("a", start_value=100.0)) & timeseries(_series("b", start_value=5.0), axis="right")
+    fig = overlay.render()
+    yaxes = {t.name: t.yaxis for t in fig.data}
+    assert yaxes["a"] in (None, "y")
+    assert yaxes["b"] == "y2"
+    assert fig.layout.yaxis2.overlaying == "y"
+    assert fig.layout.yaxis2.side == "right"
+
+
+def test_overlay_does_not_let_a_shape_only_members_axis_styling_leak_onto_a_shared_real_axis():
+    """Regression: RectChart's own standalone render() hides its axis
+    (visible=False, a dummy [0,1] range) since that's meaningless on its
+    own thin row -- but when overlaid via `&` with a real chart like
+    timeseries() on the SAME axis, that hidden/dummy styling must NOT
+    leak onto the shared axis and hide the real data's own axis too."""
+    overlay = timeseries(_series("a")) & rect([(date(2024, 1, 1), date(2024, 1, 5))], layer=-1)
+    fig = overlay.render()
+    assert fig.layout.yaxis.visible is not False
+    assert fig.layout.yaxis.range is None
+
+
+def test_overlay_rect_layer_below_all_traces_renders_as_shape_layer_below():
+    overlay = timeseries(_series("a"), layer=0) & rect([(date(2024, 1, 1), date(2024, 1, 5))], layer=-1)
+    fig = overlay.render()
+    assert fig.layout.shapes[0].layer == "below"
+
+
+def test_overlay_rect_layer_above_all_traces_renders_as_shape_layer_above():
+    overlay = timeseries(_series("a"), layer=0) & rect([(date(2024, 1, 1), date(2024, 1, 5))], layer=1)
+    fig = overlay.render()
+    assert fig.layout.shapes[0].layer == "above"
+
+
+def test_overlay_composes_with_pipe_as_one_row_item():
+    """(a & b) | c -- the overlay occupies row 1 as ONE unit, c gets row 2."""
+    pipeline = (timeseries(_series("a")) & timeseries(_series("b"))) | timeseries(_series("c"))
+    assert isinstance(pipeline, ChartPipeline)
+    assert len(pipeline._calls) == 2
+    fig = pipeline.render()
+    assert len(fig.data) == 3
+
+
+def test_zscore_divergence_default_exists_and_is_the_default():
+    assert isinstance(ZScoreDivergence.default, ZScoreDivergence)
+
+
+def test_divergence_alg_registered_under_the_registry():
+    resolved = Registry.get(DivergenceAlg, "zscore")
+    assert isinstance(resolved, ZScoreDivergence)
+
+
+def _opposing_series(n=80, break_at=40, break_len=10):
+    """Two series that move opposite each other everywhere EXCEPT a
+    deliberate window where they move the SAME direction -- the divergence
+    find_divergence() should flag."""
+    idx = pd.date_range("2024-01-01", periods=n, freq="D")
+    a_vals, b_vals = [], []
+    for i in range(n):
+        in_break = break_at <= i < break_at + break_len
+        a_vals.append(100 + i)
+        b_vals.append((5 + i * 0.2) if in_break else (5 - i * 0.05))
+    return pd.Series(a_vals, index=idx, name="a"), pd.Series(b_vals, index=idx, name="b")
+
+
+def test_find_divergence_uses_zscore_default_and_flags_the_break_window():
+    a, b = _opposing_series()
+    regions = find_divergence(a, b, ZScoreDivergence(threshold=1.0, window=10))
+    assert len(regions) >= 1
+    start, end = regions[0]
+    assert pd.Timestamp("2024-01-01") + pd.Timedelta(days=35) <= pd.Timestamp(start)
+
+
+def test_find_divergence_with_no_alg_uses_the_default_instance():
+    a, b = _opposing_series()
+    default_result = find_divergence(a, b)
+    explicit_result = find_divergence(a, b, ZScoreDivergence.default)
+    assert default_result == explicit_result
+
+
+def test_find_divergence_result_is_directly_usable_by_rect():
+    a, b = _opposing_series()
+    regions = find_divergence(a, b, ZScoreDivergence(threshold=1.0, window=10))
+    fig = rect(regions).render()
+    assert len(fig.layout.shapes) == len(regions)
