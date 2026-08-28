@@ -357,20 +357,27 @@ fetching a series does.
 under `sec/`) -- raw XBRL facts (full fidelity: taxonomy, unit, accession
 number, filed date, ...) and a derived, normalized `financials` layer
 (long format: one row per line item, e.g. `revenue`/`net_income`/
-`total_assets`). Not exposed as `tam.SEC` at the top level like `tam.Fred`
+`total_assets`). Not exposed as `tam.Sec` at the top level like `tam.Fred`
 -- import the class explicitly instead:
 
 ```python
-from tam.research.data.sec import SEC
+from tam.research.data.sec import Sec
 
-sec = SEC()   # reads from R2 via the usual R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET secrets
+# No construction needed -- Sec.financials()/.filings()/.query() work
+# directly on the class, via a shared default instance (reads from R2
+# via the usual TAM_PAT token, same as connect() above):
+Sec.financials(tickers=["AAPL", "MSFT"], statement="income_statement", start=2015)
+Sec.filings(ticker="AAPL", forms=["10-K", "10-Q"], start="2015-01-01")
+Sec.query("SELECT cik, fiscal_year, value FROM sec_stmt('income_statement') WHERE line_item = 'revenue'")
 
-sec.financials(tickers=["AAPL", "MSFT"], statement="income_statement", start=2015)
-sec.filings(ticker="AAPL", forms=["10-K", "10-Q"], start="2015-01-01")
-sec.query("SELECT cik, fiscal_year, value FROM sec_stmt('income_statement') WHERE line_item = 'revenue'")
+# Or construct your own instance for a different connection (raw R2
+# credentials, a local Parquet tree, ...) -- completely separate from
+# the shared default above, its own connection:
+sec = Sec(local_root="data")
+sec.financials(tickers=["AAPL"])
 ```
 
-Every `SEC` method takes tickers OR raw CIKs interchangeably (`"AAPL"` or
+Every `Sec` method takes tickers OR raw CIKs interchangeably (`"AAPL"` or
 `320193` both work) -- resolved via the same `sec/reference/
 company_tickers.parquet` file EdgarTools' own ticker resolution is backed
 by. Already wired into `connect()`/`open_duckdb()` above too, so the same
@@ -383,7 +390,7 @@ con.sql("SELECT * FROM sec_facts('AAPL')").df()        # raw XBRL, full fidelity
 con.sql("SELECT * FROM sec_filings('AAPL')").df()      # filing metadata: accession number, form, filed date, ...
 ```
 
-`sec.financials()`/`sec.filings()` (the Python wrappers, not the raw SQL
+`Sec.financials()`/`Sec.filings()` (the Python wrappers, not the raw SQL
 macros above) do a couple of things for you that raw SQL doesn't:
 `start_date`/`end_date`/`filed_date`/`period_of_report` come back as real
 dates (cast in the query itself, not pandas afterward), rows are
@@ -408,11 +415,10 @@ ready quarterly trend is then just:
 
 ```python
 import pandas as pd
-from tam.research.data.sec import SEC
+from tam.research.data.sec import Sec
 from tam.charting import timeseries
 
-sec = SEC()
-financials = sec.financials(tickers=["AAPL"], line_items=["revenue", "net_income", "operating_cash_flow"])
+financials = Sec.financials(tickers=["AAPL"], line_items=["revenue", "net_income", "operating_cash_flow"])
 
 def series_for(line_item: str, label: str, n: int = 32) -> pd.Series:
     rows = financials[financials["line_item"] == line_item].sort_values("end_date")

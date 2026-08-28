@@ -4,20 +4,20 @@ standardization table does the raw-concept-name-to-line-item mapping (see
 normalize.py's own docstring for why, and why NOT its heavier per-filing
 XBRL-parsing path for the raw facts themselves).
 
-    from tam.research.data.sec import SEC
+    from tam.research.data.sec import Sec
 
-    sec = SEC()                                    # self-service TAM_PAT token, no admin R2 credentials needed
-    sec.financials(tickers=["AAPL", "MSFT"], start=2015)
-    sec.filings(ticker="AAPL", forms=["10-K", "10-Q"], start="2015-01-01")
-    sec.query("SELECT cik, fiscal_year, value FROM sec_stmt('income_statement') WHERE line_item = 'revenue'")
+    Sec.financials(tickers=["AAPL", "MSFT"], start=2015)    # no construction needed -- a shared default instance
+    Sec.filings(ticker="AAPL", forms=["10-K", "10-Q"], start="2015-01-01")
+    Sec.query("SELECT cik, fiscal_year, value FROM sec_stmt('income_statement') WHERE line_item = 'revenue'")
 
-    sec = SEC(local_root="data")                   # reads local Parquet instead -- no network
-    sec = SEC(bucket="tam-data")                   # raw R2 account credentials instead of a personal token
+    sec = Sec(local_root="data")                   # reads local Parquet instead -- no network
+    sec = Sec(bucket="tam-data")                   # raw R2 account credentials instead of a personal token
+    sec.financials(...)                            # this instance's OWN connection, separate from the shared default
 
 Thin wrappers over the SQL macros tam.marketdata.duckdb_query.open_duckdb()
 registers (sec_facts/sec_financials/sec_stmt/sec_filings/sec_cik) -- see
 that module's own docstring for the full macro set and how ticker-or-CIK
-resolution works. Not exposed as `tam.SEC` at the top level (unlike
+resolution works. Not exposed as `tam.Sec` at the top level (unlike
 `tam.Secrets`/`tam.Fred`) -- normalize.py imports edgartools' concept-
 standardization table eagerly, a heavier dependency than fredapi, so
 `import tam` itself should stay cheap; use this explicit submodule import
@@ -25,7 +25,7 @@ instead.
 """
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import lru_cache, update_wrapper
 from typing import Any, List, Optional, Sequence, Union
 
 import pandas as pd
@@ -36,7 +36,7 @@ from .normalize import normalize_facts
 from .provider import SecProvider
 from .store import SecStore
 
-__all__ = ["SEC", "SecStore", "SecProvider", "Manifest", "normalize_facts"]
+__all__ = ["Sec", "SecStore", "SecProvider", "Manifest", "normalize_facts"]
 
 
 def _is_missing_glob_error(exc: Exception, *path_hints: str) -> bool:
@@ -54,7 +54,36 @@ def _is_missing_glob_error(exc: Exception, *path_hints: str) -> bool:
     return all(hint in message for hint in path_hints)
 
 
-class SEC:
+class _default_or_bound:
+    """Descriptor: makes an instance method ALSO directly callable on the
+    class itself -- `Sec.financials(...)` -- via a lazily-created, shared
+    default Sec() instance, the same "call it directly on the name, no
+    construction needed" ergonomic tam.Fred/tam.Secrets already give
+    (Fred.get(...), Secrets.get(...)). Sec can't just BE a pre-built
+    singleton the way those are, though: constructing one with a specific
+    local_root=/bucket=/token= is a real, common need this class already
+    supports, so `sec = Sec(local_root=...); sec.financials(...)` must
+    keep working exactly like a normal bound method, using THAT
+    instance's own separate connection/config -- never the shared
+    default. This gives both instead of picking one.
+
+    `instance is None` is exactly how Python signals "accessed on the
+    class, not an instance" for any descriptor -- `Sec.financials` triggers
+    this with instance=None; `sec.financials` (a real Sec object) passes
+    the real instance through unchanged, so per-instance behavior is
+    completely untouched."""
+
+    def __init__(self, func):
+        self._func = func
+        update_wrapper(self, func)  # keep the real method's __name__/__doc__ for help()/introspection
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            instance = owner._default()
+        return self._func.__get__(instance, owner)
+
+
+class Sec:
     """Holds one lazily-created SQL connection and builds parameterized SQL
     against its sec_* macros -- every `tickers`/`forms`/`start`/`end`
     value is bound as a real DuckDB query parameter (`?`), never string-
@@ -69,7 +98,7 @@ class SEC:
     `token=` -> env var/.env -> Colab secret -> saved
     ~/.config/tam-data-explorer/token), the same self-service, READ-ONLY
     path this project recommends for daily_bars/eod_bars in an ordinary
-    notebook. `SEC` never writes anything (every method here is a SELECT;
+    notebook. `Sec` never writes anything (every method here is a SELECT;
     ingestion is scripts/backfill_sec_facts.py's/SecStore's job, using
     real R2 admin credentials, a completely separate concern) -- so a
     read-only token is exactly the right amount of access, not a
@@ -93,13 +122,30 @@ class SEC:
         self._con = None
         # A PER-INSTANCE cache (built here, not a @lru_cache on the method
         # itself) -- decorating the method directly would share ONE cache
-        # across every SEC instance ever created, keyed on (self, ticker),
+        # across every Sec instance ever created, keyed on (self, ticker),
         # which keeps every one of those instances (and its DuckDB
         # connection) alive for the rest of the process. Binding a fresh
         # lru_cache to this instance's own bound method instead means the
         # cache -- and the `self` reference inside it -- is freed the
-        # moment this SEC instance is.
+        # moment this Sec instance is.
         self._resolve_cik = lru_cache(maxsize=None)(self._resolve_cik_uncached)
+
+    _shared_default: "Optional[Sec]" = None
+
+    @classmethod
+    def _default(cls) -> "Sec":
+        """The shared instance `Sec.financials(...)`/`Sec.filings(...)`/
+        `Sec.query(...)` use when called directly on the class -- built
+        once, on first such use, then reused (same "connect once, cache,
+        reuse" contract any Sec instance already gives you, not a fresh
+        connection per call). Uses the plain default resolution chain
+        (TAM_PAT token, same as `Sec()` with no arguments) -- construct
+        your own instance instead (`Sec(local_root=...)`, `Sec(bucket=...)`,
+        `Sec(token=...)`) for anything else; that instance's own
+        connection is completely separate from this shared one."""
+        if cls._shared_default is None:
+            cls._shared_default = cls()
+        return cls._shared_default
 
     def _connect(self):
         if self._con is None:
@@ -198,6 +244,7 @@ class SEC:
                 return pd.DataFrame(columns=columns)
             raise
 
+    @_default_or_bound
     def query(self, sql: str) -> pd.DataFrame:
         """Raw SQL access to every sec_* macro (and minute_bars/eod_bars,
         since it's the SAME connection) -- `sec.query("SELECT cik,
@@ -205,6 +252,7 @@ class SEC:
         line_item = 'revenue'")`."""
         return self._connect().sql(sql).df()
 
+    @_default_or_bound
     def financials(
         self,
         tickers: Optional[Sequence[Union[str, int]]] = None,
@@ -286,6 +334,7 @@ class SEC:
 
         return self._execute(sql, params, schema.FINANCIALS_COLUMNS)
 
+    @_default_or_bound
     def filings(
         self,
         ticker: Optional[Union[str, int]] = None,
