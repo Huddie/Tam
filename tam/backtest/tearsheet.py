@@ -176,6 +176,24 @@ def _to_report(series: _SeriesInput) -> Report:
     return Report.from_curves(series)
 
 
+def _html_mimebundle(obj: "Union[ChartCall, ChartPipeline]") -> dict:
+    """Jupyter rich-display bundle for `obj` -- deliberately NOT
+    `obj.render()._repr_mimebundle_()` (Plotly's own default). That
+    default's output depends entirely on `plotly.io.renderers.default`:
+    unset/"browser" produces an empty bundle (confirmed live); some
+    notebook renderers produce a "text/html" bundle that ASSUMES
+    Plotly.js is already loaded globally on the page. Confirmed live in
+    Colab: that assumption can be WRONG there, producing "Uncaught
+    ReferenceError: Plotly is not defined" in the browser's own JS
+    console -- with no Python-visible error at all, since the figure
+    object itself is completely valid; only this specific embed is
+    broken. `to_html(include_plotlyjs="cdn")` is renderer-independent: it
+    ships its own `<script src="https://cdn.plot.ly/...">` tag, correctly
+    sequenced before the plotting call, so it renders correctly
+    regardless of what (if anything) the notebook has already loaded."""
+    return {"text/html": obj.to_html(include_plotlyjs="cdn", full_html=False)}
+
+
 class ChartCall:
     """A (chart, series) pair -- the result of calling a TearsheetChart with
     data. Renders as a standalone Plotly figure via .show() or as a Jupyter
@@ -210,11 +228,8 @@ class ChartCall:
 
     # Jupyter rich display protocol ----------------------------------------
 
-    def _build_mimebundle(self, **kwargs):
-        return self.render()._repr_mimebundle_(**kwargs)  # type: ignore[attr-defined]
-
     def _repr_mimebundle_(self, **kwargs):
-        return self._build_mimebundle(**kwargs)
+        return _html_mimebundle(self)
 
 
 class ChartPipeline:
@@ -298,7 +313,7 @@ class ChartPipeline:
         return self.render().to_html(*args, **kwargs)
 
     def _repr_mimebundle_(self, **kwargs):
-        return self.render()._repr_mimebundle_(**kwargs)  # type: ignore[attr-defined]
+        return _html_mimebundle(self)
 
 
 def _returns(report: Report, portfolio_id: str) -> pd.Series:
