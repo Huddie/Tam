@@ -58,7 +58,7 @@ import plotly.colors
 import plotly.graph_objects as go
 
 from ..basket.factors import ExpectedShortfall, MaxDrawdown, RollingSharpe
-from ..charting import Chart as TearsheetChart
+from ..charting import Chart, ChartCall, _to_curves
 from ..registry import Registry
 from .report import Report
 
@@ -130,6 +130,26 @@ def _factor_input(report: Report, portfolio_id: str) -> pd.DataFrame:
 
 
 # ---- charts -----------------------------------------------------------------
+
+
+class TearsheetChart(Chart):
+    """Report-backed base for every equity-curve chart below -- Chart
+    itself (tam.charting) is deliberately NOT tied to Report (it has no
+    reason to require one; RectChart there doesn't even have curves), but
+    every chart in THIS module genuinely operates on Report's "named
+    curves + derived analytics" shape (equity_curve(), drawdown_curve(),
+    ...), so this base owns exactly that one conversion: `__call__` auto-
+    wraps a raw series/dict/DataFrame/list into a Report (via the same
+    _to_curves() normalization tam.charting.timeseries() itself uses),
+    so `CumulativeReturnsChart()(my_series)` keeps working without every
+    caller building a Report by hand first. Passing an already-built
+    Report straight through (skipping the conversion) is exactly what
+    build_tearsheet() does instead -- it calls chart.render(report)
+    directly, never through __call__ at all."""
+
+    def __call__(self, series: Union[pd.Series, Dict[str, pd.Series], pd.DataFrame, Report]) -> ChartCall:
+        report = series if isinstance(series, Report) else Report.from_curves(_to_curves(series))
+        return ChartCall(self, report)
 
 
 @Registry.register(TearsheetChart, "cumulative_returns")

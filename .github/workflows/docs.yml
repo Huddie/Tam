@@ -10,8 +10,6 @@ name: Deploy Docs
     paths:
       - "docs/**"
       - "tam/**"
-      - "LIB.md"
-      - "NOTEBOOK.md"
       - "README.md"
       - "tam-discovery/README.md"
       - "tam-data-explorer/README.md"
