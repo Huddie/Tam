@@ -147,8 +147,11 @@ CREATE OR REPLACE MACRO sec_filings(ticker_or_cik := NULL) AS TABLE
     )
     WHERE ticker_or_cik IS NULL OR cik = sec_cik(ticker_or_cik);
 
-CREATE OR REPLACE MACRO sec_companies() AS TABLE
-    SELECT * FROM read_parquet(getvariable('sec_root') || '/reference/company_tickers.parquet');
+CREATE OR REPLACE MACRO sec_companies(noop := NULL) AS TABLE
+    SELECT * FROM read_parquet(
+        getvariable('sec_root') || '/reference/company_tickers.parquet'
+        || substr(coalesce(try_cast(noop AS VARCHAR), ''), 1, 0)
+    );
 """
 
 
