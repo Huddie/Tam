@@ -210,16 +210,17 @@ class ChartOverlay:
         ordered by `layer` (ties broken by original order), each attached
         to its own `axis` side."""
         ordered = sorted(self._calls, key=lambda c: c.layer)
-        needs_secondary = any(c.axis == "right" for c in ordered)
-        trace_layers = [c.layer for c in ordered if c.axis in ("left", "right")]
+        subs = [(call, call.render()) for call in ordered]
+        needs_secondary = any(c.axis == "right" for c, _ in subs)
+        trace_layers = [c.layer for c, sub in subs if len(sub.data) > 0]
 
         fig = go.Figure()
         if needs_secondary:
             fig.update_layout(yaxis2=dict(overlaying="y", side="right"))
 
-        for call in ordered:
-            sub = call.render()
+        for call, sub in subs:
             is_secondary = call.axis == "right"
+            has_traces = len(sub.data) > 0
 
             for trace in sub.data:
                 if is_secondary:
@@ -233,6 +234,16 @@ class ChartOverlay:
                 if trace_layers:
                     shape_dict["layer"] = "below" if call.layer <= min(trace_layers) else "above"
                 fig.add_shape(shape_dict)
+
+            if not has_traces:
+                # A shape-only member (e.g. rect) has no real data on this
+                # axis -- its own axis styling (visible=False, a dummy 0-1
+                # range, ...) is only meaningful for ITS OWN standalone
+                # panel; copying it here would overwrite a REAL axis shared
+                # with data-bearing members like timeseries(). Confirmed
+                # live: without this guard, rect's hidden/dummy axis
+                # silently hid the SPY axis it was meant to shade behind.
+                continue
 
             src_layout = sub.layout.to_plotly_json()
             src_xaxis = src_layout.get("xaxis", {})

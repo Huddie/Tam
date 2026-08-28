@@ -1,7 +1,8 @@
 """tam/charting.py: the generic composable-chart API (Chart/ChartCall/
-ChartPipeline, timeseries(), rect()) -- deliberately tested here with NO
-dependency on tam.backtest's own chart classes or Report, since the whole
-point of this module is that it doesn't need either.
+ChartPipeline, ChartOverlay, timeseries(), rect(), find_divergence()) --
+deliberately tested here with NO dependency on tam.backtest's own chart
+classes or Report, since the whole point of this module is that it
+doesn't need either.
 """
 from datetime import date, timedelta
 
@@ -9,7 +10,19 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from tam.charting import Chart, ChartCall, ChartPipeline, RectChart, TimeSeriesChart, rect, timeseries
+from tam.charting import (
+    Chart,
+    ChartCall,
+    ChartOverlay,
+    ChartPipeline,
+    DivergenceAlg,
+    RectChart,
+    TimeSeriesChart,
+    ZScoreDivergence,
+    find_divergence,
+    rect,
+    timeseries,
+)
 from tam.registry import Registry
 
 
