@@ -105,12 +105,14 @@ class Chart(ABC):
     @abstractmethod
     def render(self, data: Any) -> go.Figure: ...
 
-    def __call__(self, data: Any, *, axis: str = "left", layer: int = 0) -> ChartCall:
+    def __call__(self, data: Any, *, axis: str = "left", layer: Optional[int] = None) -> ChartCall:
         """Wrap `data` + this chart into a ChartCall. `data`'s shape is
         whatever this Chart's own render() expects -- see that method's
         docstring/type hint. `axis`/`layer` only matter when this call is
         combined with others via `&` (same-panel overlay) -- see
-        ChartOverlay; piping with `|` (separate rows) ignores both."""
+        ChartOverlay; piping with `|` (separate rows) ignores both. Omit
+        `layer` (the common case) to have it auto-assigned by `&`'s own
+        chain order instead of picking a number yourself."""
         return ChartCall(self, data, axis=axis, layer=layer)
 
 
@@ -122,11 +124,21 @@ class ChartCall:
     row each; chain with `&` to produce a ChartOverlay that renders all
     charts into the SAME panel instead (see ChartOverlay)."""
 
-    def __init__(self, chart: Chart, data: Any, *, axis: str = "left", layer: int = 0) -> None:
+    def __init__(self, chart: Chart, data: Any, *, axis: str = "left", layer: Optional[int] = None) -> None:
         self._chart = chart
         self._data = data
         self.axis = axis
-        self.layer = layer
+        self.layer = 0 if layer is None else layer
+        self._layer_explicit = layer is not None
+
+    def _with_layer(self, layer: int) -> ChartCall:
+        """A copy with `layer` overridden -- `_layer_explicit` is left as
+        it was, so an auto-assigned layer stays open to being recomputed
+        by a LATER `&` (e.g. combining two already-resolved overlays), while
+        a layer the caller actually typed stays a fixed anchor forever."""
+        copy = ChartCall(self._chart, self._data, axis=self.axis, layer=layer)
+        copy._layer_explicit = self._layer_explicit
+        return copy
 
     @property
     def title(self) -> str:
@@ -156,8 +168,8 @@ class ChartCall:
 
     def __and__(self, other: Union[ChartCall, ChartOverlay]) -> ChartOverlay:
         if isinstance(other, ChartOverlay):
-            return ChartOverlay([self] + other._calls)
-        return ChartOverlay([self, other])
+            return ChartOverlay(_resolve_layers([self] + other._calls))
+        return ChartOverlay(_resolve_layers([self, other]))
 
     # Jupyter rich display protocol ----------------------------------------
 
@@ -168,11 +180,29 @@ class ChartCall:
         return self._build_mimebundle(**kwargs)
 
 
+def _resolve_layers(calls: List[ChartCall]) -> List[ChartCall]:
+    """Assigns a concrete `layer` to every call in order: one the caller
+    explicitly passed (`layer=...` at construction) is a fixed anchor;
+    one left unset becomes the PREVIOUS call's own resolved layer + 1 --
+    "RHS is LHS.layer + 1" for a plain `a & b`, and each further `& c`
+    keeps counting up from there. Explicit values are never touched.
+    Re-run on every `&` (even one combining two already-resolved
+    ChartOverlays) so unset layers always reflect their CURRENT position,
+    not whatever position they happened to resolve to earlier."""
+    resolved: List[ChartCall] = []
+    previous = -1
+    for call in calls:
+        layer = call.layer if call._layer_explicit else previous + 1
+        resolved.append(call if layer == call.layer else call._with_layer(layer))
+        previous = layer
+    return resolved
+
+
 class ChartOverlay:
     """Multiple ChartCalls sharing ONE panel instead of one row each --
     created by chaining with `&` (as `|` creates a ChartPipeline):
 
-        timeseries(spy, layer=0) & rect(divergence_blocks, axis="left", layer=-1)
+        timeseries(spy) & rect(divergence_blocks, axis="left", layer=-1)
         timeseries(spy) & timeseries(yield_, axis="right")
 
     `axis` picks which y-axis a member's traces attach to ("left"/"right"
@@ -185,8 +215,14 @@ class ChartOverlay:
     only express "below ALL traces" or "above ALL traces", not a precise
     position among them -- so a rect with `layer` below every trace-
     bearing member in the group renders as `layer="below"`, otherwise
-    `layer="above"`. Composes further with `|`/`&` exactly like ChartCall
-    (an overlay is one row-item, just like a single chart is)."""
+    `layer="above"`. Leave `layer` unset (the default on timeseries()/
+    rect()/any Chart.__call__) to have it auto-assigned by `&`'s own
+    left-to-right order instead -- `a & b & c` puts them at layers 0, 1, 2
+    with no manual numbering; pass `layer=` explicitly only to override
+    that for one member (e.g. rect's own `layer=-1` to force it behind
+    everything regardless of where it sits in the `&` chain). Composes
+    further with `|`/`&` exactly like ChartCall (an overlay is one
+    row-item, just like a single chart is)."""
 
     def __init__(self, calls: List[ChartCall]) -> None:
         self._calls = list(calls)
@@ -202,8 +238,8 @@ class ChartOverlay:
 
     def __and__(self, other: Union[ChartCall, ChartOverlay]) -> ChartOverlay:
         if isinstance(other, ChartOverlay):
-            return ChartOverlay(self._calls + other._calls)
-        return ChartOverlay(self._calls + [other])
+            return ChartOverlay(_resolve_layers(self._calls + other._calls))
+        return ChartOverlay(_resolve_layers(self._calls + [other]))
 
     def render(self) -> go.Figure:
         """Merge every member's own rendered figure into ONE panel,
@@ -415,7 +451,7 @@ class TimeSeriesChart(Chart):
         return fig
 
 
-def timeseries(series: _SeriesInput, title: str = "Time Series", *, axis: str = "left", layer: int = 0) -> ChartCall:
+def timeseries(series: _SeriesInput, title: str = "Time Series", *, axis: str = "left", layer: Optional[int] = None) -> ChartCall:
     """The standalone/composable entry point for plotting raw series
     together -- same call/compose contract as every Chart here (this
     module's own docstring above covers the general pattern):
@@ -462,7 +498,7 @@ class RectChart(Chart):
 
 
 def rect(
-    regions: List[_Region], title: str = "", color: str = "red", opacity: float = 0.2, *, axis: str = "left", layer: int = 0
+    regions: List[_Region], title: str = "", color: str = "red", opacity: float = 0.2, *, axis: str = "left", layer: Optional[int] = None
 ) -> ChartCall:
     """A composable shaded-region panel -- date ranges (divergence
     episodes, regimes, recessions, ...) to mark on a chart:
