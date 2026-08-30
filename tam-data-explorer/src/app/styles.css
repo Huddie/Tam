@@ -307,6 +307,42 @@ tbody tr:hover td {
   margin-bottom: 1rem;
 }
 
+.tokens-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 1.5rem;
+  align-items: start;
+}
+.tokens-usage {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0.9rem 1rem;
+  background: var(--bg);
+}
+.tokens-usage summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+.tokens-usage summary:hover {
+  color: var(--text);
+}
+.tokens-usage[open] summary {
+  margin-bottom: 0.75rem;
+}
+.tokens-usage .tabs {
+  margin-top: 0.75rem;
+}
+@media (max-width: 900px) {
+  .tokens-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tabs {
   display: flex;
   gap: 0.25rem;

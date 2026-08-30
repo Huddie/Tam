@@ -96,97 +96,107 @@ export function TokensPage() {
         not two.
       </p>
 
-      <div className="tabs">
-        {SETUP_TABS.map(({ key, label }) => (
-          <button key={key} className={setupTab === key ? "active" : ""} onClick={() => setSetupTab(key)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <div className="tokens-layout">
+        <div>
+          <div className="toolbar">
+            <input
+              placeholder="Name this token (e.g. colab, laptop) -- must be unique"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+            <button onClick={handleCreate}>Create</button>
+          </div>
 
-      {setupTab === "cli" && (
-        <>
-          <p className="muted">Log in once, then publish from a plain shell.</p>
-          <CodeBlock language="bash" code={CLI_SNIPPET} />
-        </>
-      )}
-      {setupTab === "python" && (
-        <>
-          <p className="muted">
-            Publish inline from a script or notebook -- no login step, pass the token directly (or set{" "}
-            <code>TAM_PAT</code> once and omit it).
+          {freshToken && (
+            <p className="callout">
+              <strong>
+                "{freshToken.name}" -- copy this now, it won't be shown again:
+              </strong>
+              <br />
+              <code>{freshToken.token}</code>
+            </p>
+          )}
+
+          {error && <p className="error">{error}</p>}
+
+          <div className="table-wrap" style={{ marginTop: "1.25rem" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th className="sortable" onClick={() => toggleSort("name")}>
+                    Name{indicator("name")}
+                  </th>
+                  <th className="sortable" onClick={() => toggleSort("created")}>
+                    Created{indicator("created")}
+                  </th>
+                  <th className="sortable" onClick={() => toggleSort("lastUsed")}>
+                    Last used{indicator("lastUsed")}
+                  </th>
+                  <th className="sortable" onClick={() => toggleSort("status")}>
+                    Status{indicator("status")}
+                  </th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((token) => (
+                  <tr key={token.id}>
+                    <td className="mono">{token.name}</td>
+                    <td className="muted mono">{new Date(token.created_at).toLocaleString()}</td>
+                    <td className="muted mono">
+                      {token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"}
+                    </td>
+                    <td>{token.revoked_at ? "revoked" : "active"}</td>
+                    <td>{!token.revoked_at && <button onClick={() => handleRevoke(token.id)}>Revoke</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <details className="tokens-usage" open>
+          <summary>How to use a token</summary>
+
+          <div className="tabs">
+            {SETUP_TABS.map(({ key, label }) => (
+              <button key={key} className={setupTab === key ? "active" : ""} onClick={() => setSetupTab(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {setupTab === "cli" && (
+            <>
+              <p className="muted">Log in once, then publish from a plain shell.</p>
+              <CodeBlock language="bash" code={CLI_SNIPPET} />
+            </>
+          )}
+          {setupTab === "python" && (
+            <>
+              <p className="muted">
+                Publish inline from a script or notebook -- no login step, pass the token directly (or set{" "}
+                <code>TAM_PAT</code> once and omit it).
+              </p>
+              <CodeBlock language="python" code={PYTHON_SNIPPET} />
+            </>
+          )}
+          {setupTab === "colab" && (
+            <>
+              <p className="muted">
+                In a Colab notebook, open the key-icon <strong>Secrets</strong> panel (left sidebar), add a secret
+                named exactly <code>TAM_PAT</code>, paste your token as its value, and toggle notebook access on --{" "}
+                <code>upload()</code> finds it automatically.
+              </p>
+              <CodeBlock language="python" code={COLAB_SNIPPET} />
+            </>
+          )}
+
+          <p className="callout">
+            Treat it like a password: whoever has it can publish or query on your behalf until you revoke it.
           </p>
-          <CodeBlock language="python" code={PYTHON_SNIPPET} />
-        </>
-      )}
-      {setupTab === "colab" && (
-        <>
-          <p className="muted">
-            In a Colab notebook, open the key-icon <strong>Secrets</strong> panel (left sidebar), add a secret
-            named exactly <code>TAM_PAT</code>, paste your token as its value, and toggle notebook access on --{" "}
-            <code>upload()</code> finds it automatically.
-          </p>
-          <CodeBlock language="python" code={COLAB_SNIPPET} />
-        </>
-      )}
-
-      <p className="callout">
-        Treat it like a password: whoever has it can publish or query on your behalf until you revoke it below.
-      </p>
-
-      <div className="toolbar">
-        <input
-          placeholder="Name this token (e.g. colab, laptop) -- must be unique"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-        />
-        <button onClick={handleCreate}>Create</button>
-      </div>
-
-      {freshToken && (
-        <p className="callout">
-          <strong>
-            "{freshToken.name}" -- copy this now, it won't be shown again:
-          </strong>
-          <br />
-          <code>{freshToken.token}</code>
-        </p>
-      )}
-
-      {error && <p className="error">{error}</p>}
-
-      <div className="table-wrap" style={{ marginTop: "1.25rem" }}>
-      <table>
-        <thead>
-          <tr>
-            <th className="sortable" onClick={() => toggleSort("name")}>
-              Name{indicator("name")}
-            </th>
-            <th className="sortable" onClick={() => toggleSort("created")}>
-              Created{indicator("created")}
-            </th>
-            <th className="sortable" onClick={() => toggleSort("lastUsed")}>
-              Last used{indicator("lastUsed")}
-            </th>
-            <th className="sortable" onClick={() => toggleSort("status")}>
-              Status{indicator("status")}
-            </th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((token) => (
-            <tr key={token.id}>
-              <td className="mono">{token.name}</td>
-              <td className="muted mono">{new Date(token.created_at).toLocaleString()}</td>
-              <td className="muted mono">{token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"}</td>
-              <td>{token.revoked_at ? "revoked" : "active"}</td>
-              <td>{!token.revoked_at && <button onClick={() => handleRevoke(token.id)}>Revoke</button>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        </details>
       </div>
     </div>
   );
