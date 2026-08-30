@@ -83,6 +83,17 @@ response.raise_for_status()
 with open("AAPL_2024.parquet", "wb") as f:
     f.write(response.content)`;
 
+const TAM_SYMBOL_SNIPPET = `from tam import Symbol
+
+aapl = Symbol("AAPL")
+aapl.daily_bars()               # -> pandas DataFrame
+aapl.rolling_volatility(21)`;
+
+const TAM_QUERY_SNIPPET = `import tam
+
+tam.query("SELECT * FROM daily_bars('AAPL') ORDER BY day")
+tam.query("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day")`;
+
 const TAM_FILE_SNIPPET = `from tam.marketdata.explorer_client import fetch_dataframe, download_csv
 
 df = fetch_dataframe("AAPL", 2024)           # -> pandas DataFrame
@@ -91,19 +102,17 @@ download_csv("AAPL", 2024, "AAPL_2024.csv")  # -> saved straight to disk`;
 const TAM_SQL_SNIPPET = `from tam.marketdata.explorer_client import connect
 
 con = connect()
-con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
-con.sql("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day").df()`;
+con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()`;
 
 const TAM_TOKEN_SNIPPET = `import os
-os.environ["DATA_EXPLORER_TOKEN"] = "<your-token>"
-# or: export DATA_EXPLORER_TOKEN=<your-token>  (before starting python)`;
+os.environ["TAM_PAT"] = "<your-token>"
+# or: export TAM_PAT=<your-token>  (before starting python)`;
 
-const COLAB_SQL_SNIPPET = `from tam.marketdata.explorer_client import connect
+const COLAB_SQL_SNIPPET = `from tam import Symbol
 
-# resolve_token() finds the DATA_EXPLORER_TOKEN Colab secret automatically --
+# resolve_token() finds the TAM_PAT Colab secret automatically --
 # nothing else to configure, same code as running locally.
-con = connect()
-con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()`;
+Symbol("AAPL").daily_bars()`;
 
 type Tab = "curl" | "python" | "tam" | "colab";
 
@@ -154,22 +163,34 @@ export function ApiAccessPage() {
 
       {tab === "tam" && (
         <>
-          <h2>One file, as a DataFrame</h2>
           <p className="muted">
             Same credential resolution order as <code>tam.discovery.auth.resolve_token()</code>: explicit kwarg
-            &rarr; <code>DATA_EXPLORER_TOKEN</code> env var &rarr; Colab secret (auto-detected, see the Colab tab)
+            &rarr; <code>TAM_PAT</code> env var &rarr; Colab secret (auto-detected, see the Colab tab)
             &rarr; <code>~/.config/tam-data-explorer/token</code>.
           </p>
           <CodeBlock language="python" code={TAM_TOKEN_SNIPPET} />
-          <CodeBlock language="python" code={TAM_FILE_SNIPPET} />
 
-          <h2>Full SQL access (not just one file at a time)</h2>
+          <h2>Recommended: Symbol, one object per ticker</h2>
           <p className="muted">
-            <code>connect()</code> mints a short-lived, read-only R2 credential (scoped to just this bucket) behind
-            the scenes and gives you a real SQL connection over the whole lake -- glob/multi-file queries included,
-            without ever touching the real R2 account credentials. It refreshes itself automatically as the
-            underlying credential approaches expiry, so a long notebook session keeps working.
+            <code>Symbol</code> mirrors the DuckDB macro names one-to-one, handles credential/connection setup for
+            you, and supports <code>columns=</code>, date ranges, and an optional <code>Cache</code> so re-running a
+            notebook cell doesn't refetch -- see the Symbol guide in the docs for the full method list.
           </p>
+          <CodeBlock language="python" code={TAM_SYMBOL_SNIPPET} />
+
+          <h2>Raw SQL, no ticker object -- <code>tam.query()</code></h2>
+          <p className="muted">For a cross-ticker join or whole-universe aggregation that doesn't fit one ticker.</p>
+          <CodeBlock language="python" code={TAM_QUERY_SNIPPET} />
+
+          <h2>Lower-level alternative: single-file download or a raw connection</h2>
+          <p className="muted">
+            <code>fetch_dataframe()</code>/<code>download_csv()</code> grab exactly one file at a time.{" "}
+            <code>connect()</code> mints a short-lived, read-only R2 credential (scoped to just this bucket) and
+            hands back a real DuckDB connection over the whole lake, refreshed automatically as it nears expiry --
+            what <code>Symbol</code>/<code>tam.query()</code> themselves are built on, useful directly if you want
+            the connection object itself.
+          </p>
+          <CodeBlock language="python" code={TAM_FILE_SNIPPET} />
           <CodeBlock language="python" code={TAM_SQL_SNIPPET} />
         </>
       )}
@@ -178,7 +199,7 @@ export function ApiAccessPage() {
         <>
           <p className="muted">
             In a Colab notebook, open the key-icon <strong>Secrets</strong> panel (left sidebar), add a secret named
-            exactly <code>DATA_EXPLORER_TOKEN</code>, paste your token as its value, and toggle notebook access on.{" "}
+            exactly <code>TAM_PAT</code>, paste your token as its value, and toggle notebook access on.{" "}
             <code>resolve_token()</code> detects Colab automatically and reads it from there -- no code difference
             from running locally.
           </p>

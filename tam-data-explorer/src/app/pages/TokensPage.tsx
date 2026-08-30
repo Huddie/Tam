@@ -65,9 +65,19 @@ export function TokensPage() {
       </Link>
       <h1>Personal tokens</h1>
       <p className="muted">
-        For scripts, notebooks, or SQL access -- see <Link to="/api-access">API access</Link> for exact usage. Each token is
-        yours alone: revoking one never affects anyone else's access. The same token also works on{" "}
-        <a href="https://discovery.tamquant.com/settings/tokens">Discovery</a> for publishing -- one token, not two.
+        A personal token authenticates scripts, notebooks, and SQL access without an interactive login -- see{" "}
+        <Link to="/api-access">API access</Link> for exact usage.
+      </p>
+      <ul className="muted">
+        <li>Query data or run SQL here, from a script or notebook.</li>
+        <li>
+          The same token also works on <a href="https://discovery.tamquant.com/settings/tokens">Discovery</a> for
+          publishing -- one token, not two.
+        </li>
+      </ul>
+      <p className="callout">
+        Treat it like a password: whoever has it can query or publish on your behalf until you revoke it below.
+        Each token is yours alone -- revoking one never affects anyone else's access.
       </p>
 
       <div className="toolbar">

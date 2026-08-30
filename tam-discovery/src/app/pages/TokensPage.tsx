@@ -65,10 +65,21 @@ export function TokensPage() {
       </Link>
       <h1>Personal tokens</h1>
       <p className="muted">
-        Used by <code>upload-discovery login</code> (or <code>tam.discovery.upload(token=...)</code>) to publish from
-        a shell, notebook, or Colab -- see the README for setup. The same token also works on{" "}
-        <a href="https://data.tamquant.com/settings/tokens">Data Explorer</a> for data/SQL access -- one token,
-        not two.
+        A personal token stands in for an interactive GitHub login when you're publishing from a shell, notebook,
+        or Colab instead of a browser.
+      </p>
+      <ul className="muted">
+        <li>
+          <code>upload-discovery login</code> (or <code>tam.discovery.upload(token=...)</code>) -- paste it when
+          prompted to publish here.
+        </li>
+        <li>
+          The same token also works on <a href="https://data.tamquant.com/settings/tokens">Data Explorer</a> for
+          data/SQL access -- one token, not two.
+        </li>
+      </ul>
+      <p className="callout">
+        Treat it like a password: whoever has it can publish or query on your behalf until you revoke it below.
       </p>
 
       <div className="toolbar">
