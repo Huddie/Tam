@@ -43,10 +43,11 @@ holds only the generic composition/display machinery and a couple of
 generic charts, so a raw price series, an indicator overlay, or a FRED
 series can be plotted without importing anything backtest-related):
 
-    from tam.charting import timeseries, rect
+    from tam.charting import timeseries, candles, rect
     timeseries([close, sma(close, 20), sma(close, 50)])
     timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")
     timeseries(spy) | rect(divergence_blocks, title="Divergence") | timeseries(yield_)
+    candles(aapl.eod_bars())                                       # OHLC, native go.Candlestick, not a line
 
 Every chart above renders under the current global theme ("light" by
 default, matching each one's previous plain plotly_white styling) --
@@ -636,6 +637,123 @@ def timeseries(
     dark/light look across every chart instead of per-line colors, see
     `set_theme()`."""
     return TimeSeriesChart(title=title, color=color, axis_title=axis_title)(series, axis=axis, layer=layer)
+
+
+def _resolve_ohlc_x(data: pd.DataFrame, x: str | None) -> Any:
+    """The x-axis values for candles() -- an explicit `x` column if given,
+    else the DataFrame's own index if it's not a plain default RangeIndex
+    (the common case for anything already indexed by date/time), else a
+    "date"/"ts" column if present (tam.data's own EOD column name, and
+    tam.marketdata's own minute-bar column name, respectively -- so
+    `candles(aapl.eod_bars())`/`candles(aapl.minute_bars())` just work
+    with no column renaming, since both already come back with lowercase
+    open/high/low/close and one of these two date/time columns)."""
+    if x is not None:
+        return data[x]
+    if not isinstance(data.index, pd.RangeIndex):
+        return data.index
+    for candidate in ("date", "ts"):
+        if candidate in data.columns:
+            return data[candidate]
+    raise ValueError(
+        "candles() couldn't find an x-axis column -- pass x=... explicitly, or give it a DataFrame indexed by date/time"
+    )
+
+
+@Registry.register(Chart, "candles")
+class CandlestickChart(Chart):
+    """A native Plotly candlestick trace (go.Candlestick) -- NOT built on
+    top of TimeSeriesChart: a candle needs open/high/low/close per point,
+    a shape TimeSeriesChart's one-scalar-per-named-curve model can't
+    represent at all, so this renders its own trace type instead of
+    reusing that one. `candles()` below is the ergonomic standalone entry
+    point most callers should use instead of constructing this directly."""
+
+    def __init__(
+        self,
+        title: str = "Candlestick",
+        *,
+        open: str = "open",
+        high: str = "high",
+        low: str = "low",
+        close: str = "close",
+        x: str | None = None,
+        increasing_color: str = "#2ca02c",
+        decreasing_color: str = "#d62728",
+        rangeslider: bool = False,
+    ):
+        self.title = title
+        self._open, self._high, self._low, self._close = open, high, low, close
+        self._x = x
+        self._increasing_color = increasing_color
+        self._decreasing_color = decreasing_color
+        self._rangeslider = rangeslider
+
+    def render(self, data: pd.DataFrame) -> go.Figure:
+        fig = go.Figure(
+            go.Candlestick(
+                x=_resolve_ohlc_x(data, self._x),
+                open=data[self._open],
+                high=data[self._high],
+                low=data[self._low],
+                close=data[self._close],
+                increasing_line_color=self._increasing_color,
+                decreasing_line_color=self._decreasing_color,
+                name=self.title,
+            )
+        )
+        fig.update_layout(title=self.title, xaxis_rangeslider_visible=self._rangeslider)
+        return _apply_theme(fig)
+
+
+def candles(
+    data: pd.DataFrame,
+    title: str = "Candlestick",
+    *,
+    open: str = "open",
+    high: str = "high",
+    low: str = "low",
+    close: str = "close",
+    x: str | None = None,
+    increasing_color: str = "#2ca02c",
+    decreasing_color: str = "#d62728",
+    rangeslider: bool = False,
+    axis: str = "left",
+    layer: int | None = None,
+) -> ChartCall:
+    """OHLC candles from a DataFrame -- same call/compose contract as
+    every chart here (this module's own docstring above covers the
+    general pattern)::
+
+        candles(aapl.eod_bars())                        # "date"/open/high/low/close columns, auto-detected
+        candles(aapl.minute_bars())                      # "ts" instead of "date" -- also auto-detected
+        candles(df, open="Open", high="High", low="Low", close="Close")  # explicit column names
+        candles(df, x="my_date_column")                  # explicit x column instead of the index/date/ts guess
+        candles(spy) | timeseries(volume, title="Volume")   # own row
+        candles(spy) & rect(divergence_blocks, layer=-1)     # shaded behind the candles, one row
+
+    `open`/`high`/`low`/`close` default to lowercase column names --
+    exactly what `tam.Symbol(...).eod_bars()`/`.daily_bars()`/
+    `.minute_bars()` already return, so the common case needs no column
+    renaming at all. The x-axis is the DataFrame's own index if it has
+    one, else a `date`/`ts` column if present (see `_resolve_ohlc_x`'s
+    own docstring) -- pass `x=` explicitly to override the guess.
+    `rangeslider=False` (the default) is deliberate: Plotly's own
+    candlestick default shows one, which eats vertical space that looks
+    redundant once this is piped into a ChartPipeline/ChartOverlay
+    alongside other rows -- pass `rangeslider=True` for a truly
+    standalone chart that wants one."""
+    return CandlestickChart(
+        title=title,
+        open=open,
+        high=high,
+        low=low,
+        close=close,
+        x=x,
+        increasing_color=increasing_color,
+        decreasing_color=decreasing_color,
+        rangeslider=rangeslider,
+    )(data, axis=axis, layer=layer)
 
 
 _Region = tuple[Any, Any]

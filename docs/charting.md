@@ -25,6 +25,34 @@ Accepts a single `pd.Series`, a plain `list` of them (each one's own
 named `"sma_20"`/`"rsi_14"`, so no manual renaming needed), a
 `{name: series}` dict, or a wide `pd.DataFrame` (one column per name).
 
+## `candles()` — OHLC, native candlesticks
+
+```python
+from tam import Symbol
+from tam.charting import candles
+
+aapl = Symbol("AAPL")
+candles(aapl.eod_bars())  # "date"/open/high/low/close, auto-detected
+candles(aapl.minute_bars())  # "ts" instead of "date" -- also auto-detected
+candles(df, open="Open", high="High", low="Low", close="Close")  # explicit column names
+```
+
+A real `go.Candlestick` trace, not a `timeseries()` line — a candle needs
+open/high/low/close per point, a shape `timeseries()`'s one-scalar-per-
+curve model can't represent. `open`/`high`/`low`/`close` default to
+lowercase column names, matching what `Symbol(...).eod_bars()`/
+`.daily_bars()`/`.minute_bars()` already return with no renaming needed.
+The x-axis is the DataFrame's own index if it has one, else a `date`/`ts`
+column if present — pass `x=...` to override the guess, or `rangeslider=True`
+to bring back Plotly's own default range slider (off by default here,
+since it eats vertical space once piped into a multi-row `ChartPipeline`).
+Composes with `|`/`&` exactly like every other chart:
+
+```python
+candles(aapl.eod_bars()) | timeseries(volume, title="Volume")
+candles(aapl.eod_bars()) & rect(divergence_blocks, layer=-1)  # shaded behind the candles, same row
+```
+
 ## Composite figures with `|`
 
 Chain multiple calls for series on genuinely different scales (RSI's

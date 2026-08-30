@@ -13,6 +13,7 @@ import pytest
 
 from tam import charting
 from tam.charting import (
+    CandlestickChart,
     Chart,
     ChartCall,
     ChartOverlay,
@@ -21,6 +22,7 @@ from tam.charting import (
     RectChart,
     TimeSeriesChart,
     ZScoreDivergence,
+    candles,
     find_divergence,
     load_ipython_extension,
     rect,
@@ -241,6 +243,106 @@ def test_rect_composed_via_pipe_uses_a_domain_relative_yref_not_a_data_coordinat
     pipeline = timeseries(_series("a", start_value=500.0)) | rect([(date(2024, 1, 1), date(2024, 1, 5))])
     fig = pipeline.render()
     assert fig.layout.shapes[0].yref.endswith(" domain")
+
+
+def _ohlc_df(date_column: str | None = "date", periods: int = 5) -> pd.DataFrame:
+    """A tiny OHLC frame -- `date_column=None` puts the dates on the index
+    instead (the shape `Symbol(...).eod_bars()` isn't in, but a plain
+    DataFrame().set_index("date") would be), exercising candles()'s other
+    auto-detection branch."""
+    idx = [date(2024, 1, 1) + timedelta(days=i) for i in range(periods)]
+    df = pd.DataFrame(
+        {
+            "open": [100.0 + i for i in range(periods)],
+            "high": [101.0 + i for i in range(periods)],
+            "low": [99.0 + i for i in range(periods)],
+            "close": [100.5 + i for i in range(periods)],
+        }
+    )
+    if date_column is None:
+        df.index = idx
+    else:
+        df[date_column] = idx
+    return df
+
+
+def test_candles_returns_a_chart_call():
+    result = candles(_ohlc_df())
+    assert isinstance(result, ChartCall)
+
+
+def test_candles_renders_a_native_candlestick_trace_with_the_right_values():
+    fig = candles(_ohlc_df()).render()
+    assert len(fig.data) == 1
+    trace = fig.data[0]
+    assert isinstance(trace, go.Candlestick)
+    assert list(trace.open) == [100.0, 101.0, 102.0, 103.0, 104.0]
+    assert list(trace.close) == [100.5, 101.5, 102.5, 103.5, 104.5]
+
+
+def test_candles_auto_detects_a_date_column():
+    df = _ohlc_df(date_column="date")
+    fig = candles(df).render()
+    assert list(fig.data[0].x) == list(df["date"])
+
+
+def test_candles_auto_detects_a_ts_column():
+    df = _ohlc_df(date_column="ts")
+    fig = candles(df).render()
+    assert list(fig.data[0].x) == list(df["ts"])
+
+
+def test_candles_auto_detects_a_datetime_index_when_no_date_or_ts_column_exists():
+    df = _ohlc_df(date_column=None)
+    fig = candles(df).render()
+    assert list(fig.data[0].x) == list(df.index)
+
+
+def test_candles_accepts_an_explicit_x_column_overriding_the_guess():
+    df = _ohlc_df(date_column="date").rename(columns={"date": "my_date"})
+    fig = candles(df, x="my_date").render()
+    assert list(fig.data[0].x) == list(df["my_date"])
+
+
+def test_candles_raises_a_clear_error_when_no_x_can_be_resolved():
+    df = _ohlc_df(date_column=None)
+    df = df.reset_index(drop=True)  # back to a plain RangeIndex, no date/ts column either
+    with pytest.raises(ValueError, match="couldn't find an x-axis column"):
+        candles(df).render()
+
+
+def test_candles_accepts_custom_column_names():
+    df = _ohlc_df().rename(columns={"open": "Open", "high": "High", "low": "Low", "close": "Close"})
+    fig = candles(df, open="Open", high="High", low="Low", close="Close").render()
+    assert list(fig.data[0].open) == list(df["Open"])
+
+
+def test_candles_rangeslider_is_off_by_default():
+    fig = candles(_ohlc_df()).render()
+    assert fig.layout.xaxis.rangeslider.visible is False
+
+
+def test_candles_rangeslider_can_be_enabled():
+    fig = candles(_ohlc_df(), rangeslider=True).render()
+    assert fig.layout.xaxis.rangeslider.visible is True
+
+
+def test_candles_registered_under_the_chart_registry():
+    resolved = Registry.get(Chart, "candles")
+    assert isinstance(resolved, CandlestickChart)
+
+
+def test_candles_composes_with_timeseries_via_pipe():
+    pipeline = candles(_ohlc_df()) | timeseries(_series("volume"))
+    fig = pipeline.render()
+    assert len(fig.data) == 2
+
+
+def test_candles_composes_via_overlay():
+    overlay = candles(_ohlc_df()) & rect([(date(2024, 1, 1), date(2024, 1, 2))], layer=-1)
+    fig = overlay.render()
+    assert len(fig.data) == 1
+    assert len(fig.layout.shapes) == 1
 
 
 def test_and_returns_a_chart_overlay():
