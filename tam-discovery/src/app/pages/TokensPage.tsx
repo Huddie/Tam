@@ -2,12 +2,37 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type TokenSummary, createToken, listTokens, revokeToken } from "../api";
 import { useSort } from "../useSort";
+import { CodeBlock } from "../CodeBlock";
+
+const CLI_SNIPPET = `upload-discovery login
+# paste your token when prompted
+
+upload-discovery report.html --title "My report" --tag demo`;
+
+const PYTHON_SNIPPET = `from tam.discovery import upload
+
+upload(fig, title="My report", token="<your-token>")
+# or set TAM_PAT once (env var) and omit token= entirely`;
+
+const COLAB_SNIPPET = `from tam.discovery import upload
+
+# TAM_PAT Colab secret is picked up automatically -- no token= needed
+upload(fig, title="My report")`;
+
+type SetupTab = "cli" | "python" | "colab";
+
+const SETUP_TABS: Array<{ key: SetupTab; label: string }> = [
+  { key: "cli", label: "upload-discovery login" },
+  { key: "python", label: "Upload inline" },
+  { key: "colab", label: "Colab" },
+];
 
 export function TokensPage() {
   const [tokens, setTokens] = useState<TokenSummary[]>([]);
   const [newName, setNewName] = useState("");
   const [freshToken, setFreshToken] = useState<{ name: string; token: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [setupTab, setSetupTab] = useState<SetupTab>("cli");
 
   function refresh() {
     listTokens()
@@ -66,18 +91,45 @@ export function TokensPage() {
       <h1>Personal tokens</h1>
       <p className="muted">
         A personal token stands in for an interactive GitHub login when you're publishing from a shell, notebook,
-        or Colab instead of a browser.
+        or Colab instead of a browser. The same token also works on{" "}
+        <a href="https://data.tamquant.com/settings/tokens">Data Explorer</a> for data/SQL access -- one token,
+        not two.
       </p>
-      <ul className="muted">
-        <li>
-          <code>upload-discovery login</code> (or <code>tam.discovery.upload(token=...)</code>) -- paste it when
-          prompted to publish here.
-        </li>
-        <li>
-          The same token also works on <a href="https://data.tamquant.com/settings/tokens">Data Explorer</a> for
-          data/SQL access -- one token, not two.
-        </li>
-      </ul>
+
+      <div className="tabs">
+        {SETUP_TABS.map(({ key, label }) => (
+          <button key={key} className={setupTab === key ? "active" : ""} onClick={() => setSetupTab(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {setupTab === "cli" && (
+        <>
+          <p className="muted">Log in once, then publish from a plain shell.</p>
+          <CodeBlock language="bash" code={CLI_SNIPPET} />
+        </>
+      )}
+      {setupTab === "python" && (
+        <>
+          <p className="muted">
+            Publish inline from a script or notebook -- no login step, pass the token directly (or set{" "}
+            <code>TAM_PAT</code> once and omit it).
+          </p>
+          <CodeBlock language="python" code={PYTHON_SNIPPET} />
+        </>
+      )}
+      {setupTab === "colab" && (
+        <>
+          <p className="muted">
+            In a Colab notebook, open the key-icon <strong>Secrets</strong> panel (left sidebar), add a secret
+            named exactly <code>TAM_PAT</code>, paste your token as its value, and toggle notebook access on --{" "}
+            <code>upload()</code> finds it automatically.
+          </p>
+          <CodeBlock language="python" code={COLAB_SNIPPET} />
+        </>
+      )}
+
       <p className="callout">
         Treat it like a password: whoever has it can publish or query on your behalf until you revoke it below.
       </p>

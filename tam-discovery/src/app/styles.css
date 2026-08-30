@@ -300,6 +300,70 @@ tbody tr:hover td {
   margin-bottom: 1rem;
 }
 
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.tabs button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+  padding: 0.6rem 0.2rem;
+  margin-right: 1.25rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.tabs button:hover {
+  background: none;
+  color: var(--text);
+}
+.tabs button.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.code-block {
+  margin: 0.75rem 0 1.25rem;
+  border: 1px solid var(--border);
+}
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+}
+.code-block-copy {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+}
+.code-block pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+.tok-comment {
+  color: var(--muted);
+}
+.tok-string {
+  color: #1a7f5a;
+}
+.tok-keyword {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.tok-placeholder {
+  color: #b45309;
+}
+
 /* Full-screen-ish artifact view (DetailPage) -- the iframe is the main
    thing on the page, but keeps a little breathing room around it rather
    than running edge-to-edge. Metadata/versions sit in a header strip ABOVE
