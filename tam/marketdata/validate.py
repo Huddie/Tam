@@ -12,12 +12,12 @@ runs. Without it installed, those specific checks are skipped with a warning
 rather than failing outright; the OHLC-integrity checks (which need no
 calendar) always run.
 """
+
 from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass, field
 from datetime import date
-from typing import List
 
 import pandas as pd
 
@@ -27,8 +27,8 @@ from .schema import CLOSE, HIGH, LOW, OPEN, SYMBOL, VOLUME
 @dataclass
 class ValidationReport:
     day: date
-    errors: List[str] = field(default_factory=list)
-    warning_messages: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warning_messages: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:

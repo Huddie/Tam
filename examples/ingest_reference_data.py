@@ -18,6 +18,7 @@ product surface than the MASSIVE_S3_ACCESS_KEY_ID/MASSIVE_S3_SECRET_ACCESS_KEY
 flat-file credentials examples/ingest_minute_bars.py uses) plus the usual
 R2 credentials, unless --local-root is given.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,9 @@ from tam.marketdata.reference_store import LocalReferenceStore, R2ReferenceStore
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--local-root", default=None, help="Local directory to read/write instead of R2 (dry-run/tests)")
+    parser.add_argument(
+        "--local-root", default=None, help="Local directory to read/write instead of R2 (dry-run/tests)"
+    )
     args = parser.parse_args()
 
     provider = MassiveReferenceProvider()

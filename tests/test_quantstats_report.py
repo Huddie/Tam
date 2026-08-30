@@ -5,6 +5,7 @@ actually call quantstats' own functions with their output need the real
 cleanly wherever that extra isn't installed instead of failing the whole
 suite.
 """
+
 from datetime import date, timedelta
 
 import pandas as pd

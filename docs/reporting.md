@@ -3,11 +3,11 @@
 ## Report — the data object (no plotly dependency)
 
 ```python
-report.equity_curve("main")     # pd.Series, indexed by date
-report.drawdown_curve("main")   # pd.Series
-report.summary("main")          # dict: start/end value, CAGR, Sharpe, max drawdown, ...
-report.summary_all()            # the above for every portfolio, as one DataFrame
-report.trades_for("main")       # pd.DataFrame
+report.equity_curve("main")  # pd.Series, indexed by date
+report.drawdown_curve("main")  # pd.Series
+report.summary("main")  # dict: start/end value, CAGR, Sharpe, max drawdown, ...
+report.summary_all()  # the above for every portfolio, as one DataFrame
+report.trades_for("main")  # pd.DataFrame
 ```
 
 Build one straight from your own pandas, no harness needed:
@@ -15,7 +15,7 @@ Build one straight from your own pandas, no harness needed:
 ```python
 from tam.backtest.report import Report
 
-report = Report.from_curves({"my_strategy": wealth_series})       # {name: pd.Series} or a wide DataFrame
+report = Report.from_curves({"my_strategy": wealth_series})  # {name: pd.Series} or a wide DataFrame
 report = Report.from_curves(df, trades=trades_df, annotations=[{"date": d, "label": "note"}])
 ```
 
@@ -28,9 +28,9 @@ unlabeled sweep of hundreds of variants; plot those directly instead (see
 ```python
 from tam.backtest.visualization import render, render_curves, write_html, RenderOptions
 
-fig = render(report)                                  # equity/drawdown/trades/summary-table dashboard
-fig = render_curves({"my_strategy": wealth_series})    # render(Report.from_curves(...)), one call
-write_html(report, "out.html")                         # render(...).write_html(path)
+fig = render(report)  # equity/drawdown/trades/summary-table dashboard
+fig = render_curves({"my_strategy": wealth_series})  # render(Report.from_curves(...)), one call
+write_html(report, "out.html")  # render(...).write_html(path)
 
 options = RenderOptions(show_trades_default=False, height=900, template="plotly_dark")
 fig = render(report, options=options)
@@ -59,11 +59,14 @@ Two `Registry` interfaces, same pattern as elsewhere:
 @Registry.register(TearsheetChart, "my_chart")
 class MyChart(TearsheetChart):
     title = "My Chart"
+
     def render(self, report: Report) -> go.Figure: ...
+
 
 @Registry.register(TearsheetMetric, "my_metric")
 class MyMetric(TearsheetMetric):
     label, format = "My Metric", "pct"
+
     def compute(self, report: Report, portfolio_id: str) -> float: ...
 ```
 
@@ -79,8 +82,8 @@ same as everything in [Charting](charting.md) — see that page for the
 from tam.backtest.tearsheet import CumulativeReturnsChart, DrawdownChart
 
 c = CumulativeReturnsChart()
-c(my_series)                       # auto-displays in Jupyter
-c1(series) | c2(series) | c3(series)   # one composite figure
+c(my_series)  # auto-displays in Jupyter
+c1(series) | c2(series) | c3(series)  # one composite figure
 ```
 
 Chart gallery (see `tam/backtest/tearsheet.py` for the full list and every
@@ -109,11 +112,11 @@ table, plot library, and HTML tearsheets. Alongside `Report.summary()`/
 from tam.backtest.visualization import write_html
 from tam.backtest import quantstats_report
 
-report.summary_all()                                              # our 9 metrics
-quantstats_report.metrics(report, "main", benchmark="alt")         # QuantStats' ~60, as a DataFrame
+report.summary_all()  # our 9 metrics
+quantstats_report.metrics(report, "main", benchmark="alt")  # QuantStats' ~60, as a DataFrame
 
-write_html(report, "dashboard.html")                               # our plotly dashboard
-quantstats_report.write_html(report, "main", "tearsheet.html")     # a QuantStats tearsheet
+write_html(report, "dashboard.html")  # our plotly dashboard
+quantstats_report.write_html(report, "main", "tearsheet.html")  # a QuantStats tearsheet
 ```
 
 `benchmark` can be another `portfolio_id` already in the *same* `Report`

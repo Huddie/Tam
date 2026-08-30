@@ -7,12 +7,13 @@ so those stay dependency-light; this module needs the `live` extra
 (`uv sync --extra live`, adds `dash`) since most runs just want the static
 HTML report from write_html and shouldn't need Dash installed for that.
 """
+
 from __future__ import annotations
 
 import logging
 import pickle
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, Optional
 
 import pandas as pd
 
@@ -20,7 +21,7 @@ from .report import Report
 from .visualization import RenderOptions, render
 
 
-def report_from_checkpoint(checkpoint_path: str) -> Optional[Report]:
+def report_from_checkpoint(checkpoint_path: str) -> Report | None:
     """Reconstruct a partial Report from whatever's in the checkpoint right
     now, or None if it doesn't exist yet (e.g. day 1 hasn't completed) --
     also None if it existed a moment ago but is gone by the time we get to
@@ -47,12 +48,12 @@ def report_from_checkpoint(checkpoint_path: str) -> Optional[Report]:
 
 
 def live_render(
-    next_frame: Callable[[], Optional[Report]],
+    next_frame: Callable[[], Report | None],
     title: str = "Backtest (live)",
     poll_seconds: float = 2.0,
-    options: Optional[RenderOptions] = None,
-    ticker_colors: Optional[Dict[str, str]] = None,
-    prices: Optional[Dict[str, "pd.Series"]] = None,
+    options: RenderOptions | None = None,
+    ticker_colors: dict[str, str] | None = None,
+    prices: dict[str, pd.Series] | None = None,
     should_continue: Callable[[], bool] = lambda: True,
 ) -> None:
     """Generalized notebook clear_output()/display() redraw loop: pulls
@@ -74,7 +75,7 @@ def live_render(
     import time
 
     try:
-        from IPython.display import clear_output, display
+        from IPython.display import clear_output, display  # noqa: F401 -- availability check only; live_render below does the real import
     except ImportError as exc:
         raise ImportError(
             "live_render needs IPython's display utilities -- always present already inside a real "
@@ -82,9 +83,9 @@ def live_render(
             'pip install "tam-quant[notebook]".'
         ) from exc
 
-    last_report: Optional[Report] = None
+    last_report: Report | None = None
 
-    def _redraw(report: Optional[Report]) -> None:
+    def _redraw(report: Report | None) -> None:
         nonlocal last_report
         if report is not None:
             last_report = report
@@ -102,16 +103,16 @@ def live_render(
 
 
 def serve(
-    checkpoint_path: Optional[str] = None,
+    checkpoint_path: str | None = None,
     title: str = "Backtest (live)",
     poll_seconds: float = 3.0,
     port: int = 8050,
     verbose: bool = False,
-    ticker_colors: Optional[Dict[str, str]] = None,
-    prices: Optional[Dict[str, "pd.Series"]] = None,
-    jupyter_mode: Optional[str] = None,
-    options: Optional[RenderOptions] = None,
-    next_frame: Optional[Callable[[], Optional[Report]]] = None,
+    ticker_colors: dict[str, str] | None = None,
+    prices: dict[str, pd.Series] | None = None,
+    jupyter_mode: str | None = None,
+    options: RenderOptions | None = None,
+    next_frame: Callable[[], Report | None] | None = None,
 ) -> None:
     """Blocking (unless `jupyter_mode` says otherwise -- see below): serves a
     dashboard at http://127.0.0.1:<port> that re-reads the checkpoint every
@@ -172,9 +173,9 @@ def serve(
     except ImportError as exc:
         raise ImportError(
             "native_dash / --mode live needs the `live` extra (adds dash): run `uv sync --extra live` "
-            "and retry, or in a notebook `!pip install -q \"tam-quant[live]\"` -- the `notebook` extra "
+            'and retry, or in a notebook `!pip install -q "tam-quant[live]"` -- the `notebook` extra '
             "alone does NOT include dash. If you're in a notebook and don't specifically need a real "
-            "Dash server, render_mode=\"clear_output\" (the default) needs no extra dependency at all."
+            'Dash server, render_mode="clear_output" (the default) needs no extra dependency at all.'
         ) from exc
 
     if jupyter_mode is not None:

@@ -37,10 +37,12 @@ standardization table eagerly, a heavier dependency than fredapi, so
 `import tam` itself should stay cheap; use this explicit submodule import
 instead.
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache, update_wrapper
-from typing import Any, List, Optional, Sequence, Union
+from typing import Any
 
 import pandas as pd
 
@@ -50,7 +52,7 @@ from .normalize import _synonyms, normalize_facts
 from .provider import SecProvider
 from .store import SecStore
 
-__all__ = ["Sec", "SecStore", "SecProvider", "Manifest", "normalize_facts"]
+__all__ = ["Manifest", "Sec", "SecProvider", "SecStore", "normalize_facts"]
 
 
 def _is_missing_glob_error(exc: Exception, *path_hints: str) -> bool:
@@ -122,10 +124,10 @@ class Sec:
     def __init__(
         self,
         *,
-        token: Optional[str] = None,
-        api_url: Optional[str] = None,
-        ttl_seconds: Optional[int] = None,
-        local_root: Optional[str] = None,
+        token: str | None = None,
+        api_url: str | None = None,
+        ttl_seconds: int | None = None,
+        local_root: str | None = None,
         **open_duckdb_kwargs: Any,
     ):
         self._token = token
@@ -144,10 +146,10 @@ class Sec:
         # moment this Sec instance is.
         self._resolve_cik = lru_cache(maxsize=None)(self._resolve_cik_uncached)
 
-    _shared_default: "Optional[Sec]" = None
+    _shared_default: Sec | None = None
 
     @classmethod
-    def _default(cls) -> "Sec":
+    def _default(cls) -> Sec:
         """The shared instance `Sec.financials(...)`/`Sec.filings(...)`/
         `Sec.query(...)` use when called directly on the class -- built
         once, on first such use, then reused (same "connect once, cache,
@@ -238,13 +240,13 @@ class Sec:
             raise
         return row[0]
 
-    def _resolve_ciks(self, tickers: Sequence[Union[str, int]]) -> List[int]:
+    def _resolve_ciks(self, tickers: Sequence[str | int]) -> list[int]:
         """Resolves each of `tickers` (tickers or raw CIKs, mixed freely)
         to its real integer CIK -- see _resolve_cik_uncached()'s own docstring for
         the caching/pushdown rationale."""
         return [self._resolve_cik(str(t)) for t in tickers]
 
-    def _execute(self, sql: str, params: List[Any], columns: List[str]) -> pd.DataFrame:
+    def _execute(self, sql: str, params: list[Any], columns: list[str]) -> pd.DataFrame:
         """Runs `sql`/`params`, returning an EMPTY DataFrame (with the
         right `columns`) instead of raising when the underlying Parquet
         glob matches literally zero files -- a legitimate, expected state
@@ -267,13 +269,13 @@ class Sec:
         return self._connect().sql(sql).df()
 
     @_default_or_bound
-    def companies(self, search: Optional[str] = None) -> pd.DataFrame:
+    def companies(self, search: str | None = None) -> pd.DataFrame:
         """Every ticker/CIK/company name on record -- the reference table
         every other method's `tickers=`/`ticker=` values come from.
         `search` matches (case-insensitively) as a substring of EITHER the
         ticker or the company name; omit it to list every company."""
         where = ""
-        params: List[Any] = []
+        params: list[Any] = []
         if search:
             where = "WHERE ticker ILIKE ? OR entity_name ILIKE ?"
             pattern = f"%{search}%"
@@ -297,7 +299,7 @@ class Sec:
         return pd.DataFrame({schema.STATEMENT: values})
 
     @_default_or_bound
-    def line_item_catalog(self, statement: Optional[str] = None) -> pd.DataFrame:
+    def line_item_catalog(self, statement: str | None = None) -> pd.DataFrame:
         """Every line-item name `normalize_facts()` knows how to produce,
         independent of whether any ingested company actually has data for
         it yet -- the full theoretical catalog, optionally filtered to one
@@ -317,9 +319,9 @@ class Sec:
     @_default_or_bound
     def line_items(
         self,
-        tickers: Optional[Sequence[Union[str, int]]] = None,
-        search: Optional[str] = None,
-        statement: Optional[str] = None,
+        tickers: Sequence[str | int] | None = None,
+        search: str | None = None,
+        statement: str | None = None,
     ) -> pd.DataFrame:
         """Which line items actually have data for `tickers` (or every
         company on record, if omitted), ranked by how well-populated each
@@ -332,8 +334,8 @@ class Sec:
         concept(s) actually rolled up into each line item -- pass one of
         them, or the line item itself, to `Sec.concepts()` for the
         reverse, per-company breakdown."""
-        where: List[str] = []
-        params: List[Any] = []
+        where: list[str] = []
+        params: list[Any] = []
 
         if tickers:
             ciks = self._resolve_ciks(tickers)
@@ -360,14 +362,14 @@ class Sec:
         return self._execute(sql, params, [schema.STATEMENT, schema.LINE_ITEM, "concepts", "fact_count"])
 
     @_default_or_bound
-    def concepts(self, line_item: str, tickers: Optional[Sequence[Union[str, int]]] = None) -> pd.DataFrame:
+    def concepts(self, line_item: str, tickers: Sequence[str | int] | None = None) -> pd.DataFrame:
         """Which raw XBRL concepts actually rolled up into `line_item`
         (see `Sec.line_items()` for valid values), and for which
         companies -- the reverse lookup from `line_items()`'s own
         `concepts` column, for when you already know the line item and
         want to trace it back to the raw tag(s)."""
         where = ["line_item = ?"]
-        params: List[Any] = [line_item]
+        params: list[Any] = [line_item]
         if tickers:
             ciks = self._resolve_ciks(tickers)
             placeholders = ", ".join("?" for _ in ciks)
@@ -376,7 +378,7 @@ class Sec:
         sql = f"""
             SELECT DISTINCT cik, concept
             FROM sec_financials()
-            WHERE {' AND '.join(where)}
+            WHERE {" AND ".join(where)}
             ORDER BY cik, concept
         """
         return self._execute(sql, params, [schema.CIK, schema.CONCEPT])
@@ -384,11 +386,11 @@ class Sec:
     @_default_or_bound
     def financials(
         self,
-        tickers: Optional[Sequence[Union[str, int]]] = None,
-        statement: Optional[str] = None,
-        line_items: Optional[Sequence[str]] = None,
-        start: Optional[Union[str, int]] = None,
-        end: Optional[Union[str, int]] = None,
+        tickers: Sequence[str | int] | None = None,
+        statement: str | None = None,
+        line_items: Sequence[str] | None = None,
+        start: str | int | None = None,
+        end: str | int | None = None,
         dedupe_periods: bool = True,
     ) -> pd.DataFrame:
         """Normalized financials (long format: one row per line item), for
@@ -414,8 +416,8 @@ class Sec:
         not a pandas groupby after fetching. Pass False to get every
         period SEC reported, duplicates and all (e.g. if you specifically
         want the YTD figures too)."""
-        where: List[str] = []
-        params: List[Any] = []
+        where: list[str] = []
+        params: list[Any] = []
 
         if tickers:
             ciks = self._resolve_ciks(tickers)
@@ -467,18 +469,18 @@ class Sec:
     @_default_or_bound
     def filings(
         self,
-        ticker: Optional[Union[str, int]] = None,
-        forms: Optional[Sequence[str]] = None,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
+        ticker: str | int | None = None,
+        forms: Sequence[str] | None = None,
+        start: str | None = None,
+        end: str | None = None,
     ) -> pd.DataFrame:
         """Filing metadata (accession number, form, filed date, period of
         report, ...) for one company, optionally scoped to specific
         `forms` (see `Sec.forms()` for valid values) and a filed-date
         range. `filed_date`/`period_of_report` come back as real dates
         (cast in SQL), rows pre-sorted chronologically."""
-        where: List[str] = []
-        params: List[Any] = []
+        where: list[str] = []
+        params: list[Any] = []
 
         if ticker is not None:
             where.append("cik = ?")
@@ -507,13 +509,13 @@ class Sec:
         return self._execute(sql, params, schema.SUBMISSIONS_COLUMNS)
 
     @_default_or_bound
-    def forms(self, tickers: Optional[Sequence[Union[str, int]]] = None) -> pd.DataFrame:
+    def forms(self, tickers: Sequence[str | int] | None = None) -> pd.DataFrame:
         """Which filing forms actually have data for `tickers` (or every
         company on record, if omitted), ranked by count -- answers "what
         can I actually pass to filings(forms=[...])" from real ingested
         data, not a guess at SEC's own form-type list."""
-        where: List[str] = []
-        params: List[Any] = []
+        where: list[str] = []
+        params: list[Any] = []
         if tickers:
             ciks = self._resolve_ciks(tickers)
             placeholders = ", ".join("?" for _ in ciks)

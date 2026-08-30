@@ -15,10 +15,11 @@ never locked into this module's idea of which return matters to you:
     close_to_close = closes.pct_change()               # the classic daily return
     weekly_returns = closes.resample("W").last().pct_change()
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date
-from typing import Iterable
 
 import pandas as pd
 
@@ -26,7 +27,9 @@ from ..data.repository import DataRepository
 from ..data.schema import CLOSE
 
 
-def price_matrix(repository: DataRepository, tickers: Iterable[str], start: date, end: date, column: str = CLOSE) -> pd.DataFrame:
+def price_matrix(
+    repository: DataRepository, tickers: Iterable[str], start: date, end: date, column: str = CLOSE
+) -> pd.DataFrame:
     """date-indexed, one column per ticker, values from `column` (one of
     tam.data.schema's OPEN/HIGH/LOW/CLOSE/ADJ_CLOSE/VOLUME). Ingests each
     ticker first (via DataRepository.ingest -- only fetches what's missing),

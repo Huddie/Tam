@@ -1,4 +1,5 @@
 """Shared column names for OHLCV price history, so providers and stores agree on schema."""
+
 import pandas as pd
 
 DATE = "date"

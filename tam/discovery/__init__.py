@@ -21,6 +21,7 @@ Needs a publishing token -- see tam.discovery.auth for how one gets found
 automatically (env var, Colab secret, or `upload-discovery login`'s saved
 file), or run `upload-discovery login` once first.
 """
+
 from .upload import Uploadable, UploadResult, upload
 
-__all__ = ["upload", "UploadResult", "Uploadable"]
+__all__ = ["UploadResult", "Uploadable", "upload"]

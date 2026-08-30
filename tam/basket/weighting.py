@@ -6,9 +6,8 @@ optimization (Ledoit-Wolf shrinkage covariance, a real QP solver) is a
 natural later upgrade once this simpler version is validated -- see
 research doc §9 -- not implemented here.
 """
-from __future__ import annotations
 
-from typing import Dict, Optional
+from __future__ import annotations
 
 import numpy as np
 import pandas as pd
@@ -18,8 +17,8 @@ def inverse_vol_weights(
     scores: pd.Series,
     volatility: pd.Series,
     max_weight: float = 1.0,
-    sector_caps: Optional[Dict[str, float]] = None,
-    sectors: Optional[pd.Series] = None,
+    sector_caps: dict[str, float] | None = None,
+    sectors: pd.Series | None = None,
 ) -> pd.Series:
     """w_i ∝ max(score_i, 0) / vol_i, normalized to sum to 1, then capped at
     `max_weight` per name (excess redistributed proportionally among
@@ -65,7 +64,7 @@ def _cap_iteratively(weights: pd.Series, max_weight: float) -> pd.Series:
     return weights
 
 
-def _cap_sectors(weights: pd.Series, sectors: pd.Series, sector_caps: Dict[str, float]) -> pd.Series:
+def _cap_sectors(weights: pd.Series, sectors: pd.Series, sector_caps: dict[str, float]) -> pd.Series:
     weights = weights.copy()
     for sector, cap in sector_caps.items():
         members = sectors[sectors == sector].index.intersection(weights.index)

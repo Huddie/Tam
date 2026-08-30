@@ -19,12 +19,17 @@ Usage:
     python -m examples.backtest examples/ma_crossover_config.yaml
     python -m examples.backtest examples/trend_rotation_config.yaml --mode live
 """
+
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-from tam.backtest.runner import BacktestSettings, _validate_tickers_declared, run  # noqa: F401 -- re-exported for tests/back-compat
+from tam.backtest.runner import (  # noqa: F401 -- re-exported for tests/back-compat
+    BacktestSettings,
+    _validate_tickers_declared,
+    run,
+)
 
 
 def main() -> None:

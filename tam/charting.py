@@ -56,10 +56,11 @@ process, or `%load_ext tam.charting` + `%darkmode`/`%lightmode`/
 Python call. Per-line coloring is separate: `timeseries(series,
 color="white")`.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Union
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -67,10 +68,10 @@ from plotly.subplots import make_subplots
 
 from .registry import Registry
 
-_SeriesInput = Union[pd.Series, Dict[str, pd.Series], pd.DataFrame, List[pd.Series]]
+_SeriesInput = Union[pd.Series, dict[str, pd.Series], pd.DataFrame, list[pd.Series]]
 
 
-def _to_curves(series: _SeriesInput) -> Dict[str, pd.Series]:
+def _to_curves(series: _SeriesInput) -> dict[str, pd.Series]:
     """Normalize any accepted series shape into a plain {name: pd.Series}
     dict -- the same shapes tam.backtest.report.Report.from_curves()
     itself accepts (a single Series, a {name: series} dict, a wide
@@ -86,7 +87,7 @@ def _to_curves(series: _SeriesInput) -> Dict[str, pd.Series]:
         name = series.name or "portfolio"
         return {str(name): series}
     if isinstance(series, (list, tuple)):
-        curves: Dict[str, pd.Series] = {}
+        curves: dict[str, pd.Series] = {}
         for item in series:
             if not isinstance(item, pd.Series):
                 raise TypeError(f"each item in a list passed to a chart must be a pd.Series, got {type(item).__name__}")
@@ -97,7 +98,7 @@ def _to_curves(series: _SeriesInput) -> Dict[str, pd.Series]:
     return dict(series)
 
 
-_THEMES: Dict[str, Dict[str, Any]] = {
+_THEMES: dict[str, dict[str, Any]] = {
     "light": {"template": "plotly_white"},
     "dark": {
         "template": "plotly_dark",
@@ -176,7 +177,7 @@ class Chart(ABC):
     @abstractmethod
     def render(self, data: Any) -> go.Figure: ...
 
-    def __call__(self, data: Any, *, axis: str = "left", layer: Optional[int] = None) -> ChartCall:
+    def __call__(self, data: Any, *, axis: str = "left", layer: int | None = None) -> ChartCall:
         """Wrap `data` + this chart into a ChartCall. `data`'s shape is
         whatever this Chart's own render() expects -- see that method's
         docstring/type hint. `axis`/`layer` only matter when this call is
@@ -196,7 +197,7 @@ class ChartCall:
     charts into the SAME panel instead (see ChartOverlay)."""
 
     def __init__(
-        self, chart: Chart, data: Any, *, axis: str = "left", layer: Optional[int] = None, inverted: bool = False
+        self, chart: Chart, data: Any, *, axis: str = "left", layer: int | None = None, inverted: bool = False
     ) -> None:
         self._chart = chart
         self._data = data
@@ -263,12 +264,12 @@ class ChartCall:
         (wrongly) treated as a file path."""
         return self.render().to_html(*args, **kwargs)
 
-    def __or__(self, other: Union[ChartCall, ChartOverlay, ChartPipeline]) -> ChartPipeline:
+    def __or__(self, other: ChartCall | ChartOverlay | ChartPipeline) -> ChartPipeline:
         if isinstance(other, ChartPipeline):
             return ChartPipeline([self] + other._calls)
         return ChartPipeline([self, other])
 
-    def __and__(self, other: Union[ChartCall, ChartOverlay]) -> ChartOverlay:
+    def __and__(self, other: ChartCall | ChartOverlay) -> ChartOverlay:
         if isinstance(other, ChartOverlay):
             return ChartOverlay(_resolve_layers([self] + other._calls))
         return ChartOverlay(_resolve_layers([self, other]))
@@ -282,7 +283,7 @@ class ChartCall:
         return self._build_mimebundle(**kwargs)
 
 
-def _resolve_layers(calls: List[ChartCall]) -> List[ChartCall]:
+def _resolve_layers(calls: list[ChartCall]) -> list[ChartCall]:
     """Assigns a concrete `layer` to every call in order: one the caller
     explicitly passed (`layer=...` at construction) is a fixed anchor;
     one left unset becomes the PREVIOUS call's own resolved layer + 1 --
@@ -291,7 +292,7 @@ def _resolve_layers(calls: List[ChartCall]) -> List[ChartCall]:
     Re-run on every `&` (even one combining two already-resolved
     ChartOverlays) so unset layers always reflect their CURRENT position,
     not whatever position they happened to resolve to earlier."""
-    resolved: List[ChartCall] = []
+    resolved: list[ChartCall] = []
     previous = -1
     for call in calls:
         layer = call.layer if call._layer_explicit else previous + 1
@@ -326,19 +327,19 @@ class ChartOverlay:
     further with `|`/`&` exactly like ChartCall (an overlay is one
     row-item, just like a single chart is)."""
 
-    def __init__(self, calls: List[ChartCall]) -> None:
+    def __init__(self, calls: list[ChartCall]) -> None:
         self._calls = list(calls)
 
     @property
     def title(self) -> str:
         return next((c.title for c in self._calls if c.title), "")
 
-    def __or__(self, other: Union[ChartCall, ChartOverlay, ChartPipeline]) -> ChartPipeline:
+    def __or__(self, other: ChartCall | ChartOverlay | ChartPipeline) -> ChartPipeline:
         if isinstance(other, ChartPipeline):
             return ChartPipeline([self] + other._calls)
         return ChartPipeline([self, other])
 
-    def __and__(self, other: Union[ChartCall, ChartOverlay]) -> ChartOverlay:
+    def __and__(self, other: ChartCall | ChartOverlay) -> ChartOverlay:
         if isinstance(other, ChartOverlay):
             return ChartOverlay(_resolve_layers(self._calls + other._calls))
         return ChartOverlay(_resolve_layers(self._calls + [other]))
@@ -405,7 +406,7 @@ class ChartOverlay:
                 excluded = ("domain", "anchor", "overlaying", "side")
                 getattr(fig.layout, target_y_key).update({k: v for k, v in src_yaxis.items() if k not in excluded})
 
-        layout_kwargs: Dict[str, Any] = {"title": self.title, "showlegend": True}
+        layout_kwargs: dict[str, Any] = {"title": self.title, "showlegend": True}
         if needs_secondary:
             # A right-hand axis puts its own title/ticks in the space Plotly's
             # default legend (floating to the right of the plot) also wants --
@@ -448,10 +449,10 @@ class ChartPipeline:
     -- both expose the same `.render()`/`.title` contract, so this class
     doesn't need to know or care which it's holding."""
 
-    def __init__(self, calls: List[Union[ChartCall, ChartOverlay]]) -> None:
+    def __init__(self, calls: list[ChartCall | ChartOverlay]) -> None:
         self._calls = list(calls)
 
-    def __or__(self, other: Union[ChartCall, ChartOverlay, ChartPipeline]) -> ChartPipeline:
+    def __or__(self, other: ChartCall | ChartOverlay | ChartPipeline) -> ChartPipeline:
         if isinstance(other, ChartPipeline):
             return ChartPipeline(self._calls + other._calls)
         return ChartPipeline(self._calls + [other])
@@ -548,7 +549,7 @@ class ChartPipeline:
                     excluded = ("domain", "anchor", "overlaying")
                     secondary_subplot.yaxis.update({k: v for k, v in src_axis.items() if k not in excluded})
 
-        layout_kwargs: Dict[str, Any] = {"height": max(350 * n, 600), "showlegend": True}
+        layout_kwargs: dict[str, Any] = {"height": max(350 * n, 600), "showlegend": True}
         if has_any_secondary:
             # Same reasoning as ChartOverlay.render()'s own version of this --
             # a right-hand axis in any row collides with Plotly's default
@@ -580,7 +581,7 @@ class TimeSeriesChart(Chart):
     `timeseries()` below is the ergonomic standalone entry point most
     callers should use instead of constructing this directly."""
 
-    def __init__(self, title: str = "Time Series", color: Optional[str] = None, axis_title: Optional[str] = None):
+    def __init__(self, title: str = "Time Series", color: str | None = None, axis_title: str | None = None):
         self.title = title
         self._color = color
         self._axis_title = axis_title
@@ -601,9 +602,9 @@ def timeseries(
     title: str = "Time Series",
     *,
     axis: str = "left",
-    layer: Optional[int] = None,
-    color: Optional[str] = None,
-    axis_title: Optional[str] = None,
+    layer: int | None = None,
+    color: str | None = None,
+    axis_title: str | None = None,
 ) -> ChartCall:
     """The standalone/composable entry point for plotting raw series
     together -- same call/compose contract as every Chart here (this
@@ -637,7 +638,7 @@ def timeseries(
     return TimeSeriesChart(title=title, color=color, axis_title=axis_title)(series, axis=axis, layer=layer)
 
 
-_Region = Tuple[Any, Any]
+_Region = tuple[Any, Any]
 
 
 @Registry.register(Chart, "rect")
@@ -653,7 +654,7 @@ class RectChart(Chart):
         self._color = color
         self._opacity = opacity
 
-    def render(self, regions: List[_Region]) -> go.Figure:
+    def render(self, regions: list[_Region]) -> go.Figure:
         fig = go.Figure()
         for start, end in regions:
             fig.add_vrect(x0=start, x1=end, fillcolor=self._color, opacity=self._opacity, line_width=0)
@@ -666,7 +667,13 @@ class RectChart(Chart):
 
 
 def rect(
-    regions: List[_Region], title: str = "", color: str = "red", opacity: float = 0.2, *, axis: str = "left", layer: Optional[int] = None
+    regions: list[_Region],
+    title: str = "",
+    color: str = "red",
+    opacity: float = 0.2,
+    *,
+    axis: str = "left",
+    layer: int | None = None,
 ) -> ChartCall:
     """A composable shaded-region panel -- date ranges (divergence
     episodes, regimes, recessions, ...) to mark on a chart:
@@ -682,12 +689,12 @@ def rect(
     return RectChart(title=title, color=color, opacity=opacity)(regions, axis=axis, layer=layer)
 
 
-def _contiguous_ranges(flags: pd.Series) -> List[_Region]:
+def _contiguous_ranges(flags: pd.Series) -> list[_Region]:
     """[(start, end), ...] for each maximal run of consecutive True values
     in `flags` (a boolean Series indexed by date/time) -- e.g. the ranges
     where two series have "diverged," ready to feed straight into
     rect()."""
-    ranges: List[_Region] = []
+    ranges: list[_Region] = []
     start = None
     prev_index = None
     for index, flag in flags.items():
@@ -709,7 +716,7 @@ class DivergenceAlg(ABC):
     a DivergenceAlg directly."""
 
     @abstractmethod
-    def find(self, a: pd.Series, b: pd.Series) -> List[_Region]: ...
+    def find(self, a: pd.Series, b: pd.Series) -> list[_Region]: ...
 
 
 @Registry.register(DivergenceAlg, "zscore")
@@ -728,7 +735,7 @@ class ZScoreDivergence(DivergenceAlg):
         self.threshold = threshold
         self.window = window
 
-    def find(self, a: pd.Series, b: pd.Series) -> List[_Region]:
+    def find(self, a: pd.Series, b: pd.Series) -> list[_Region]:
         aligned = pd.concat({"a": a, "b": b}, axis=1).ffill().dropna()
         z_a = self._rolling_z(aligned["a"])
         z_b = self._rolling_z(aligned["b"])
@@ -742,7 +749,7 @@ class ZScoreDivergence(DivergenceAlg):
 ZScoreDivergence.default = ZScoreDivergence()
 
 
-def find_divergence(series_a: pd.Series, series_b: pd.Series, alg: Optional[DivergenceAlg] = None) -> List[_Region]:
+def find_divergence(series_a: pd.Series, series_b: pd.Series, alg: DivergenceAlg | None = None) -> list[_Region]:
     """Date ranges where `series_a`/`series_b` diverge "heavily" from each
     other, per `alg` (default: ZScoreDivergence.default) -- ready to feed
     straight into rect():

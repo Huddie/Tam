@@ -5,6 +5,7 @@ rebalance cadence, daily round-trips, hedge sizing) across a real
 event-driven simulation, not a pure function -- worth exercising the real
 harness rather than just the private helpers in isolation.
 """
+
 from datetime import date
 
 import numpy as np
@@ -121,9 +122,7 @@ def test_holds_and_round_trips_selected_tickers_daily(tmp_path):
 
 def test_final_n_and_max_per_cluster_are_respected(tmp_path):
     repo, idx = _build_repo(tmp_path)
-    strategy = _basic_strategy(
-        repo, selection_params={"top_n": 4, "n_clusters": 4, "max_per_cluster": 1, "final_n": 2}
-    )
+    strategy = _basic_strategy(repo, selection_params={"top_n": 4, "n_clusters": 4, "max_per_cluster": 1, "final_n": 2})
 
     strategy._rebalance(idx[200].date())
 

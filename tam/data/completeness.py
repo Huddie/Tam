@@ -14,9 +14,8 @@ a NYSE trading day", "actual" is just "is there a row for it". Every day's
 actual_bars/expected_bars is therefore 0 or 1, and extended_hours_bars is
 always 0 (kept in the shape for compatibility, just never populated here).
 """
-from __future__ import annotations
 
-from typing import Dict, List, Optional
+from __future__ import annotations
 
 import pandas as pd
 
@@ -32,12 +31,14 @@ from ..marketdata.completeness import (
 __all__ = [
     "SCHEMA_VERSION",
     "completeness_sidecar_suffix",
-    "sidecar_schema_version",
     "compute_completeness",
+    "sidecar_schema_version",
 ]
 
 
-def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: str = "NYSE") -> Optional[CompletenessIndex]:
+def compute_completeness(
+    symbol: str, year: int, df: pd.DataFrame, *, calendar: str = "NYSE"
+) -> CompletenessIndex | None:
     """Builds a CompletenessIndex from `df` -- one symbol-year's already-
     UPSERTed daily bars (naive `date` index), the SAME frame the store's
     _upsert_partition just wrote to disk/R2. Returns None (not an index with
@@ -56,7 +57,7 @@ def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: 
         actual_days = {d for d in df.index.date if d.year == year}
 
     all_days = sorted(expected_days | actual_days)
-    by_month: Dict[int, List[DayCompleteness]] = {}
+    by_month: dict[int, list[DayCompleteness]] = {}
     for day in all_days:
         by_month.setdefault(day.month, []).append(
             DayCompleteness(
@@ -66,7 +67,7 @@ def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: 
             )
         )
 
-    months: List[MonthCompleteness] = []
+    months: list[MonthCompleteness] = []
     total_actual = 0
     total_expected = 0
     for month in sorted(by_month):

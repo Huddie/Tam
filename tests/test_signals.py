@@ -83,7 +83,10 @@ def test_build_signals_expands_a_plural_configs_list_into_one_instance_each():
     signals = build_signals(specs)
 
     assert [s.name for s in signals] == [
-        "price_vs_sma_10", "price_vs_sma_50", "price_vs_sma_100", "macd_hist_12_26_9",
+        "price_vs_sma_10",
+        "price_vs_sma_50",
+        "price_vs_sma_100",
+        "macd_hist_12_26_9",
     ]
 
 
@@ -128,11 +131,12 @@ def test_distance_from_high_is_zero_at_a_new_high_and_negative_otherwise():
     # window=3 -> first valid value once 3 points exist, i.e. at day index 2 (110, a new high).
     assert list(result.index) == list(close.index[2:])
     assert result.iloc[0] == 0.0  # day 2 (110): equal to its own trailing high
-    assert result.iloc[1] < 0.0   # day 3 (105): below the high set on day 2
+    assert result.iloc[1] < 0.0  # day 3 (105): below the high set on day 2
 
 
 def test_registering_a_duplicate_signal_id_fails_loudly():
     with pytest.raises(ValueError, match="already registered"):
+
         @Registry.register(Signal, "sma")
         class DuplicateSma(Signal):
             name = "dup"

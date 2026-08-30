@@ -22,6 +22,7 @@ same pass), so there's nothing to reconcile there directly.
 Usage:
     uv run python scripts/reconcile_sec_parquet_schema.py
 """
+
 from __future__ import annotations
 
 from tam.research.data.sec.store import SecStore

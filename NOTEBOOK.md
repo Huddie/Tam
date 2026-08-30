@@ -58,9 +58,9 @@ expression -- otherwise the notebook also auto-echoes
 the `Report`'s `repr()` underneath the chart:
 
 ```python
-report.summary_all()          # CAGR, Sharpe, max drawdown, etc. per portfolio
-report.to_frame()              # daily snapshots as a DataFrame
-report.trades_for("moving_average")   # that portfolio's trade log
+report.summary_all()  # CAGR, Sharpe, max drawdown, etc. per portfolio
+report.to_frame()  # daily snapshots as a DataFrame
+report.trades_for("moving_average")  # that portfolio's trade log
 ```
 
 This is the notebook-native counterpart to the CLI's `python -m examples.backtest
@@ -113,8 +113,8 @@ view -- by name, from the same `Registry` that strategies/data providers use els
 in this project:
 
 ```python
-run_backtest("config.yaml", live=True, render_mode="clear_output")   # default, described above
-run_backtest("config.yaml", live=True, render_mode="native_dash")    # real Dash server, jupyter_mode="inline"
+run_backtest("config.yaml", live=True, render_mode="clear_output")  # default, described above
+run_backtest("config.yaml", live=True, render_mode="native_dash")  # real Dash server, jupyter_mode="inline"
 ```
 
 `"native_dash"` is the approach that doesn't work reliably in Colab (see above) --
@@ -128,7 +128,10 @@ clickable link instead of an iframe for `native_dash`:
 ```python
 run_backtest("config.yaml", live=True, presenter_kwargs={"poll_seconds": 5.0})
 run_backtest(
-    "config.yaml", live=True, render_mode="native_dash", port=8060,
+    "config.yaml",
+    live=True,
+    render_mode="native_dash",
+    port=8060,
     presenter_kwargs={"jupyter_mode": "external"},
 )
 ```
@@ -156,9 +159,10 @@ ABC) and reference it by name from either Python or config:
 from tam.backtest.presenter import Presenter
 from tam.registry import Registry
 
+
 @Registry.register(Presenter, "my_presenter")
-class MyPresenter(Presenter):
-    ...
+class MyPresenter(Presenter): ...
+
 
 run_backtest("config.yaml", live=True, render_mode="my_presenter")
 ```
@@ -260,12 +264,12 @@ token used for publishing to Discovery below -- one token, not two; either site'
 ```python
 from tam.marketdata.explorer_client import fetch_dataframe, connect
 
-df = fetch_dataframe("AAPL", 2024)      # one symbol-year as a DataFrame, plain HTTP
+df = fetch_dataframe("AAPL", 2024)  # one symbol-year as a DataFrame, plain HTTP
 
-con = connect()                          # full SQL access over BOTH lakes
-con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()       # from minute bars
-con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()        # true EOD, adj_close included
-con.sql("SELECT * FROM eod_bars('^GSPC') ORDER BY date").df()       # raw indices work too (Yahoo's "^" tickers)
+con = connect()  # full SQL access over BOTH lakes
+con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()  # from minute bars
+con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()  # true EOD, adj_close included
+con.sql("SELECT * FROM eod_bars('^GSPC') ORDER BY date").df()  # raw indices work too (Yahoo's "^" tickers)
 con.sql("SELECT * FROM rolling_volatility('AAPL', 21) ORDER BY day").df()
 ```
 
@@ -305,8 +309,8 @@ notebooks and local scripts already expect:
 ```python
 import tam
 
-fred_key = tam.Secrets["FRED_API_KEY"]          # raises a clear error if not set anywhere
-fred_key = tam.Secrets.get("FRED_API_KEY")      # None instead of raising, if you want to handle it yourself
+fred_key = tam.Secrets["FRED_API_KEY"]  # raises a clear error if not set anywhere
+fred_key = tam.Secrets.get("FRED_API_KEY")  # None instead of raising, if you want to handle it yourself
 ```
 
 Resolution order: an environment variable (directly, or via a local `.env` file) --
@@ -327,8 +331,8 @@ minutes, no approval wait), grant this notebook access to it, then:
 ```python
 import tam
 
-dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)   # or tam.Fred.get("DGS10") -- same series
-dgs10.name    # "10-Year Treasury Yield", not the raw "DGS10" code
+dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)  # or tam.Fred.get("DGS10") -- same series
+dgs10.name  # "10-Year Treasury Yield", not the raw "DGS10" code
 dgs10.tail()
 ```
 
@@ -339,7 +343,9 @@ FRED has tens of thousands of series total, so pass any other raw series id
 (a plain string) straight to `.get()` just the same:
 
 ```python
-tam.Fred.get("DGS2", start="2015-01-01", end="2024-01-01")   # start/end are optional; omit either for the full available history
+tam.Fred.get(
+    "DGS2", start="2015-01-01", end="2024-01-01"
+)  # start/end are optional; omit either for the full available history
 ```
 
 The underlying `fredapi` client (and therefore the `FRED_API_KEY` lookup) is
@@ -385,10 +391,10 @@ macros work directly in raw SQL over either connection:
 
 ```python
 con.sql("SELECT * FROM sec_stmt('income_statement', 'AAPL') ORDER BY fiscal_year").df()
-con.sql("SELECT * FROM sec_stmt('income_statement') WHERE line_item = 'revenue'").df()   # every company at once
-con.sql("SELECT * FROM sec_facts('AAPL')").df()        # raw XBRL, full fidelity
-con.sql("SELECT * FROM sec_filings('AAPL')").df()      # filing metadata: accession number, form, filed date, ...
-con.sql("SELECT * FROM sec_companies() WHERE ticker = 'AAPL'").df()   # ticker/CIK/name reference table
+con.sql("SELECT * FROM sec_stmt('income_statement') WHERE line_item = 'revenue'").df()  # every company at once
+con.sql("SELECT * FROM sec_facts('AAPL')").df()  # raw XBRL, full fidelity
+con.sql("SELECT * FROM sec_filings('AAPL')").df()  # filing metadata: accession number, form, filed date, ...
+con.sql("SELECT * FROM sec_companies() WHERE ticker = 'AAPL'").df()  # ticker/CIK/name reference table
 ```
 
 `Sec.financials()`/`Sec.filings()` (the Python wrappers, not the raw SQL
@@ -410,12 +416,14 @@ that returns the real, legal options as a dataframe -- so you never have
 to guess or go source-diving:
 
 ```python
-Sec.companies(search="apple")                       # find a ticker/CIK: cik, ticker, entity_name
-Sec.statements()                                     # valid statement= values
-Sec.line_items(tickers=["AAPL"], search="rev")       # valid line_items= values for THIS company, ranked by fact_count
-Sec.line_item_catalog(statement="balance_sheet")     # every line item we know how to normalize, whether or not AAPL reports it
-Sec.concepts("revenue", tickers=["AAPL"])             # which raw XBRL tags rolled up into "revenue", per company
-Sec.forms(tickers=["AAPL"])                          # valid forms= values for filings(), ranked by count
+Sec.companies(search="apple")  # find a ticker/CIK: cik, ticker, entity_name
+Sec.statements()  # valid statement= values
+Sec.line_items(tickers=["AAPL"], search="rev")  # valid line_items= values for THIS company, ranked by fact_count
+Sec.line_item_catalog(
+    statement="balance_sheet"
+)  # every line item we know how to normalize, whether or not AAPL reports it
+Sec.concepts("revenue", tickers=["AAPL"])  # which raw XBRL tags rolled up into "revenue", per company
+Sec.forms(tickers=["AAPL"])  # valid forms= values for filings(), ranked by count
 ```
 
 `line_items` accepts any canonical line-item name our normalization layer
@@ -434,12 +442,20 @@ from tam.charting import timeseries
 
 financials = Sec.financials(tickers=["AAPL"], line_items=["revenue", "net_income", "operating_cash_flow"])
 
+
 def series_for(line_item: str, label: str, n: int = 32) -> pd.Series:
     rows = financials[financials["line_item"] == line_item].sort_values("end_date")
     return rows.set_index("end_date")["value"].tail(n).rename(label)
 
-timeseries([series_for("revenue", "Revenue"), series_for("net_income", "Net Income"),
-            series_for("operating_cash_flow", "Operating Cash Flow")], title="AAPL fundamentals")
+
+timeseries(
+    [
+        series_for("revenue", "Revenue"),
+        series_for("net_income", "Net Income"),
+        series_for("operating_cash_flow", "Operating Cash Flow"),
+    ],
+    title="AAPL fundamentals",
+)
 ```
 
 ### Plotting raw time series (price + indicator overlays, FRED series, ...)
@@ -459,7 +475,7 @@ close = con.sql("SELECT date, close FROM eod_bars('SPY') ORDER BY date").df().se
 sma_20, sma_50 = sma(close, 20), sma(close, 50)
 rsi_14 = rsi(close, 14)
 
-timeseries([close, sma_20, sma_50], title="SPY + SMA")   # auto-displays in a notebook cell (or call .show())
+timeseries([close, sma_20, sma_50], title="SPY + SMA")  # auto-displays in a notebook cell (or call .show())
 ```
 
 Accepts a single `pd.Series`, a plain `list` of them (each one's own `.name`
@@ -480,7 +496,9 @@ FRED series plot the same way, no special-casing needed -- `tam.Fred.get(...)`
 already returns a plain named `pd.Series`:
 
 ```python
-timeseries([tam.Fred.get(tam.Fred.Datasets.TREASURY_2Y), tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)], title="Treasury Yields")
+timeseries(
+    [tam.Fred.get(tam.Fred.Datasets.TREASURY_2Y), tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)], title="Treasury Yields"
+)
 ```
 
 ## Publishing dashboards to Discovery
@@ -516,6 +534,7 @@ point `data.root` / `backtest.report_path` at it:
 
 ```python
 from google.colab import drive
+
 drive.mount("/content/drive")
 ```
 

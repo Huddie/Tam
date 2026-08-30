@@ -37,11 +37,11 @@ tam.data.providers.YFinanceProvider's own _YFINANCE_LOCK already uses
 (for a different reason there -- avoiding a data race -- but the same
 mechanism).
 """
+
 from __future__ import annotations
 
 import threading
 import time
-from typing import List, Optional
 
 import pandas as pd
 import requests
@@ -72,7 +72,7 @@ def _cik_padded(cik: int) -> str:
     return f"{cik:010d}"
 
 
-def _coerce_value(val: object) -> Optional[float]:
+def _coerce_value(val: object) -> float | None:
     """SEC's raw `val` is JSON, so pandas builds this column as a Python
     object (mixed int/float/None) -- pyarrow then infers int64 for it on
     write, which overflows on the rare mis-tagged/mis-scaled XBRL fact
@@ -89,7 +89,7 @@ class SecProvider:
     requirement already used directly in this session via
     tam.Secrets["SEC_IDENTITY"]."""
 
-    def __init__(self, identity: str, session: Optional[requests.Session] = None):
+    def __init__(self, identity: str, session: requests.Session | None = None):
         self._headers = {"User-Agent": identity}
         self._session = session or requests.Session()
 
@@ -104,7 +104,7 @@ class SecProvider:
         ]
         return pd.DataFrame(rows, columns=schema.REFERENCE_COLUMNS)
 
-    def _rows_from_filings_page(self, cik: int, page: dict) -> List[dict]:
+    def _rows_from_filings_page(self, cik: int, page: dict) -> list[dict]:
         """`page` is one of SEC's own flat per-field-array filing pages --
         either `payload["filings"]["recent"]` (the newest ~1000 filings,
         inline in the main submissions response) or one of the ADDITIONAL
@@ -147,7 +147,6 @@ class SecProvider:
 
         return pd.DataFrame(rows, columns=schema.SUBMISSIONS_COLUMNS)
 
-
     def fetch_company_facts(self, cik: int) -> pd.DataFrame:
         """Every whole-company XBRL fact SEC has for this CIK, across
         every taxonomy (us-gaap, dei, and any company-specific custom
@@ -160,7 +159,7 @@ class SecProvider:
         payload = response.json()
         entity_name = payload.get("entityName")
 
-        rows: List[dict] = []
+        rows: list[dict] = []
         for taxonomy, concepts in payload.get("facts", {}).items():
             for concept, concept_data in concepts.items():
                 for unit, entries in concept_data.get("units", {}).items():

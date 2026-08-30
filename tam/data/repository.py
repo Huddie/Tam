@@ -1,10 +1,12 @@
 """Repository: combines a DataProvider (fetch) and a DataStore (persist) into ingest/query."""
+
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
@@ -22,7 +24,7 @@ class DataRepository:
     def __init__(self, provider: DataProvider, store: DataStore):
         self._provider = provider
         self._store = store
-        self._cache: Dict[str, SymbolHistory] = {}
+        self._cache: dict[str, SymbolHistory] = {}
         # (symbol, gap_start, gap_end) tuples already confirmed empty THIS
         # session -- e.g. requesting today's bar before it's posted fails
         # for every symbol, every ingest() call, until tomorrow actually
@@ -31,7 +33,7 @@ class DataRepository:
         # range. In-memory only (not persisted to the store) -- resets on a
         # new process/kernel, so a transient failure never gets "stuck"
         # looking permanently empty across sessions.
-        self._known_empty: Set[Tuple[str, date, date]] = set()
+        self._known_empty: set[tuple[str, date, date]] = set()
 
     def history(self, symbol: str) -> SymbolHistory:
         """A symbol's full history, read from the store at most once per repository
@@ -83,9 +85,7 @@ class DataRepository:
                     )
 
     @staticmethod
-    def _missing_ranges(
-        existing: Optional[pd.DataFrame], start: date, end: date
-    ) -> List[Tuple[date, date]]:
+    def _missing_ranges(existing: pd.DataFrame | None, start: date, end: date) -> list[tuple[date, date]]:
         """Date sub-ranges within [start, end] not already covered by `existing`."""
         if existing is None or existing.empty:
             return [(start, end)]
@@ -93,7 +93,7 @@ class DataRepository:
         covered_start = existing.index.min().date()
         covered_end = existing.index.max().date()
 
-        gaps: List[Tuple[date, date]] = []
+        gaps: list[tuple[date, date]] = []
         if start < covered_start:
             gaps.append((start, min(end, covered_start - timedelta(days=1))))
         if end > covered_end:
@@ -103,8 +103,8 @@ class DataRepository:
     def query(
         self,
         symbol: str,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
+        start: date | None = None,
+        end: date | None = None,
     ) -> pd.DataFrame:
         df = self.history(symbol).frame
         if start is not None:
@@ -113,7 +113,7 @@ class DataRepository:
             df = df[df.index <= pd.Timestamp(end)]
         return df.copy()
 
-    def write(self, writer: "RepoWriter", symbols: Iterable[str]) -> Any:
+    def write(self, writer: RepoWriter, symbols: Iterable[str]) -> Any:
         """Hand every already-ingested `symbols`' full history to `writer` --
         `Registry.get(RepoWriter, "csv"/"parquet")` for a flat-file dump, or
         your own RepoWriter for anything that isn't a file at all (S3, a

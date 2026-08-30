@@ -20,6 +20,7 @@ anywhere else, with no API service in between.
     con = open_duckdb(bucket="tam-data")
     con.sql("SELECT * FROM daily_bars('SPY')").df()
 """
+
 from .schema import MINUTE_BAR_COLUMNS, SYMBOL, TS, empty_minute_bar_frame
 
 __all__ = ["MINUTE_BAR_COLUMNS", "SYMBOL", "TS", "empty_minute_bar_frame"]

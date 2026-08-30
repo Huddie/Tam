@@ -29,15 +29,17 @@ Progress is reported through tam.status.report, the same hook LoRA
 fine-tuning already uses to drive a CLI progress bar -- ingest() itself
 knows nothing about how (or whether) that's displayed.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 import pandas as pd
 
@@ -51,7 +53,7 @@ from .store import MinuteBarStore
 from .validate import validate_day
 
 
-def _calendar_days(start: date, end: date) -> List[date]:
+def _calendar_days(start: date, end: date) -> list[date]:
     """Every calendar day in [start, end] -- weekends/holidays fall out
     naturally later (the provider returns an empty frame for them, and
     ingest() just moves on); no separate trading-calendar dependency is
@@ -98,7 +100,7 @@ class _Manifest:
             return {}
         return json.loads(raw)
 
-    def hash_for(self, day: date) -> Optional[str]:
+    def hash_for(self, day: date) -> str | None:
         return self._data.get(day.isoformat())
 
     def record(self, day: date, content_hash: str) -> None:
@@ -121,7 +123,7 @@ def _prepare_day(
     provider: MinuteBarProvider,
     universe: UniverseProvider,
     extra_symbols: Sequence[str],
-    manifest: Optional[_Manifest],
+    manifest: _Manifest | None,
     force_recheck: bool = False,
 ):
     """Fetch, skip-check, filter, and validate one day -- shared by
@@ -163,7 +165,7 @@ def ingest_day(
     store: MinuteBarStore,
     universe: UniverseProvider,
     extra_symbols: Sequence[str] = (),
-    manifest: Optional[_Manifest] = None,
+    manifest: _Manifest | None = None,
     force_recheck: bool = False,
 ) -> str:
     """Fetches, filters, validates, and UPSERTs one day -- a self-contained
@@ -255,7 +257,7 @@ def ingest(
     manifest = _Manifest(store)
     result = IngestResult()
 
-    pending_by_symbol: Dict[str, List[pd.DataFrame]] = {}
+    pending_by_symbol: dict[str, list[pd.DataFrame]] = {}
     pending_count = 0
 
     def _write_one(item) -> None:
@@ -326,21 +328,21 @@ class MarketDataSettings:
     populates from YAML, nothing more."""
 
     provider: str
-    provider_kwargs: Optional[dict] = None
+    provider_kwargs: dict | None = None
     store: str
-    store_kwargs: Optional[dict] = None
+    store_kwargs: dict | None = None
     universe: str = "static"
-    universe_kwargs: Optional[dict] = None
-    extra_symbols: Optional[List[str]] = None
-    flush_every_days: Optional[int] = None
-    max_workers: Optional[int] = None
-    flush_workers: Optional[int] = None
-    force_recheck: Optional[bool] = None
+    universe_kwargs: dict | None = None
+    extra_symbols: list[str] | None = None
+    flush_every_days: int | None = None
+    max_workers: int | None = None
+    flush_workers: int | None = None
+    force_recheck: bool | None = None
     start: str
     end: str
 
 
-def _plain_kwargs(value: Any) -> Dict[str, Any]:
+def _plain_kwargs(value: Any) -> dict[str, Any]:
     """A DotDict section (or None, or an already-plain dict) -> a plain
     dict suitable for **kwargs -- Registry.create()'s constructors don't
     know or care about tam.config.DotDict."""
@@ -361,7 +363,7 @@ def run_ingest(config_path: str | Path) -> IngestResult:
     store = Registry.create(MinuteBarStore, settings.store, **_plain_kwargs(settings.store_kwargs))
     universe = Registry.create(UniverseProvider, settings.universe, **_plain_kwargs(settings.universe_kwargs))
 
-    ingest_kwargs: Dict[str, Any] = {}
+    ingest_kwargs: dict[str, Any] = {}
     if settings.flush_every_days is not None:
         ingest_kwargs["flush_every_days"] = settings.flush_every_days
     if settings.max_workers is not None:
@@ -384,9 +386,9 @@ def run_ingest(config_path: str | Path) -> IngestResult:
 
 @dataclass
 class CoverageReport:
-    expected: List[date]
-    ingested: List[date]
-    missing: List[date]
+    expected: list[date]
+    ingested: list[date]
+    missing: list[date]
 
     @property
     def is_complete(self) -> bool:

@@ -19,12 +19,12 @@ each unit of work is one read (local disk or R2) plus at most one write,
 the same I/O-bound reasoning as scripts/backfill_completeness.py (the
 minute-bar analog of this script).
 """
+
 from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
-from typing import List, Tuple
 
 from tam.data.completeness import SCHEMA_VERSION, compute_completeness, sidecar_schema_version
 from tam.data.storage import DataStore
@@ -33,7 +33,7 @@ from tam.registry import Registry
 DEFAULT_WORKERS = 8
 
 
-def _historical_sp500_tickers(years: int) -> List[str]:
+def _historical_sp500_tickers(years: int) -> list[str]:
     import pitindex
 
     end = date.today()
@@ -42,7 +42,7 @@ def _historical_sp500_tickers(years: int) -> List[str]:
     return sorted(history["ticker"].unique().tolist())
 
 
-def _backfill_symbol(store: DataStore, symbol: str, force: bool) -> Tuple[int, int]:
+def _backfill_symbol(store: DataStore, symbol: str, force: bool) -> tuple[int, int]:
     """Recomputes/writes a completeness sidecar for every year of `symbol`'s
     history already in `store`. Reads the WHOLE symbol (not per-year) for
     simplicity -- a symbol's full EOD history is tiny (~17KB/year) even
@@ -69,11 +69,11 @@ def _backfill_symbol(store: DataStore, symbol: str, force: bool) -> Tuple[int, i
     return written, skipped
 
 
-def _run(store: DataStore, label: str, symbols: List[str], force: bool, workers: int) -> None:
+def _run(store: DataStore, label: str, symbols: list[str], force: bool, workers: int) -> None:
     print(f"Backfilling completeness for {label} ({len(symbols)} symbol(s))...")
     written = 0
     skipped = 0
-    failed: List[Tuple[str, Exception]] = []
+    failed: list[tuple[str, Exception]] = []
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(_backfill_symbol, store, symbol, force): symbol for symbol in symbols}
@@ -98,12 +98,17 @@ def _run(store: DataStore, label: str, symbols: List[str], force: bool, workers:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
-        "--symbol", action="append", dest="symbols", help="Backfill only this symbol (repeatable) -- default: every "
-        "ticker ever in the S&P 500 in --years years"
+        "--symbol",
+        action="append",
+        dest="symbols",
+        help="Backfill only this symbol (repeatable) -- default: every ticker ever in the S&P 500 in --years years",
     )
     parser.add_argument(
-        "--years", type=int, default=20, help="How many years back to resolve the default symbol list over "
-        "(default: 20, matching backfill_sp500_eod.py)"
+        "--years",
+        type=int,
+        default=20,
+        help="How many years back to resolve the default symbol list over "
+        "(default: 20, matching backfill_sp500_eod.py)",
     )
     parser.add_argument("--root", default="data/eod", help="Local DataStore root (default: data/eod)")
     parser.add_argument("--no-r2", action="store_true", help="Skip R2 -- local only")

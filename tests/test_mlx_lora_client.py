@@ -328,9 +328,7 @@ def test_max_val_examples_caps_the_holdout_regardless_of_val_split(tmp_path, mon
     # held-out set and its per-round evaluation cost grow without bound over
     # a long backtest -- max_val_examples caps it so wall-clock cost per
     # round stays roughly constant instead of getting slower every round.
-    client = MLXLoRAClient(
-        adapter_root=str(tmp_path), fine_tune_every_n_days=20, val_split=0.5, max_val_examples=3
-    )
+    client = MLXLoRAClient(adapter_root=str(tmp_path), fine_tune_every_n_days=20, val_split=0.5, max_val_examples=3)
     _stub_ensure_loaded(monkeypatch)
     _stub_adapter_healthy(monkeypatch)
 
@@ -438,9 +436,7 @@ def test_diverged_validation_loss_fails_health_check_without_running_inference(t
     client._last_val_losses = [(1, 1.0), (50, 5.0)]  # tripled -- diverging, not converging
 
     inference_called = []
-    monkeypatch.setattr(
-        "mlx_lm.utils.load", lambda *a, **k: inference_called.append(True) or (None, None)
-    )
+    monkeypatch.setattr("mlx_lm.utils.load", lambda *a, **k: inference_called.append(True) or (None, None))
 
     assert client._adapter_is_healthy(tmp_path / "gen_1") is False
     assert inference_called == []

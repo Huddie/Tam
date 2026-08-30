@@ -33,13 +33,13 @@ so restarting just resumes instead of re-fetching everything -- checked
 against the PRIMARY store only (--root's local disk), same as
 MultiDataStore's own read()/exists() contract.
 """
+
 from __future__ import annotations
 
 import argparse
 import time
 from datetime import date
 
-from tam.basket.universe import PitIndexUniverse
 from tam.data.providers import DataProvider
 from tam.data.repository import DataRepository
 from tam.data.storage import DataStore, MultiDataStore
@@ -64,7 +64,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--years", type=int, default=20, help="How many years of history to backfill (default: 20)")
     parser.add_argument(
-        "--root", default="data/eod", help="Local DataStore root (default: data/eod, matching the existing on-disk layout)"
+        "--root",
+        default="data/eod",
+        help="Local DataStore root (default: data/eod, matching the existing on-disk layout)",
     )
     parser.add_argument("--no-r2", action="store_true", help="Skip R2 entirely -- write to --root only")
     parser.add_argument(
@@ -103,4 +105,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

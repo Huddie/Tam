@@ -1,5 +1,6 @@
 """A trading desk: pairs a Strategy's decisions with the Portfolio (book of cash,
 positions, and trade history) it trades against."""
+
 from __future__ import annotations
 
 from ..portfolio.portfolio import Portfolio

@@ -1,9 +1,8 @@
 import json
 
 import pandas as pd
-import pytest
 
-from tam.marketdata.completeness import compute_completeness, completeness_sidecar_suffix
+from tam.marketdata.completeness import completeness_sidecar_suffix, compute_completeness
 from tam.marketdata.schema import MINUTE_BAR_COLUMNS, TS
 from tam.marketdata.store import LocalMinuteBarStore
 

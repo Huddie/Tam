@@ -34,13 +34,13 @@ One company's failure (a transient SEC error, an unresolvable ticker, ...)
 is caught and reported, not fatal to the whole run -- same reasoning as
 backfill_sp500_eod.py's per-ticker resilience.
 """
+
 from __future__ import annotations
 
 import argparse
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone
-from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -48,7 +48,7 @@ from tam.research.data.sec import Manifest, SecProvider, SecStore, normalize_fac
 from tam.secrets import Secrets
 
 
-def _historical_sp500_tickers(years: int) -> List[str]:
+def _historical_sp500_tickers(years: int) -> list[str]:
     """Every ticker that was ever an S&P 500 constituent in the last
     `years` years -- duplicated from scripts/backfill_sp500_eod.py's own
     helper of the same shape rather than shared, small independent pieces
@@ -62,8 +62,8 @@ def _historical_sp500_tickers(years: int) -> List[str]:
 
 
 def _resolve_ciks(
-    store: SecStore, provider: SecProvider, tickers: List[str], refresh_reference: bool
-) -> Dict[str, int]:
+    store: SecStore, provider: SecProvider, tickers: list[str], refresh_reference: bool
+) -> dict[str, int]:
     reference = store.read_reference()
     if refresh_reference or reference.empty:
         reference = provider.fetch_company_tickers()
@@ -71,8 +71,8 @@ def _resolve_ciks(
         print(f"Refreshed reference table: {len(reference)} ticker(s).")
 
     lookup = {row[schema.TICKER].upper(): int(row[schema.CIK]) for row in reference.to_dict("records")}
-    resolved: Dict[str, int] = {}
-    missing: List[str] = []
+    resolved: dict[str, int] = {}
+    missing: list[str] = []
     for ticker in tickers:
         cik = lookup.get(ticker.upper())
         if cik is None:
@@ -100,13 +100,13 @@ def _fill_missing_fiscal_year(facts: pd.DataFrame) -> pd.DataFrame:
     return filled
 
 
-def _latest_accession(submissions: pd.DataFrame) -> Optional[str]:
+def _latest_accession(submissions: pd.DataFrame) -> str | None:
     if submissions.empty:
         return None
     return submissions.loc[submissions[schema.FILED_DATE].idxmax(), schema.ACCESSION_NUMBER]
 
 
-def _ingest_one(cik: int, ticker: str, provider: SecProvider, store: SecStore, last_seen: Optional[str]) -> dict:
+def _ingest_one(cik: int, ticker: str, provider: SecProvider, store: SecStore, last_seen: str | None) -> dict:
     submissions = provider.fetch_submissions(cik)
     latest_accession = _latest_accession(submissions)
     if latest_accession is None:

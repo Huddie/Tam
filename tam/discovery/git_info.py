@@ -3,19 +3,19 @@ branch, remote URL, and whether the working tree was dirty. Never raises:
 publishing must succeed the same way whether or not the caller happens to be
 inside a git repo, or has git installed at all.
 """
+
 from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import List, Optional
 
 
-def _run(args: List[str], cwd: Optional[Path]) -> str:
+def _run(args: list[str], cwd: Path | None) -> str:
     result = subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=5, check=True)
     return result.stdout.strip()
 
 
-def capture_git_info(cwd: Optional[Path] = None) -> dict:
+def capture_git_info(cwd: Path | None = None) -> dict:
     """{git_commit, git_branch, git_repo, git_dirty} for the git repo
     containing `cwd` (defaults to the current process's own working
     directory -- this is provenance about the code that RAN, not wherever

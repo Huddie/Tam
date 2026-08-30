@@ -26,13 +26,14 @@ module's public API.
     con = connect()                                         # full lake, real SQL
     con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
 """
+
 from __future__ import annotations
 
 import io
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 import requests
@@ -62,7 +63,7 @@ def credentials_file_path() -> Path:
     return Path.home() / ".config" / "tam-data-explorer" / "token"
 
 
-def _from_file() -> Optional[str]:
+def _from_file() -> str | None:
     try:
         text = credentials_file_path().read_text().strip()
     except OSError:
@@ -70,7 +71,7 @@ def _from_file() -> Optional[str]:
     return text or None
 
 
-def resolve_token(explicit: Optional[str] = None, *, required: bool = True) -> Optional[str]:
+def resolve_token(explicit: str | None = None, *, required: bool = True) -> str | None:
     """Resolution order: explicit kwarg -> TAM_PAT via tam.Secrets (env var,
     directly or via a .env file, then a Colab secret if running in Colab)
     -> ~/.config/tam-data-explorer/token. `required=True` (the default)
@@ -95,11 +96,11 @@ def resolve_token(explicit: Optional[str] = None, *, required: bool = True) -> O
     return value
 
 
-def _headers(token: Optional[str]) -> dict:
+def _headers(token: str | None) -> dict:
     return {"Authorization": f"Bearer {resolve_token(token)}"}
 
 
-def _resolve_api_url(explicit: Optional[str]) -> str:
+def _resolve_api_url(explicit: str | None) -> str:
     return explicit or os.environ.get(_API_URL_ENV_VAR) or _DEFAULT_API_URL
 
 
@@ -125,8 +126,8 @@ def fetch_dataframe(
     symbol: str,
     year: int,
     *,
-    token: Optional[str] = None,
-    api_url: Optional[str] = None,
+    token: str | None = None,
+    api_url: str | None = None,
     timeout: float = 30.0,
 ) -> pd.DataFrame:
     """Downloads minute/{SYMBOL}/{year}.parquet (tam/marketdata/store.py's
@@ -147,10 +148,10 @@ def fetch_dataframe(
 def download_csv(
     symbol: str,
     year: int,
-    dest_path: "str | Path",
+    dest_path: str | Path,
     *,
-    token: Optional[str] = None,
-    api_url: Optional[str] = None,
+    token: str | None = None,
+    api_url: str | None = None,
     timeout: float = 60.0,
 ) -> Path:
     """Same file, saved as a CSV directly to `dest_path` -- for scripts that
@@ -167,7 +168,7 @@ def download_csv(
     return dest
 
 
-def _mint_credentials(token: Optional[str], api_url: Optional[str], ttl_seconds: Optional[int], timeout: float) -> dict:
+def _mint_credentials(token: str | None, api_url: str | None, ttl_seconds: int | None, timeout: float) -> dict:
     body = {"ttlSeconds": ttl_seconds} if ttl_seconds else {}
     response = requests.post(
         f"{_resolve_api_url(api_url)}/api/token/credentials",
@@ -194,12 +195,12 @@ class SqlConnection:
     other than that refresh check -- `.sql()`, `.execute()`, `.close()`,
     whatever the underlying connection offers -- passes straight through."""
 
-    def __init__(self, token: Optional[str], api_url: Optional[str], ttl_seconds: Optional[int], timeout: float):
+    def __init__(self, token: str | None, api_url: str | None, ttl_seconds: int | None, timeout: float):
         self._token = token
         self._api_url = api_url
         self._ttl_seconds = ttl_seconds
         self._timeout = timeout
-        self._expires_at: Optional[datetime] = None
+        self._expires_at: datetime | None = None
         self._con = self._connect()
 
     def _connect(self) -> Any:
@@ -250,9 +251,9 @@ class SqlConnection:
 
 def connect(
     *,
-    token: Optional[str] = None,
-    api_url: Optional[str] = None,
-    ttl_seconds: Optional[int] = None,
+    token: str | None = None,
+    api_url: str | None = None,
+    ttl_seconds: int | None = None,
     timeout: float = 30.0,
 ) -> SqlConnection:
     """A SQL connection over ALL THREE lakes (minute bars, tam.data's

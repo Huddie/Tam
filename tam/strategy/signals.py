@@ -12,17 +12,17 @@ a plain-language `description` of what the number means, and is meant to learn
 the relationship between signal values and outcomes itself rather than have that
 relationship hardcoded for it.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List
 
 import pandas as pd
 
 from ..registry import Registry
 from .indicators import bbands, macd_histogram, rsi, sma
 
-ANNUALIZATION_FACTOR = 252 ** 0.5
+ANNUALIZATION_FACTOR = 252**0.5
 
 
 class Signal(ABC):
@@ -58,7 +58,7 @@ class Signal(ABC):
     def _compute(self, close: pd.Series) -> pd.Series: ...
 
 
-def build_signals(specs) -> List[Signal]:
+def build_signals(specs) -> list[Signal]:
     """Turn a list of {id, config} or {id, configs} specs (e.g. straight from
     YAML) into Signal instances.
 

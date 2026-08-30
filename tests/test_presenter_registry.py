@@ -5,6 +5,7 @@ test_report.py) of building minimal fakes directly rather than driving a full
 CLI/backtest integration -- see test_backtest_cli.py for that heavier style
 where it's already established (e.g. render_mode/presenter_kwargs coverage).
 """
+
 import pandas as pd
 import pytest
 

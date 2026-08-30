@@ -5,6 +5,7 @@ motivation (an overnight strategy trades twice a day, ~504 executions/year/
 position -- tiny per-trade cost assumptions compound fast) is exactly why
 this needs to be easy to swap and sweep (0bp/2bp/5bp/10bp/...), not hardcoded.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

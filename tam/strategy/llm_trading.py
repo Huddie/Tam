@@ -54,13 +54,14 @@ call fails (server down, timeout, unparseable response) the strategy falls
 back to holding whatever exposure it already holds rather than crashing the
 run, or to cash if nothing has ever been held yet.
 """
+
 from __future__ import annotations
 
 import csv
 import re
 from collections import deque
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -133,15 +134,15 @@ class LLMTradingStrategy(Strategy):
         short_ticker: str,
         sell_qty,
         portfolio_id: str,
-        llm_client: Optional[LLMClient] = None,
+        llm_client: LLMClient | None = None,
         base_url: str = "http://localhost:11434/v1/chat/completions",
         model: str = "qwen2.5:7b",
         memory_window: int = 10,
-        signals: Optional[List[Signal]] = None,
+        signals: list[Signal] | None = None,
         history_window: int = 20,
         rebalance_threshold_pct: float = 5.0,
         vol_window: int = 20,
-        log_path: Optional[str] = None,
+        log_path: str | None = None,
         warmup_days: int = 0,
     ):
         super().__init__()
@@ -165,9 +166,9 @@ class LLMTradingStrategy(Strategy):
         # before starting to call the model and accumulate training outcomes --
         # slower signals show a placeholder in the prompt until their own window
         # fills, rather than blocking the whole strategy on the slowest one.
-        self._max_required_history = max(
-            [s.required_history() for s in self._signals] + [self._vol_window + 1]
-        ) + self._history_window
+        self._max_required_history = (
+            max([s.required_history() for s in self._signals] + [self._vol_window + 1]) + self._history_window
+        )
         self._min_required_history = min(s.required_history() for s in self._signals)
         self._current_pct = 0.0  # signed net exposure: + long TQQQ, - short SQQQ, 0 cash
         self._pending = None  # (prompt, predicted_pct, price_as_of_pending) awaiting tomorrow's outcome
@@ -224,7 +225,7 @@ class LLMTradingStrategy(Strategy):
                 writer.writerow(["iteration", "datetime", "prompt", "response", "warmup", "retried"])
             writer.writerow([self._iteration, as_of, prompt, response, warming_up, retried])
 
-    def _trailing_daily_vol(self, close: pd.Series) -> Optional[float]:
+    def _trailing_daily_vol(self, close: pd.Series) -> float | None:
         """Typical size of a 1-day move, estimated from the trailing window --
         used to scale the hindsight-optimal-exposure label to the *current*
         volatility regime, rather than a fixed % that's too tight in calm
@@ -305,7 +306,7 @@ class LLMTradingStrategy(Strategy):
             "Respond with ONLY the number, nothing else."
         )
 
-    def _ask_llm(self, prompt: str) -> Tuple[Optional[float], str, bool]:
+    def _ask_llm(self, prompt: str) -> tuple[float | None, str, bool]:
         """Returns (target_pct, raw_response, retried). A response isn't valid
         unless it's *exactly* one number -- zero (unparseable) or more than
         one (the model rambled/hedged) both get exactly one retry, showing the
@@ -324,7 +325,7 @@ class LLMTradingStrategy(Strategy):
         retried_pct, retried_raw = self._call_llm(retry_prompt)
         return retried_pct, retried_raw, True
 
-    def _call_llm(self, prompt: str) -> Tuple[Optional[float], str]:
+    def _call_llm(self, prompt: str) -> tuple[float | None, str]:
         try:
             raw = self._llm_client(prompt)
         except Exception as exc:
@@ -354,12 +355,10 @@ class LLMTradingStrategy(Strategy):
         target_ticker = self._ticker_for(target_pct)
         if target_ticker is not None:
             buy_qty = Qty(pct=abs(target_pct), basis=QtyBasis.CASH)
-            self.trade.stocks(
-                [Order(ticker=target_ticker, side=Side.BUY, qty=buy_qty, portfolio=self._portfolio_id)]
-            )
+            self.trade.stocks([Order(ticker=target_ticker, side=Side.BUY, qty=buy_qty, portfolio=self._portfolio_id)])
         self._current_pct = target_pct
 
-    def _ticker_for(self, pct: float) -> Optional[str]:
+    def _ticker_for(self, pct: float) -> str | None:
         if pct > 0:
             return self._long_ticker
         if pct < 0:

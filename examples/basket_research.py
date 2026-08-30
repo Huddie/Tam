@@ -10,6 +10,7 @@ from the `pitindex` package (bundled, offline point-in-time data, no network
 for that part at all -- needs the `pitindex` extra, Python >=3.11); prices
 are cached after the first run (to data/eod).
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -104,7 +105,9 @@ def build_basket(weights_by_factor: dict, n_clusters: int, max_per_cluster: int,
     if candidates.empty:
         return [], candidate_scores
 
-    clusters = cluster(returns[candidates.index].loc[: pd.Timestamp(as_of)], n_clusters=min(n_clusters, len(candidates)))
+    clusters = cluster(
+        returns[candidates.index].loc[: pd.Timestamp(as_of)], n_clusters=min(n_clusters, len(candidates))
+    )
     picks = select_diversified(candidates, clusters, n=final_n, max_per_cluster=max_per_cluster)
 
     volatility = returns[picks].loc[: pd.Timestamp(as_of)].tail(252).std()
@@ -117,11 +120,17 @@ def build_basket(weights_by_factor: dict, n_clusters: int, max_per_cluster: int,
 # --- 3. Two candidate configs, compared side by side -------------------------
 diversified_weights, scores_a = build_basket(
     {"sharpe_1y": 0.4, "persistence": 0.3, "overnight_alpha": 0.2, "expected_shortfall": -0.1},
-    n_clusters=5, max_per_cluster=1, final_n=5, max_weight=0.3,
+    n_clusters=5,
+    max_per_cluster=1,
+    final_n=5,
+    max_weight=0.3,
 )
 concentrated_weights, scores_b = build_basket(
     {"sharpe_1y": 1.0},
-    n_clusters=5, max_per_cluster=5, final_n=5, max_weight=0.3,
+    n_clusters=5,
+    max_per_cluster=5,
+    final_n=5,
+    max_weight=0.3,
 )
 
 print("\n'diversified' picks:", {t: round(w, 3) for t, w in diversified_weights.items()})
@@ -137,7 +146,9 @@ print("\n", report.summary_all()[["start_value", "end_value", "sharpe", "max_dra
 
 # Visual comparison -- .show() opens in a browser; swap for
 # write_html(fig, "comparison.html") to save instead.
-fig = render_curves({"diversified": wealth_diversified, "concentrated": wealth_concentrated}, title="Basket screener comparison")
+fig = render_curves(
+    {"diversified": wealth_diversified, "concentrated": wealth_concentrated}, title="Basket screener comparison"
+)
 fig.show()
 
 # Optional: QuantStats' much larger metric set for the winner, benchmarked
@@ -146,6 +157,10 @@ try:
     import quantstats as qs
 
     print("\nQuantStats metrics, diversified vs. concentrated:")
-    print(qs.reports.metrics(returns_for(report, "diversified"), benchmark=resolve_benchmark(report, "concentrated"), display=False))
+    print(
+        qs.reports.metrics(
+            returns_for(report, "diversified"), benchmark=resolve_benchmark(report, "concentrated"), display=False
+        )
+    )
 except ImportError as exc:
     print(f"\n(skipping QuantStats metrics: {exc})")

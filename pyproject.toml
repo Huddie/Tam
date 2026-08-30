@@ -25,7 +25,7 @@ Homepage = "https://github.com/Huddie/Tam"
 upload-discovery = "tam.discovery.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ipython>=8.0"]
+dev = ["pytest>=8.0", "ipython>=8.0", "ruff>=0.15", "pre-commit>=3.5"]
 live = ["dash>=2.17"]
 # mlx-lm/mlx only run on an M-series Mac (Metal) -- a hard dependency here would
 # make `pip install tam-quant` fail outright on Linux/Colab/Windows, not just
@@ -115,3 +115,34 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["tam*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: real end-to-end tests (e.g. a full backtest run) -- excluded from the pre-commit smoke run (`pytest -m 'not slow'`), still run in full by CI (.github/workflows/test.yml has no marker filter)",
+]
+
+[tool.ruff]
+# 120, not ruff's own default of 88 -- this codebase's existing style
+# already runs long lines (docstrings/comments especially); 120 covers
+# nearly everything already here (only 49 lines in tam/ exceed it, vs 594
+# that exceed 88), which keeps `ruff format`'s reflow diff small when it
+# first touches a file that predates this config.
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+# Pinned EXPLICITLY rather than left to ruff's own "default" selection --
+# confirmed live: bumping from ruff 0.15.20 (what this was reviewed
+# against) to 0.16.5 (what a bare `ruff>=0.15` resolved to) pulled in a
+# much broader default rule set (bugbear, flake8-datetimez, flake8-
+# comprehensions, tryceratops, blind-except, pyupgrade, ...) that flagged
+# 500+ pre-existing, unreviewed issues across the repo the first time the
+# pre-commit hook ran -- including rules that actively fight this
+# codebase's own deliberate conventions (e.g. BLE001 "no blind except",
+# when catching bare Exception around a Colab/subprocess call is the
+# intentional pattern in several places, each with its own comment
+# explaining why). E4/E7/E9/F is ruff's own historical default and the
+# actual rule set this whole setup was reviewed against -- selecting it
+# explicitly means a future ruff upgrade can't silently expand scope
+# again the way the implicit default just did.
+select = ["E4", "E7", "E9", "F"]

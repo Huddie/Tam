@@ -1,8 +1,9 @@
 """Executes order lists against portfolios at the harness's current simulation date."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
-from typing import Callable, List, Optional
 
 from ..portfolio.orders import Order, PriceBasis, QtyBasis, Side
 from ..portfolio.portfolio import Portfolio
@@ -15,9 +16,9 @@ class TradeGateway:
     def __init__(self, portfolios: PortfolioRegistry, price_lookup: PriceLookup):
         self._portfolios = portfolios
         self._price_lookup = price_lookup
-        self.current_date: Optional[date] = None
+        self.current_date: date | None = None
 
-    def stocks(self, orders: List[Order]) -> None:
+    def stocks(self, orders: list[Order]) -> None:
         if self.current_date is None:
             raise RuntimeError("TradeGateway has no active simulation date")
         for order in orders:
@@ -38,8 +39,7 @@ class TradeGateway:
 
         if spec.basis is QtyBasis.PORTFOLIO_VALUE:
             prices = {
-                ticker: self._price_lookup(ticker, self.current_date, PriceBasis.CLOSE)
-                for ticker in portfolio.tickers
+                ticker: self._price_lookup(ticker, self.current_date, PriceBasis.CLOSE) for ticker in portfolio.tickers
             }
             prices[order.ticker] = price
             budget_base = portfolio.market_value(prices)

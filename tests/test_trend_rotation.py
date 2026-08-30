@@ -117,8 +117,18 @@ def test_get_state_and_load_state_round_trip_preserves_all_overlay_fields(tmp_pa
 
     def _build():
         return TrendRotationStrategy(
-            repo, "QQQ", "TQQQ", "SQQQ", trend_window=5, momentum_window=2, buy_qty=10, sell_qty=10,
-            portfolio_id="main", target_vol=0.15, vol_window=5, max_position_drawdown=0.2,
+            repo,
+            "QQQ",
+            "TQQQ",
+            "SQQQ",
+            trend_window=5,
+            momentum_window=2,
+            buy_qty=10,
+            sell_qty=10,
+            portfolio_id="main",
+            target_vol=0.15,
+            vol_window=5,
+            max_position_drawdown=0.2,
         )
 
     strategy = _build()

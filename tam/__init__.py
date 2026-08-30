@@ -1,33 +1,34 @@
 """tam -- top-level convenience API.
 
-    import tam
+import tam
 
-    # Get a registered chart by base type + name:
-    c = tam.get(TearsheetChart, "cumulative_returns")
+# Get a registered chart by base type + name:
+c = tam.get(TearsheetChart, "cumulative_returns")
 
-    # Or instantiate directly and call with data:
-    from tam.backtest.tearsheet import DrawdownChart
-    c = DrawdownChart()
-    c(my_series).show()
+# Or instantiate directly and call with data:
+from tam.backtest.tearsheet import DrawdownChart
+c = DrawdownChart()
+c(my_series).show()
 
-    # Chain charts into one composite Plotly figure:
-    c1(series) | c2(series) | c3(series)
+# Chain charts into one composite Plotly figure:
+c1(series) | c2(series) | c3(series)
 
-    # Plot raw series (price + indicator overlays, a FRED series, ...) --
-    # see tam.charting.timeseries for the full pattern:
-    from tam.charting import timeseries
-    timeseries([close, sma_20]) | timeseries(rsi_14, title="RSI")
+# Plot raw series (price + indicator overlays, a FRED series, ...) --
+# see tam.charting.timeseries for the full pattern:
+from tam.charting import timeseries
+timeseries([close, sma_20]) | timeseries(rsi_14, title="RSI")
 
-    # Resolve a third-party secret (env var, or a Colab secret) without
-    # hardcoding it in a notebook cell -- see tam.secrets for the full
-    # resolution order:
-    from fredapi import Fred as _FredApi
-    fred = _FredApi(api_key=tam.Secrets["FRED_API_KEY"])
+# Resolve a third-party secret (env var, or a Colab secret) without
+# hardcoding it in a notebook cell -- see tam.secrets for the full
+# resolution order:
+from fredapi import Fred as _FredApi
+fred = _FredApi(api_key=tam.Secrets["FRED_API_KEY"])
 
-    # Or skip fredapi entirely -- tam.Fred wraps it, resolving the API key
-    # via tam.Secrets internally:
-    dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)
+# Or skip fredapi entirely -- tam.Fred wraps it, resolving the API key
+# via tam.Secrets internally:
+dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)
 """
+
 from __future__ import annotations
 
 from .registry import Registry

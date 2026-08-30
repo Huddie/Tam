@@ -1,4 +1,5 @@
 """Data providers: fetch raw end-of-day OHLCV history for a symbol from an external source."""
+
 from __future__ import annotations
 
 import logging
@@ -133,7 +134,9 @@ class YFinanceProvider(DataProvider):
         # by one day and then defensively re-clip, rather than trust the exact
         # off-by-one behavior of whatever yfinance version is installed.
         with _YFINANCE_LOCK:
-            df = yf.download(yf_symbol, start=start, end=end + timedelta(days=1), progress=False, auto_adjust=self._adjust)
+            df = yf.download(
+                yf_symbol, start=start, end=end + timedelta(days=1), progress=False, auto_adjust=self._adjust
+            )
         if df.empty:
             return empty_ohlcv_frame()
 

@@ -47,9 +47,9 @@ otherwise the notebook also auto-echoes the `Report`'s `repr()` underneath
 the chart.
 
 ```python
-report.summary_all()                    # CAGR, Sharpe, max drawdown, etc. per portfolio
-report.to_frame()                        # daily snapshots as a DataFrame
-report.trades_for("moving_average")      # that portfolio's trade log
+report.summary_all()  # CAGR, Sharpe, max drawdown, etc. per portfolio
+report.to_frame()  # daily snapshots as a DataFrame
+report.trades_for("moving_average")  # that portfolio's trade log
 ```
 
 Same config format, same strategies, same underlying engine as the CLI's
@@ -91,8 +91,8 @@ kernel itself):
 drives the live view, by name:
 
 ```python
-run_backtest("config.yaml", live=True, render_mode="clear_output")   # default, described above
-run_backtest("config.yaml", live=True, render_mode="native_dash")    # real Dash server, jupyter_mode="inline"
+run_backtest("config.yaml", live=True, render_mode="clear_output")  # default, described above
+run_backtest("config.yaml", live=True, render_mode="native_dash")  # real Dash server, jupyter_mode="inline"
 ```
 
 `"native_dash"` is the mode that doesn't work reliably in Colab (see
@@ -103,7 +103,9 @@ docs describe this as fully supported.
 
 ```python
 run_backtest("config.yaml", live=True, presenter_kwargs={"poll_seconds": 5.0})
-run_backtest("config.yaml", live=True, render_mode="native_dash", port=8060, presenter_kwargs={"jupyter_mode": "external"})
+run_backtest(
+    "config.yaml", live=True, render_mode="native_dash", port=8060, presenter_kwargs={"jupyter_mode": "external"}
+)
 ```
 
 `show_trades_default=False` starts the equity chart's trade markers hidden
@@ -181,7 +183,7 @@ goes through `tam.Secrets`:
 ```python
 import tam
 
-fred_key = tam.Secrets["FRED_API_KEY"]      # raises a clear error if not set anywhere
+fred_key = tam.Secrets["FRED_API_KEY"]  # raises a clear error if not set anywhere
 fred_key = tam.Secrets.get("FRED_API_KEY")  # None instead of raising
 ```
 
@@ -205,9 +207,9 @@ Create a personal token at `https://data.tamquant.com/settings/tokens`
 ```python
 from tam.marketdata.explorer_client import fetch_dataframe, connect
 
-df = fetch_dataframe("AAPL", 2024)      # one symbol-year as a DataFrame, plain HTTP
+df = fetch_dataframe("AAPL", 2024)  # one symbol-year as a DataFrame, plain HTTP
 
-con = connect()                          # full SQL access over minute bars + EOD + SEC lakes
+con = connect()  # full SQL access over minute bars + EOD + SEC lakes
 con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
 con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()
 ```
@@ -224,6 +226,7 @@ to survive across sessions:
 
 ```python
 from google.colab import drive
+
 drive.mount("/content/drive")
 ```
 

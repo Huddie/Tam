@@ -30,20 +30,24 @@ by new rows, same reasoning as the EOD store's own docstring: a year of
 runs to hundreds of symbols, and re-writing everyone's full 20-year history
 on every day's ingest would be needlessly slow.
 """
+
 from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, List, Optional, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, TypeVar
 
 import pandas as pd
 
 from ..registry import Registry
-from .completeness import compute_completeness, completeness_sidecar_suffix
+from .completeness import completeness_sidecar_suffix, compute_completeness
 from .credentials import R2Credentials, resolve_r2_credentials
 from .schema import MINUTE_BAR_COLUMNS, TS, empty_minute_bar_frame, ensure_utc_index
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import pyarrow.fs
 
 _MANIFEST_FILENAME = "_manifest.json"
@@ -69,7 +73,7 @@ class MinuteBarStore(ABC):
     @abstractmethod
     def write(self, symbol: str, df: pd.DataFrame) -> None: ...
 
-    def read_manifest_bytes(self) -> Optional[bytes]:
+    def read_manifest_bytes(self) -> bytes | None:
         """Raw bytes of this store's ingestion-resumability manifest (see
         tam.marketdata.ingest._Manifest), or None if it doesn't exist yet.
         Default: no manifest support at all -- a store that doesn't
@@ -84,7 +88,7 @@ class MinuteBarStore(ABC):
     def write_manifest_bytes(self, data: bytes) -> None:
         """Persist `data` as this store's manifest. Default: a no-op,
         matching read_manifest_bytes()'s "no manifest support" default."""
-        return None
+        return
 
     def write_completeness_bytes(self, symbol: str, year: int, data: bytes) -> None:
         """Persist a completeness-index JSON sidecar (see
@@ -92,9 +96,9 @@ class MinuteBarStore(ABC):
         -- a custom third-party MinuteBarStore that doesn't override this
         just doesn't get a completeness sidecar written, same "opt-in via
         override" pattern as the manifest methods above."""
-        return None
+        return
 
-    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+    def read_completeness_bytes(self, symbol: str, year: int) -> bytes | None:
         """Raw bytes of one symbol-year's completeness sidecar, or None if
         it doesn't exist -- used by scripts/backfill_completeness.py to
         tell "already backfilled, current schema" apart from "exists, but
@@ -116,7 +120,7 @@ def _with_retries(func: Callable[[], _T], attempts: int = 5, base_delay: float =
     5 attempts at 2/4/8/16s backoff is ~30s of total retry window. Re-raises
     the last exception if every attempt fails; never swallows a genuine,
     persistent error silently."""
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(attempts):
         try:
             return func()
@@ -142,7 +146,7 @@ class ParquetFileSystemStore(MinuteBarStore):
     reliability issue this generalization would paper over.
     """
 
-    def __init__(self, filesystem: "pyarrow.fs.FileSystem", root: "str | Path"):
+    def __init__(self, filesystem: pyarrow.fs.FileSystem, root: str | Path):
         self._fs = filesystem
         self._root = str(root).rstrip("/")
 
@@ -152,8 +156,8 @@ class ParquetFileSystemStore(MinuteBarStore):
     def _partition_path(self, symbol: str, year: int) -> str:
         return f"{self._symbol_dir(symbol)}/{year}.parquet"
 
-    def _partition_years(self, symbol: str) -> List[int]:
-        import pyarrow.fs as fs
+    def _partition_years(self, symbol: str) -> list[int]:
+        from pyarrow import fs
 
         selector = fs.FileSelector(self._symbol_dir(symbol), recursive=False, allow_not_found=True)
         years = []
@@ -201,7 +205,7 @@ class ParquetFileSystemStore(MinuteBarStore):
         with self._fs.open_output_stream(path) as handle:
             handle.write(data)
 
-    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+    def read_completeness_bytes(self, symbol: str, year: int) -> bytes | None:
         path = f"{self._symbol_dir(symbol)}/{year}{completeness_sidecar_suffix()}"
         if not self._file_exists(path):
             return None
@@ -209,7 +213,7 @@ class ParquetFileSystemStore(MinuteBarStore):
             return handle.readall()
 
     def _file_exists(self, path: str) -> bool:
-        import pyarrow.fs as fs
+        from pyarrow import fs
 
         return self._fs.get_file_info(path).type != fs.FileType.NotFound
 
@@ -235,7 +239,7 @@ class ParquetFileSystemStore(MinuteBarStore):
         with self._fs.open_output_stream(path) as handle:
             handle.write(buffer.getvalue())
 
-    def read_manifest_bytes(self) -> Optional[bytes]:
+    def read_manifest_bytes(self) -> bytes | None:
         path = f"{self._root}/{_MANIFEST_FILENAME}"
         if not self._file_exists(path):
             return None
@@ -257,8 +261,8 @@ class LocalMinuteBarStore(ParquetFileSystemStore):
     MARKETDATA.md) exercises the equivalent code path (not the literal same
     class as R2MinuteBarStore anymore -- see module docstring)."""
 
-    def __init__(self, root: "str | Path"):
-        import pyarrow.fs as fs
+    def __init__(self, root: str | Path):
+        from pyarrow import fs
 
         super().__init__(fs.LocalFileSystem(), root)
 
@@ -278,7 +282,7 @@ class R2MinuteBarStore(MinuteBarStore):
     swallowing) a persistent failure.
     """
 
-    def __init__(self, credentials: Optional[R2Credentials] = None, prefix: str = "minute", client=None):
+    def __init__(self, credentials: R2Credentials | None = None, prefix: str = "minute", client=None):
         self._credentials = credentials or resolve_r2_credentials()
         self._prefix = prefix.rstrip("/")
         # `client=` is a test-only seam (inject a fake S3 client instead of
@@ -321,10 +325,10 @@ class R2MinuteBarStore(MinuteBarStore):
     def _manifest_key(self) -> str:
         return f"{self._prefix}/{_MANIFEST_FILENAME}"
 
-    def _partition_years(self, symbol: str) -> List[int]:
+    def _partition_years(self, symbol: str) -> list[int]:
         years = []
 
-        def _list() -> List[int]:
+        def _list() -> list[int]:
             found = []
             paginator = self._client.get_paginator("list_objects_v2")
             for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=self._symbol_prefix(symbol)):
@@ -337,7 +341,7 @@ class R2MinuteBarStore(MinuteBarStore):
         years = _with_retries(_list)
         return sorted(years)
 
-    def list_symbols(self) -> List[str]:
+    def list_symbols(self) -> list[str]:
         """Every symbol currently in this store, via an S3 delimiter
         listing (one "directory level" under the prefix, not scanning
         every object) -- used by scripts/backfill_completeness.py to
@@ -345,7 +349,7 @@ class R2MinuteBarStore(MinuteBarStore):
         every symbol in the bucket."""
         root = f"{self._prefix}/"
 
-        def _list() -> List[str]:
+        def _list() -> list[str]:
             found = []
             paginator = self._client.get_paginator("list_objects_v2")
             for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=root, Delimiter="/"):
@@ -398,12 +402,12 @@ class R2MinuteBarStore(MinuteBarStore):
 
         _with_retries(_put)
 
-    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+    def read_completeness_bytes(self, symbol: str, year: int) -> bytes | None:
         from botocore.exceptions import ClientError
 
         key = f"{self._symbol_prefix(symbol)}{year}{completeness_sidecar_suffix()}"
 
-        def _get() -> Optional[bytes]:
+        def _get() -> bytes | None:
             try:
                 response = self._client.get_object(Bucket=self._credentials.bucket, Key=key)
                 return response["Body"].read()
@@ -428,7 +432,7 @@ class R2MinuteBarStore(MinuteBarStore):
 
         return _with_retries(_head)
 
-    def _read_object_if_exists(self, key: str) -> Optional[pd.DataFrame]:
+    def _read_object_if_exists(self, key: str) -> pd.DataFrame | None:
         if not self._object_exists(key):
             return None
         return self._read_object(key)
@@ -466,10 +470,10 @@ class R2MinuteBarStore(MinuteBarStore):
 
         _with_retries(_put)
 
-    def read_manifest_bytes(self) -> Optional[bytes]:
+    def read_manifest_bytes(self) -> bytes | None:
         from botocore.exceptions import ClientError
 
-        def _get() -> Optional[bytes]:
+        def _get() -> bytes | None:
             try:
                 response = self._client.get_object(Bucket=self._credentials.bucket, Key=self._manifest_key())
                 return response["Body"].read()

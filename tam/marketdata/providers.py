@@ -15,6 +15,7 @@ duplicated). Keeping the provider dumb (one concern: "get me this vendor's
 bytes for this day, normalized to our schema") means adding a second vendor
 never touches the filtering/validation/store code at all.
 """
+
 from __future__ import annotations
 
 import gzip
@@ -22,7 +23,6 @@ import io
 import os
 from abc import ABC, abstractmethod
 from datetime import date
-from typing import Dict, Optional
 
 import pandas as pd
 
@@ -42,7 +42,7 @@ from .schema import (
 )
 
 
-def _resolve_vendor_key(explicit: Optional[str], env_var: str, vendor: str, kind: str) -> str:
+def _resolve_vendor_key(explicit: str | None, env_var: str, vendor: str, kind: str) -> str:
     """Same simple "env var, with a constructor override" convention
     tam.data.providers.FMPProvider already uses for its own API key -- no
     Colab/saved-file resolution here (unlike tam.marketdata.credentials'
@@ -103,9 +103,9 @@ class _FlatFileS3Provider(MinuteBarProvider):
         endpoint: str,
         bucket: str,
         key_template: str,
-        column_map: Dict[str, str],
+        column_map: dict[str, str],
         timestamp_column: str,
-        timestamp_unit: Optional[str],
+        timestamp_unit: str | None,
         access_key_id: str,
         secret_access_key: str,
         gzip_compressed: bool = True,
@@ -121,7 +121,7 @@ class _FlatFileS3Provider(MinuteBarProvider):
         self._gzip_compressed = gzip_compressed
 
     def _filesystem(self):
-        import pyarrow.fs as fs
+        from pyarrow import fs
 
         return fs.S3FileSystem(
             endpoint_override=self._endpoint,
@@ -214,14 +214,14 @@ class MassiveFlatFileProvider(_FlatFileS3Provider):
 
     def __init__(
         self,
-        access_key_id: Optional[str] = None,
-        secret_access_key: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        bucket: Optional[str] = None,
-        key_template: Optional[str] = None,
-        column_map: Optional[Dict[str, str]] = None,
-        timestamp_column: Optional[str] = None,
-        timestamp_unit: Optional[str] = None,
+        access_key_id: str | None = None,
+        secret_access_key: str | None = None,
+        endpoint: str | None = None,
+        bucket: str | None = None,
+        key_template: str | None = None,
+        column_map: dict[str, str] | None = None,
+        timestamp_column: str | None = None,
+        timestamp_unit: str | None = None,
     ):
         super().__init__(
             endpoint=endpoint or self._DEFAULT_ENDPOINT,

@@ -4,6 +4,7 @@ of DataRepository/DataStore (no imports from either) so both `tam.data.export`
 RepoWriter's own destination) can build on the same Registry(FileFormat, ...)
 entries without a circular import between them.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

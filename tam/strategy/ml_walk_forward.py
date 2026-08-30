@@ -30,6 +30,7 @@ Walk-forward loop each simulated day (as_of = T):
    differs from what's currently held (same-day signal-and-execute, matching
    every other strategy in this package).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -128,9 +129,7 @@ class MLWalkForwardStrategy(Strategy):
                 [Order(ticker=exit_ticker, side=Side.SELL, qty=self._sell_qty, portfolio=self._portfolio_id)]
             )
         entry_ticker = self._long_ticker if target == "long" else self._short_ticker
-        self.trade.stocks(
-            [Order(ticker=entry_ticker, side=Side.BUY, qty=self._buy_qty, portfolio=self._portfolio_id)]
-        )
+        self.trade.stocks([Order(ticker=entry_ticker, side=Side.BUY, qty=self._buy_qty, portfolio=self._portfolio_id)])
         self._held = target
 
     def get_state(self) -> dict:
@@ -151,9 +150,7 @@ class MLWalkForwardStrategy(Strategy):
 
 
 @Registry.register(Strategy, "ml_walk_forward")
-def build_ml_walk_forward(
-    repository: DataRepository, portfolio_id: str, params, cash: float
-) -> MLWalkForwardStrategy:
+def build_ml_walk_forward(repository: DataRepository, portfolio_id: str, params, cash: float) -> MLWalkForwardStrategy:
     buy_qty = params["buy"]["qty"] if "buy" in params else params["qty"]
     sell_qty = params["sell"]["qty"] if "sell" in params else params["qty"]
     return MLWalkForwardStrategy(

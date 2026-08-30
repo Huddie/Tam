@@ -21,16 +21,17 @@ every place you'd realistically run a notebook.
     fred = Fred(api_key=Secrets["FRED_API_KEY"])          # raises if missing
     key = Secrets.get("FRED_API_KEY")                     # None if missing, never raises
 """
+
 from __future__ import annotations
 
 import os
 import sys
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from dotenv import dotenv_values, find_dotenv
 
 
-def _from_dotenv(name: str) -> Optional[str]:
+def _from_dotenv(name: str) -> str | None:
     """python-dotenv's own find_dotenv() walks up from the current working
     directory looking for a .env file; dotenv_values() just parses it into a
     dict without touching os.environ. Same pattern as tam.discovery.auth's
@@ -42,7 +43,7 @@ def _from_dotenv(name: str) -> Optional[str]:
     return dotenv_values(path).get(name) or None
 
 
-def _from_colab(name: str) -> Optional[str]:
+def _from_colab(name: str) -> str | None:
     """Colab's own recommended secret-storage mechanism (the key-icon panel
     in the notebook's left sidebar) -- only attempted when actually running
     in Colab. Same pattern as tam.discovery.auth._from_colab, parameterized
@@ -81,7 +82,7 @@ class _Secrets:
             )
         return value
 
-    def get(self, name: str, default: Optional[str] = None) -> Optional[str]:
+    def get(self, name: str, default: str | None = None) -> str | None:
         env_value = os.environ.get(name)
         if env_value:
             return env_value
@@ -97,7 +98,7 @@ class _Secrets:
 Secrets = _Secrets()
 
 
-def resolve_chain(*sources: Callable[[], Optional[str]]) -> Optional[str]:
+def resolve_chain(*sources: Callable[[], str | None]) -> str | None:
     """Chain-of-responsibility primitive: try each zero-arg callable in
     `sources`, in order, returning the first one that comes back with
     something other than None. This is the shared shape behind every

@@ -13,6 +13,6 @@ for page in paginator.paginate(Bucket=store._credentials.bucket, Prefix="sec/"):
         count, size = by_top.get(top, (0, 0))
         by_top[top] = (count + 1, size + obj["Size"])
 
-print(f"{total_objects} object(s), {total_bytes/1024/1024:.2f} MB under sec/")
+print(f"{total_objects} object(s), {total_bytes / 1024 / 1024:.2f} MB under sec/")
 for top, (count, size) in sorted(by_top.items()):
-    print(f"  sec/{top}/: {count} object(s), {size/1024:.1f} KB")
+    print(f"  sec/{top}/: {count} object(s), {size / 1024:.1f} KB")

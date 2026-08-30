@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    # Local (not the hosted ruff-pre-commit/pytest repos) so every hook runs
+    # through THIS project's own `uv`-managed venv (`uv sync --extra dev`
+    # installs ruff/pytest there) -- one source of truth for tool versions,
+    # matching what .github/workflows/test.yml already runs in CI, instead
+    # of pre-commit managing a second, separately-versioned toolchain.
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      - id: pytest-smoke
+        name: pytest (smoke -- excludes @pytest.mark.slow; full suite still runs in CI)
+        entry: uv run pytest tests/ -q -m "not slow" -W ignore::UserWarning
+        language: system
+        pass_filenames: false
+        always_run: true

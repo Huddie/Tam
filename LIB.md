@@ -9,7 +9,8 @@ together. Most base types are pluggable via one shared mechanism:
 @Registry.register(BaseType, "name")
 class MyImpl(BaseType): ...
 
-instance = Registry.get(BaseType, "name")            # cached singleton, no-arg
+
+instance = Registry.get(BaseType, "name")  # cached singleton, no-arg
 instance = Registry.create(BaseType, "name", *args)  # fresh instance, args passed through
 ```
 (`tam/registry.py`.) `DataProvider`, `DataStore`, `RepoWriter`, `FileFormat`,
@@ -25,6 +26,7 @@ Three small interfaces, each independently pluggable:
 ```python
 class DataProvider(ABC):
     def fetch_eod(self, symbol: str, start: date, end: date) -> pd.DataFrame: ...
+
 
 class DataStore(ABC):
     def exists(self, symbol: str) -> bool: ...
@@ -46,7 +48,7 @@ from tam.registry import Registry
 
 repo = DataRepository(Registry.get(DataProvider, "yfinance"), Registry.create(DataStore, "parquet", "data/eod"))
 repo.ingest(["AAPL", "MSFT"], date(2020, 1, 1), date(2024, 1, 1))  # only fetches missing sub-ranges
-df = repo.query("AAPL", date(2023, 1, 1), date(2023, 6, 1))         # cached in-memory after first read
+df = repo.query("AAPL", date(2023, 1, 1), date(2023, 6, 1))  # cached in-memory after first read
 
 # Hand the ingested data to a RepoWriter to persist it somewhere -- a
 # Registry(RepoWriter, ...) entry, separate from DataStore's own cache
@@ -75,8 +77,11 @@ from datetime import date
 from tam.data.export import export_history
 
 export_history(
-    "MU", date(2020, 1, 1), date(2024, 1, 1), "mu.csv",
-    provider="yfinance",                                    # any registered DataProvider
+    "MU",
+    date(2020, 1, 1),
+    date(2024, 1, 1),
+    "mu.csv",
+    provider="yfinance",  # any registered DataProvider
     transform=lambda df: df.assign(ret=df["close"].pct_change()),  # any DataFrame -> DataFrame callable
 )
 ```
@@ -97,12 +102,12 @@ Config-driven equivalent: `tam.data.export.run_export(config_path)`, reading a
 
 ```python
 class Strategy(ABC):
-    def state_change(self, state: State) -> None: ...   # START / RUNNING / END
+    def state_change(self, state: State) -> None: ...  # START / RUNNING / END
     def on_event(self, event: Event) -> None: ...
 
-    self.subscribe_to(topic)          # e.g. OPEN_TOPIC, EOD_TOPIC (tam.events.clock)
-    self.trade.stocks([Order(...)])   # submit orders via the bound TradeGateway
-    self.annotate("note")             # marks a vertical line on the eventual chart
+    self.subscribe_to(topic)  # e.g. OPEN_TOPIC, EOD_TOPIC (tam.events.clock)
+    self.trade.stocks([Order(...)])  # submit orders via the bound TradeGateway
+    self.annotate("note")  # marks a vertical line on the eventual chart
 ```
 
 An `Order` is `Order(ticker, side, qty, portfolio, price_basis=PriceBasis.CLOSE)`;
@@ -128,8 +133,8 @@ whichever is closest to what you need.
 from tam.portfolio.portfolio import Portfolio
 from tam.trading.trader import Trader
 
-portfolio = Portfolio(portfolio_id, cash=10_000.0)   # tracks cash, positions, trade history
-trader = Trader(name, strategy, portfolio)           # just pairs the two together
+portfolio = Portfolio(portfolio_id, cash=10_000.0)  # tracks cash, positions, trade history
+trader = Trader(name, strategy, portfolio)  # just pairs the two together
 ```
 You rarely touch `TradeGateway` directly — it's what `self.trade.stocks(...)`
 inside a `Strategy` actually calls; it resolves `Qty` specs into share counts
@@ -155,8 +160,8 @@ over strategies/portfolios without writing a YAML file.
 ```python
 from tam.backtest.runner import run, run_backtest
 
-run(config_path, mode="batch")                 # CLI-style: Rich progress bars, writes an HTML report
-report = run_backtest(config_path, live=False) # notebook-style: returns the Report, renders inline
+run(config_path, mode="batch")  # CLI-style: Rich progress bars, writes an HTML report
+report = run_backtest(config_path, live=False)  # notebook-style: returns the Report, renders inline
 ```
 
 A config file has up to four top-level sections:
@@ -191,18 +196,18 @@ Every `strategy:` name and every `data.provider`/`data.store` name is a
 ## Report — the data object (no plotly dependency)
 
 ```python
-report.equity_curve("main")     # pd.Series, indexed by date
-report.drawdown_curve("main")   # pd.Series
-report.summary("main")          # dict: start/end value, CAGR, Sharpe, max drawdown, ...
-report.summary_all()            # the above for every portfolio, as one DataFrame
-report.trades_for("main")       # pd.DataFrame
+report.equity_curve("main")  # pd.Series, indexed by date
+report.drawdown_curve("main")  # pd.Series
+report.summary("main")  # dict: start/end value, CAGR, Sharpe, max drawdown, ...
+report.summary_all()  # the above for every portfolio, as one DataFrame
+report.trades_for("main")  # pd.DataFrame
 ```
 
 Build one straight from your own pandas, no harness needed:
 ```python
 from tam.backtest.report import Report
 
-report = Report.from_curves({"my_strategy": wealth_series})       # {name: pd.Series} or a wide DataFrame
+report = Report.from_curves({"my_strategy": wealth_series})  # {name: pd.Series} or a wide DataFrame
 report = Report.from_curves(df, trades=trades_df, annotations=[{"date": d, "label": "note"}])
 ```
 Scoped for a handful of named curves (a strategy comparison) — not an
@@ -213,9 +218,9 @@ unlabeled sweep of hundreds of variants; plot those directly instead.
 ```python
 from tam.backtest.visualization import render, render_curves, write_html, RenderOptions
 
-fig = render(report)                                  # equity/drawdown/trades/summary-table dashboard
-fig = render_curves({"my_strategy": wealth_series})    # render(Report.from_curves(...)), one call
-write_html(report, "out.html")                         # render(...).write_html(path)
+fig = render(report)  # equity/drawdown/trades/summary-table dashboard
+fig = render_curves({"my_strategy": wealth_series})  # render(Report.from_curves(...)), one call
+write_html(report, "out.html")  # render(...).write_html(path)
 
 options = RenderOptions(show_trades_default=False, height=900, template="plotly_dark")
 fig = render(report, options=options)
@@ -234,11 +239,11 @@ table, plot library, and HTML tearsheets. Alongside `Report.summary()`/
 from tam.backtest.visualization import write_html
 from tam.backtest import quantstats_report
 
-report.summary_all()                                              # our 9 metrics
-quantstats_report.metrics(report, "main", benchmark="alt")         # QuantStats' ~60, as a DataFrame
+report.summary_all()  # our 9 metrics
+quantstats_report.metrics(report, "main", benchmark="alt")  # QuantStats' ~60, as a DataFrame
 
-write_html(report, "dashboard.html")                               # our plotly dashboard
-quantstats_report.write_html(report, "main", "tearsheet.html")    # a QuantStats tearsheet
+write_html(report, "dashboard.html")  # our plotly dashboard
+quantstats_report.write_html(report, "main", "tearsheet.html")  # a QuantStats tearsheet
 ```
 `benchmark` can be another `portfolio_id` already in the *same* `Report`
 (compares two strategies from one backtest run, no network) — or a raw
@@ -270,17 +275,21 @@ from tam.data.schema import CLOSE, OPEN
 #    stays the same:
 opens = price_matrix(repository, tickers, date(2015, 1, 1), date(2024, 1, 1), column=OPEN)
 closes = price_matrix(repository, tickers, date(2015, 1, 1), date(2024, 1, 1), column=CLOSE)
-returns = opens.shift(-1) / closes - 1   # BCSO: buy close, sell next open
+returns = opens.shift(-1) / closes - 1  # BCSO: buy close, sell next open
 # returns = closes.pct_change()          # ...or the classic close-to-close daily return
 # returns = closes / opens - 1           # ...or intraday (buy open, sell same close)
 
 # 2. rolling, point-in-time-safe factors (only ever see data on/before as_of)
 as_of = date(2023, 6, 1)
-factors = compute_factors(returns, as_of, {
-    "sharpe_3y": RollingSharpe(window_days=756),
-    "persistence": Persistence(period_days=252),
-    "alpha": OvernightAlpha(window_days=756, benchmark="SPY"),
-})
+factors = compute_factors(
+    returns,
+    as_of,
+    {
+        "sharpe_3y": RollingSharpe(window_days=756),
+        "persistence": Persistence(period_days=252),
+        "alpha": OvernightAlpha(window_days=756, benchmark="SPY"),
+    },
+)
 scores = score(factors, {"sharpe_3y": 0.5, "persistence": 0.3, "alpha": 0.2})
 
 # 3. don't just take the top-N -- diversify across correlation clusters first
@@ -339,7 +348,7 @@ from tam.basket.universe import UniverseProvider  # just for the Registry.create
 # `pitindex` extra (Python >=3.11: `pip install "tam-quant[pitindex]"`).
 # Covers "sp500" (default), "sp400", "sp600", or the composite "sp1500".
 universe = PitIndexUniverse(index="sp500")
-universe.constituents(date(2018, 6, 1))   # who was actually in the S&P 500 back then
+universe.constituents(date(2018, 6, 1))  # who was actually in the S&P 500 back then
 
 # or resolve it by name, e.g. straight from config:
 universe = Registry.create(UniverseProvider, "pitindex", index="sp600")
@@ -347,7 +356,7 @@ universe = Registry.create(UniverseProvider, "pitindex", index="sp600")
 ```python
 from tam.basket.universe import fetch_sp500_from_wikipedia, fetch_sp500_membership, CsvUniverse, WikipediaUniverse
 
-current_tickers, _changes = fetch_sp500_from_wikipedia()   # just today's list, no history
+current_tickers, _changes = fetch_sp500_from_wikipedia()  # just today's list, no history
 
 # WikipediaUniverse fetches once at construction (needs network then;
 # constituents(as_of) itself doesn't hit the network again) -- or persist it
@@ -403,10 +412,18 @@ for a more realistic model, e.g. spread- or size-dependent).
 from datetime import date
 from tam.backtest.walk_forward import run_walk_forward
 
-report = run_walk_forward("config.yaml", windows=[
-    (date(2020, 1, 1), date(2020, 12, 31), date(2021, 1, 1), date(2021, 3, 31)),  # (train_start, train_end, test_start, test_end)
-    (date(2020, 4, 1), date(2021, 3, 31), date(2021, 4, 1), date(2021, 6, 30)),
-])
+report = run_walk_forward(
+    "config.yaml",
+    windows=[
+        (
+            date(2020, 1, 1),
+            date(2020, 12, 31),
+            date(2021, 1, 1),
+            date(2021, 3, 31),
+        ),  # (train_start, train_end, test_start, test_end)
+        (date(2020, 4, 1), date(2021, 3, 31), date(2021, 4, 1), date(2021, 6, 30)),
+    ],
+)
 report.summary_all()  # scored ONLY on each window's own test period, stitched together
 ```
 Runs the same config once per window (over `[train_start, test_end]`, so the
@@ -422,7 +439,7 @@ its own selection could have "seen" via the full history.
 ```python
 from tam.backtest.stress import stress_test, flat_shock
 
-stress_test(weights, {"NVDA": -0.50})       # hypothetical portfolio return if NVDA gaps -50% overnight
+stress_test(weights, {"NVDA": -0.50})  # hypothetical portfolio return if NVDA gaps -50% overnight
 stress_test(weights, flat_shock(weights, -0.05))  # every current position gaps -5%
 ```
 Pure function, no `Report`/`Harness` needed -- run directly against
@@ -436,8 +453,10 @@ against a 20%-weighted name than a 4%-weighted one).
 from tam.backtest.live import live_render
 from tam.backtest.report import Report
 
+
 def next_frame():
     return Report.from_curves({"my_strategy": running_series})  # or None: "nothing new yet"
+
 
 live_render(next_frame, poll_seconds=2.0, should_continue=lambda: still_running)
 ```
@@ -454,7 +473,9 @@ real Dash server/browser tab instead of a notebook cell.
 class Presenter(ABC):
     def run_batch(self, harness, total_days, checkpoint_path, checkpoint_every) -> Report: ...
     def show_report(self, report, title, ticker_colors, prices) -> None: ...
-    def run_live(self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose) -> None: ...
+    def run_live(
+        self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose
+    ) -> None: ...
 ```
 Ships with `"cli"` (Rich progress + static HTML), `"clear_output"` (notebook,
 default for `run_backtest`), `"native_dash"` (real Dash server inline).
@@ -466,10 +487,12 @@ from tam.backtest.presenter import Presenter
 from tam.backtest.runner import run_backtest
 from tam.registry import Registry
 
-@Registry.register(Presenter, "my_presenter")   # optional -- only needed for name-based selection
+
+@Registry.register(Presenter, "my_presenter")  # optional -- only needed for name-based selection
 class MyPresenter(Presenter): ...
 
-run_backtest(config_path, presenter=MyPresenter())   # or render_mode="my_presenter"
+
+run_backtest(config_path, presenter=MyPresenter())  # or render_mode="my_presenter"
 ```
 
 ## Notebook magic

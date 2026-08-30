@@ -6,9 +6,8 @@ strategies run, and what they're compared against, is a config change, not a
 code change. New strategies just need one @Registry.register(Strategy, "name")
 adapter function (see tam/strategy/buy_and_hold.py for an example).
 """
-from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from __future__ import annotations
 
 from ..data.repository import DataRepository
 from ..portfolio.costs import CostModel
@@ -19,8 +18,8 @@ from ..trading.trader import Trader
 
 
 def build_strategies(
-    repository: DataRepository, specs, default_cash: float, cost_model: Optional[CostModel] = None
-) -> Tuple[List[Strategy], dict, List[Trader]]:
+    repository: DataRepository, specs, default_cash: float, cost_model: CostModel | None = None
+) -> tuple[list[Strategy], dict, list[Trader]]:
     strategies = []
     portfolios = {}
     traders = []

@@ -11,10 +11,10 @@ exact JSON blob, not a Bloom filter (see the approved plan's own
 assessment of why a Bloom filter isn't worth it at curated-universe
 scale).
 """
+
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 from .store import SecStore
 
@@ -38,7 +38,7 @@ class Manifest:
             return {}
         return json.loads(raw)
 
-    def last_accession_seen(self, cik: int) -> Optional[str]:
+    def last_accession_seen(self, cik: int) -> str | None:
         entry = self._data.get(str(cik))
         return entry.get("last_accession_seen") if entry else None
 

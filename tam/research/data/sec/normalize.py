@@ -25,6 +25,7 @@ specific to the companyfacts-JSON raw-facts shape tam.research.data.sec's
 provider.py fetches, not something edgartools' own (heavier, per-filing-
 XBRL-instance-based) stitching machinery operates on.
 """
+
 from __future__ import annotations
 
 import pandas as pd

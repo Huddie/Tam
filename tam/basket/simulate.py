@@ -7,14 +7,13 @@ config's curve -- all before ever committing to Strategy/Harness mechanics
 right, tam.strategy.basket_overnight turns it into an actual tradeable
 Strategy against the SAME building blocks.
 """
-from __future__ import annotations
 
-from typing import Dict, Union
+from __future__ import annotations
 
 import pandas as pd
 
 
-def simulate_basket(returns: pd.DataFrame, weights: Union[pd.Series, Dict[str, float]]) -> pd.Series:
+def simulate_basket(returns: pd.DataFrame, weights: pd.Series | dict[str, float]) -> pd.Series:
     """The basket's own daily return: the weighted sum of `returns`' columns
     named in `weights`. A ticker's missing/NaN day contributes 0 that day
     (not NaN) -- one ticker's data gap doesn't NaN out the whole basket."""
@@ -24,7 +23,7 @@ def simulate_basket(returns: pd.DataFrame, weights: Union[pd.Series, Dict[str, f
 
 
 def basket_wealth_curve(
-    returns: pd.DataFrame, weights: Union[pd.Series, Dict[str, float]], starting_cash: float = 100_000.0
+    returns: pd.DataFrame, weights: pd.Series | dict[str, float], starting_cash: float = 100_000.0
 ) -> pd.Series:
     """simulate_basket(...), compounded into a wealth curve -- feed straight
     into Report.from_curves({"config_a": ...})/render_curves({...}) to

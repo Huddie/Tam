@@ -46,11 +46,11 @@ with a backtest tearsheet specifically):
     c(my_series).show()    # explicit .show()
     c1(series) | c2(series) | c3(series)   # a ChartPipeline, one composite figure
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -74,6 +74,7 @@ def _fill_rgba(hex_color: str, alpha: float = 0.2) -> str:
     hex_color = hex_color.lstrip("#")
     r, g, b = (int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
     return f"rgba({r},{g},{b},{alpha})"
+
 
 # Shared diverging colorscale for every return-valued heatmap in this module
 # -- red for negative, green for positive, shading from dark (further from
@@ -147,7 +148,7 @@ class TearsheetChart(Chart):
     build_tearsheet() does instead -- it calls chart.render(report)
     directly, never through __call__ at all."""
 
-    def __call__(self, series: Union[pd.Series, Dict[str, pd.Series], pd.DataFrame, Report]) -> ChartCall:
+    def __call__(self, series: pd.Series | dict[str, pd.Series] | pd.DataFrame | Report) -> ChartCall:
         report = series if isinstance(series, Report) else Report.from_curves(_to_curves(series))
         return ChartCall(self, report)
 
@@ -189,7 +190,9 @@ class DrawdownChart(TearsheetChart):
         fig = go.Figure()
         for portfolio_id in report.portfolio_ids():
             drawdown = report.drawdown_curve(portfolio_id)
-            fig.add_trace(go.Scatter(x=drawdown.index, y=drawdown.values, mode="lines", name=portfolio_id, fill="tozeroy"))
+            fig.add_trace(
+                go.Scatter(x=drawdown.index, y=drawdown.values, mode="lines", name=portfolio_id, fill="tozeroy")
+            )
         fig.update_layout(title=self.title, yaxis_tickformat=".0%", template="plotly_white")
         return fig
 
@@ -248,9 +251,9 @@ class RollingReturnChart(TearsheetChart):
 
     def __init__(
         self,
-        years: Optional[float] = None,
-        months: Optional[float] = None,
-        days: Optional[int] = None,
+        years: float | None = None,
+        months: float | None = None,
+        days: int | None = None,
     ):
         if days is not None:
             self._window_days = days
@@ -286,15 +289,25 @@ class RollingReturnChart(TearsheetChart):
             below_zero = rolling.clip(upper=0.0)
             fig.add_trace(
                 go.Scatter(
-                    x=below_zero.index, y=below_zero.values, mode="lines",
-                    line=dict(width=0, color=color), fill="tozeroy", fillcolor=_fill_rgba(color),
-                    legendgroup=portfolio_id, showlegend=False, hoverinfo="skip",
+                    x=below_zero.index,
+                    y=below_zero.values,
+                    mode="lines",
+                    line=dict(width=0, color=color),
+                    fill="tozeroy",
+                    fillcolor=_fill_rgba(color),
+                    legendgroup=portfolio_id,
+                    showlegend=False,
+                    hoverinfo="skip",
                 )
             )
             fig.add_trace(
                 go.Scatter(
-                    x=rolling.index, y=rolling.values, mode="lines", name=portfolio_id,
-                    line=dict(color=color), legendgroup=portfolio_id,
+                    x=rolling.index,
+                    y=rolling.values,
+                    mode="lines",
+                    name=portfolio_id,
+                    line=dict(color=color),
+                    legendgroup=portfolio_id,
                 )
             )
         fig.add_hline(y=0, line_width=1)
@@ -355,11 +368,11 @@ class RollingReturnHeatmapChart(TearsheetChart):
 
     def __init__(
         self,
-        years: Optional[List[float]] = None,
-        months: Optional[List[float]] = None,
-        days: Optional[List[int]] = None,
+        years: list[float] | None = None,
+        months: list[float] | None = None,
+        days: list[int] | None = None,
         start_freq: str = "MS",
-        portfolio_id: Optional[str] = None,
+        portfolio_id: str | None = None,
         colorscale=RETURN_COLORSCALE,
     ):
         if days is not None:
@@ -398,12 +411,15 @@ class RollingReturnHeatmapChart(TearsheetChart):
             )
         )
         fig.update_layout(
-            title=f"{self.title} — {portfolio_id}", xaxis_title="Start Date", yaxis_title="Window", template="plotly_white"
+            title=f"{self.title} — {portfolio_id}",
+            xaxis_title="Start Date",
+            yaxis_title="Window",
+            template="plotly_white",
         )
         return fig
 
 
-def _period_boundaries(index: pd.DatetimeIndex, freq: str) -> Tuple[list, list]:
+def _period_boundaries(index: pd.DatetimeIndex, freq: str) -> tuple[list, list]:
     """(start_dates, end_dates) -- one pair per `freq` period `index`
     actually covers (e.g. freq="YE" -> each calendar year's first and last
     date present in `index`), for ReturnMatrixChart's default axes when the
@@ -441,7 +457,11 @@ def _return_matrix(returns: pd.Series, start_dates: list, end_dates: list) -> pd
         row = {}
         for end_date in end_dates:
             e = _end_pos(end_date)
-            row[end_date] = float(np.exp(cumulative[e + 1] - cumulative[s]) - 1.0) if (s is not None and e is not None and e >= s) else float("nan")
+            row[end_date] = (
+                float(np.exp(cumulative[e + 1] - cumulative[s]) - 1.0)
+                if (s is not None and e is not None and e >= s)
+                else float("nan")
+            )
         rows[start_date] = row
     return pd.DataFrame(rows).T
 
@@ -459,10 +479,10 @@ class ReturnMatrixChart(TearsheetChart):
 
     def __init__(
         self,
-        start_dates: Optional[list] = None,
-        end_dates: Optional[list] = None,
+        start_dates: list | None = None,
+        end_dates: list | None = None,
         freq: str = "YE",
-        portfolio_id: Optional[str] = None,
+        portfolio_id: str | None = None,
         colorscale=RETURN_COLORSCALE,
     ):
         self._start_dates = start_dates
@@ -547,9 +567,7 @@ class MonthlyReturnsChart(TearsheetChart):
         fig = go.Figure()
         for portfolio_id in report.portfolio_ids():
             monthly = _returns(report, portfolio_id).add(1).resample("ME").prod().sub(1)
-            fig.add_trace(
-                go.Bar(x=[d.strftime("%Y-%m") for d in monthly.index], y=monthly.values, name=portfolio_id)
-            )
+            fig.add_trace(go.Bar(x=[d.strftime("%Y-%m") for d in monthly.index], y=monthly.values, name=portfolio_id))
         fig.add_hline(y=0, line_width=1)
         fig.update_layout(title=self.title, yaxis_tickformat=".1%", barmode="group", template="plotly_white")
         return fig
@@ -683,7 +701,14 @@ class WorstDrawdownPathsChart(TearsheetChart):
                 )
 
         if not any_series:
-            fig.add_annotation(text=f"No start dates with MDD ≤ {self._threshold:.0%}", showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5)
+            fig.add_annotation(
+                text=f"No start dates with MDD ≤ {self._threshold:.0%}",
+                showarrow=False,
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+            )
         fig.add_hline(y=0, line_width=1, line_dash="dash")
         fig.update_layout(title=self.title, yaxis_tickformat=".1%", template="plotly_white")
         return fig
@@ -746,7 +771,7 @@ def _suffix_stats(r: np.ndarray, dates: np.ndarray, final_exit_date) -> dict:
     }
 
 
-def _by_start_date_series(report: Report, portfolio_id: str, field: str, min_trades: Optional[int] = None) -> pd.Series:
+def _by_start_date_series(report: Report, portfolio_id: str, field: str, min_trades: int | None = None) -> pd.Series:
     """One field of _suffix_stats(...), as a Series indexed by start date --
     the shared plumbing behind every *ByStartDateChart below. `min_trades`
     (the user's own MIN_TRADES_FOR_RATIO_CHARTS) drops start dates too close
@@ -764,7 +789,7 @@ def _by_start_date_series(report: Report, portfolio_id: str, field: str, min_tra
 
 @Registry.register(TearsheetChart, "max_drawdown_by_start_date")
 class MaxDrawdownByStartDateChart(TearsheetChart):
-    """"If I'd started on date X and held through the end of history, how
+    """ "If I'd started on date X and held through the end of history, how
     bad would my worst drawdown have been" -- one point per possible start
     date, NOT the same thing as the Underwater Plot (which fixes ONE start
     -- the actual first date in the data -- and shows drawdown evolving over
@@ -839,7 +864,13 @@ class FinalValueByStartDateChart(TearsheetChart):
         for portfolio_id in report.portfolio_ids():
             series = _by_start_date_series(report, portfolio_id, "final_value")
             fig.add_trace(go.Scatter(x=series.index, y=series.values, mode="lines", name=portfolio_id))
-        fig.update_layout(title=self.title, xaxis_title="Start Date", yaxis_tickprefix="$", yaxis_tickformat=",", template="plotly_white")
+        fig.update_layout(
+            title=self.title,
+            xaxis_title="Start Date",
+            yaxis_tickprefix="$",
+            yaxis_tickformat=",",
+            template="plotly_white",
+        )
         return fig
 
 
@@ -853,7 +884,7 @@ class SharpeDifferenceByStartDateChart(TearsheetChart):
     pass it explicitly (SharpeDifferenceByStartDateChart(benchmark_id=...))
     for anything else."""
 
-    def __init__(self, benchmark_id: Optional[str] = None, min_trades: int = 252):
+    def __init__(self, benchmark_id: str | None = None, min_trades: int = 252):
         self._benchmark_id = benchmark_id
         self._min_trades = min_trades
         self.title = "Sharpe Difference by Start Date"
@@ -866,7 +897,11 @@ class SharpeDifferenceByStartDateChart(TearsheetChart):
         if benchmark_id is None:
             fig.add_annotation(
                 text="Needs at least 2 portfolios (or an explicit benchmark_id)",
-                showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5,
+                showarrow=False,
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
             )
             fig.update_layout(title=self.title, template="plotly_white")
             return fig
@@ -877,7 +912,9 @@ class SharpeDifferenceByStartDateChart(TearsheetChart):
                 continue
             strategy_sharpe = _by_start_date_series(report, portfolio_id, "sharpe", self._min_trades)
             diff = (strategy_sharpe - benchmark_sharpe).dropna()
-            fig.add_trace(go.Scatter(x=diff.index, y=diff.values, mode="lines", name=f"{portfolio_id} − {benchmark_id}"))
+            fig.add_trace(
+                go.Scatter(x=diff.index, y=diff.values, mode="lines", name=f"{portfolio_id} − {benchmark_id}")
+            )
         fig.add_hline(y=0, line_width=1)
         fig.update_layout(title=self.title, xaxis_title="Start Date", template="plotly_white")
         return fig
@@ -916,7 +953,7 @@ class MonthlyReturnsHeatmapChart(TearsheetChart):
     just another trace on the same axes), so pick which one with
     `portfolio_id` (defaults to the Report's first)."""
 
-    def __init__(self, portfolio_id: Optional[str] = None, colorscale=RETURN_COLORSCALE):
+    def __init__(self, portfolio_id: str | None = None, colorscale=RETURN_COLORSCALE):
         self._portfolio_id = portfolio_id
         self._colorscale = colorscale
         self.title = "Monthly Returns (%)"
@@ -935,8 +972,13 @@ class MonthlyReturnsHeatmapChart(TearsheetChart):
 
         fig = go.Figure(
             go.Heatmap(
-                z=values, x=month_labels, y=[str(y) for y in pivot.index],
-                colorscale=self._colorscale, zmid=0, text=text, texttemplate="%{text}",
+                z=values,
+                x=month_labels,
+                y=[str(y) for y in pivot.index],
+                colorscale=self._colorscale,
+                zmid=0,
+                text=text,
+                texttemplate="%{text}",
                 hovertemplate="%{y} %{x}: %{z:.2f}%<extra></extra>",
             )
         )
@@ -962,9 +1004,12 @@ class ReturnQuantilesChart(TearsheetChart):
                 resampled = returns if freq == "D" else returns.add(1).resample(freq).prod().sub(1)
                 fig.add_trace(
                     go.Box(
-                        y=resampled.values * 100, name=label,
-                        legendgroup=portfolio_id, offsetgroup=portfolio_id,
-                        marker_color=None, hovertext=portfolio_id,
+                        y=resampled.values * 100,
+                        name=label,
+                        legendgroup=portfolio_id,
+                        offsetgroup=portfolio_id,
+                        marker_color=None,
+                        hovertext=portfolio_id,
                     )
                 )
         fig.update_layout(title=self.title, yaxis_title="Return (%)", boxmode="group", template="plotly_white")
@@ -981,7 +1026,7 @@ class WorstDrawdownPeriodsChart(TearsheetChart):
     shade against) -- pick which with `portfolio_id` (defaults to the
     Report's first)."""
 
-    def __init__(self, portfolio_id: Optional[str] = None, n_periods: int = 5):
+    def __init__(self, portfolio_id: str | None = None, n_periods: int = 5):
         self._portfolio_id = portfolio_id
         self._n_periods = n_periods
         self.title = f"Worst {n_periods} Drawdown Periods"
@@ -1185,7 +1230,7 @@ def _resolve(base_type: type, item):
     return item if isinstance(item, base_type) else Registry.get(base_type, item)
 
 
-def metrics_table(report: Report, metrics: List[Union[str, TearsheetMetric]] = DEFAULT_METRICS) -> pd.DataFrame:
+def metrics_table(report: Report, metrics: list[str | TearsheetMetric] = DEFAULT_METRICS) -> pd.DataFrame:
     """One row per metric, one column per portfolio -- the tearsheet's own
     table shape. Add a row by registering a TearsheetMetric and including its
     id (or an already-constructed instance) in `metrics`."""
@@ -1193,9 +1238,7 @@ def metrics_table(report: Report, metrics: List[Union[str, TearsheetMetric]] = D
     rows = {}
     for item in metrics:
         metric = _resolve(TearsheetMetric, item)
-        rows[metric.label] = {
-            pid: _FORMATTERS[metric.format](metric.compute(report, pid)) for pid in portfolio_ids
-        }
+        rows[metric.label] = {pid: _FORMATTERS[metric.format](metric.compute(report, pid)) for pid in portfolio_ids}
     table = pd.DataFrame(rows).T
     return table[portfolio_ids] if not table.empty else table
 
@@ -1217,8 +1260,8 @@ _STYLE = """
 def build_tearsheet(
     report: Report,
     title: str = "Strategy Tearsheet",
-    charts: List[Union[str, TearsheetChart]] = DEFAULT_CHARTS,
-    metrics: List[Union[str, TearsheetMetric]] = DEFAULT_METRICS,
+    charts: list[str | TearsheetChart] = DEFAULT_CHARTS,
+    metrics: list[str | TearsheetMetric] = DEFAULT_METRICS,
 ) -> str:
     """A self-contained HTML tearsheet: `charts` stacked in a column,
     `metrics_table(report, metrics)` alongside -- side-by-side (charts left,
@@ -1307,19 +1350,19 @@ class Tearsheet:
 
     def __init__(
         self,
-        charts: Optional[List[Union[str, TearsheetChart]]] = None,
-        metrics: Optional[List[Union[str, TearsheetMetric]]] = None,
+        charts: list[str | TearsheetChart] | None = None,
+        metrics: list[str | TearsheetMetric] | None = None,
         title: str = "Strategy Tearsheet",
     ):
         self.title = title
-        self.charts: List[Union[str, TearsheetChart]] = list(charts) if charts is not None else list(DEFAULT_CHARTS)
-        self.metrics: List[Union[str, TearsheetMetric]] = list(metrics) if metrics is not None else list(DEFAULT_METRICS)
+        self.charts: list[str | TearsheetChart] = list(charts) if charts is not None else list(DEFAULT_CHARTS)
+        self.metrics: list[str | TearsheetMetric] = list(metrics) if metrics is not None else list(DEFAULT_METRICS)
 
-    def add_chart(self, chart: Union[str, TearsheetChart]) -> "Tearsheet":
+    def add_chart(self, chart: str | TearsheetChart) -> Tearsheet:
         self.charts.append(chart)
         return self
 
-    def add_metric(self, metric: Union[str, TearsheetMetric]) -> "Tearsheet":
+    def add_metric(self, metric: str | TearsheetMetric) -> Tearsheet:
         self.metrics.append(metric)
         return self
 

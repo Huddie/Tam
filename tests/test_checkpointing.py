@@ -60,9 +60,7 @@ class _CrashableBuyOnce(Strategy):
         if self._crash_on is not None and event.payload == self._crash_on:
             raise RuntimeError("simulated crash")
         if not self._bought:
-            self.trade.stocks(
-                [Order(ticker=self._ticker, side=Side.BUY, qty=self._qty, portfolio=self._portfolio_id)]
-            )
+            self.trade.stocks([Order(ticker=self._ticker, side=Side.BUY, qty=self._qty, portfolio=self._portfolio_id)])
             self._bought = True
 
     def get_state(self) -> dict:

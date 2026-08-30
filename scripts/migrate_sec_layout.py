@@ -26,11 +26,11 @@ run (started before this migration existed) has fully finished -- running
 this WHILE that script is still actively writing old-style keys would race
 it, potentially migrating a file the old run is about to rewrite again.
 """
+
 from __future__ import annotations
 
 import argparse
 import re
-from typing import List, Tuple
 
 from tam.research.data.sec.store import SecStore
 
@@ -39,7 +39,7 @@ _OLD_SUBMISSIONS_RE = re.compile(r"^submissions/fiscal_year=(\d+)/filings\.parqu
 _OLD_FINANCIALS_RE = re.compile(r"^financials/fiscal_year=(\d+)/financials\.parquet$")
 
 
-def _list_old_keys(store: SecStore) -> List[Tuple[str, str]]:
+def _list_old_keys(store: SecStore) -> list[tuple[str, str]]:
     """Every old-style key under sec/ paired with its new-style
     equivalent -- (old_key, new_key), both including the `sec/` prefix."""
     prefix = f"{store._prefix}/"
@@ -99,7 +99,9 @@ def main() -> None:
 
         client.copy_object(Bucket=bucket, CopySource={"Bucket": bucket, "Key": old_key}, Key=new_key)
         if not _exists(new_key):
-            raise RuntimeError(f"Copy reported success but {new_key} still doesn't exist -- aborting before deleting {old_key}.")
+            raise RuntimeError(
+                f"Copy reported success but {new_key} still doesn't exist -- aborting before deleting {old_key}."
+            )
         client.delete_object(Bucket=bucket, Key=old_key)
         migrated += 1
         print(f"  moved: {old_key}  ->  {new_key}")

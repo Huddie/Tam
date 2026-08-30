@@ -3,9 +3,9 @@ import pytest
 
 duckdb = pytest.importorskip("duckdb")
 
-from tam.marketdata.schema import MINUTE_BAR_COLUMNS
-from tam.marketdata.store import LocalMinuteBarStore
-from tam.marketdata.duckdb_query import open_duckdb
+from tam.marketdata.duckdb_query import open_duckdb  # noqa: E402 -- must come after the importorskip above
+from tam.marketdata.schema import MINUTE_BAR_COLUMNS  # noqa: E402
+from tam.marketdata.store import LocalMinuteBarStore  # noqa: E402
 
 
 def _write_spy_bars(local_root, day="2024-01-02", periods=10, start_close=100.0):

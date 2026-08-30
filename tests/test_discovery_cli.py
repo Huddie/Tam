@@ -8,9 +8,29 @@ def test_publish_subcommand_parses_all_flags():
 
     args = parser.parse_args(
         [
-            "publish", "report.html", "--title", "T", "--type", "report", "--name", "n",
-            "--description", "d", "--tag", "a", "--tag", "b", "--source", "src.py",
-            "--metadata-json", '{"k": 1}', "--no-git", "--token", "tok", "--api-url", "https://x",
+            "publish",
+            "report.html",
+            "--title",
+            "T",
+            "--type",
+            "report",
+            "--name",
+            "n",
+            "--description",
+            "d",
+            "--tag",
+            "a",
+            "--tag",
+            "b",
+            "--source",
+            "src.py",
+            "--metadata-json",
+            '{"k": 1}',
+            "--no-git",
+            "--token",
+            "tok",
+            "--api-url",
+            "https://x",
         ]
     )
 

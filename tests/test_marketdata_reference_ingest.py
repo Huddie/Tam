@@ -2,6 +2,7 @@
 for MassiveReferenceProvider (matching this project's fakes-over-mocking
 convention), so no real API key or network access is ever needed here.
 """
+
 import pandas as pd
 import pytest
 
@@ -14,16 +15,24 @@ class _FakeProvider:
     def __init__(self):
         self.calls = []
         self.splits_rows = [
-            {"id": "s1", "ticker": "AAPL", "execution_date": "2020-01-15", "split_from": 1, "split_to": 4, "adjustment_type": "forward_split", "historical_adjustment_factor": 0.25}
+            {
+                "id": "s1",
+                "ticker": "AAPL",
+                "execution_date": "2020-01-15",
+                "split_from": 1,
+                "split_to": 4,
+                "adjustment_type": "forward_split",
+                "historical_adjustment_factor": 0.25,
+            }
         ]
         self.ipo_status = "new"
 
-    def fetch_splits(self, since=None):
+    def fetch_splits(self, since=None, *, log=None):
         self.calls.append(("splits", since))
         rows = [] if (since and since >= "2020-01-15") else self.splits_rows
         return pd.DataFrame(rows, columns=schema.SPLIT_COLUMNS) if rows else schema.empty_frame(schema.SPLIT_COLUMNS)
 
-    def fetch_dividends(self, since=None):
+    def fetch_dividends(self, since=None, *, log=None):
         self.calls.append(("dividends", since))
         return schema.empty_frame(schema.DIVIDEND_COLUMNS)
 
@@ -41,7 +50,9 @@ class _FakeProvider:
 
     def fetch_float(self):
         self.calls.append(("float", None))
-        return pd.DataFrame([{"ticker": "AAPL", "effective_date": "2025-01-01", "free_float": 100, "free_float_percent": 99.0}])
+        return pd.DataFrame(
+            [{"ticker": "AAPL", "effective_date": "2025-01-01", "free_float": 100, "free_float_percent": 99.0}]
+        )
 
 
 @pytest.fixture

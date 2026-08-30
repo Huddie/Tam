@@ -4,12 +4,14 @@ deliberately tested here with NO dependency on tam.backtest's own chart
 classes or Report, since the whole point of this module is that it
 doesn't need either.
 """
+
 from datetime import date, timedelta
 
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
+from tam import charting
 from tam.charting import (
     Chart,
     ChartCall,
@@ -25,7 +27,6 @@ from tam.charting import (
     set_theme,
     timeseries,
 )
-import tam.charting as charting
 from tam.registry import Registry
 
 
@@ -107,7 +108,9 @@ def test_chart_call_pipe_returns_chart_pipeline():
 
 
 def test_chart_pipeline_render_has_one_subplot_per_chart():
-    pipeline = timeseries(_series("a"), title="A") | timeseries(_series("b"), title="B") | timeseries(_series("c"), title="C")
+    pipeline = (
+        timeseries(_series("a"), title="A") | timeseries(_series("b"), title="B") | timeseries(_series("c"), title="C")
+    )
     fig = pipeline.render()
     assert hasattr(fig.layout, "yaxis3")
 
@@ -215,7 +218,11 @@ def test_rect_composes_with_timeseries_and_preserves_shapes_in_composite():
     copied fig.data traces, silently dropping any chart whose whole
     output lives in fig.layout.shapes instead, which is ALL of RectChart's
     output)."""
-    pipeline = timeseries(_series("a")) | rect([(date(2024, 1, 1), date(2024, 1, 5))], title="Divergence") | timeseries(_series("b"))
+    pipeline = (
+        timeseries(_series("a"))
+        | rect([(date(2024, 1, 1), date(2024, 1, 5))], title="Divergence")
+        | timeseries(_series("b"))
+    )
     fig = pipeline.render()
     assert len(fig.layout.shapes) == 1
     # The middle row's own traces are empty, but the two timeseries rows still have theirs.
@@ -280,7 +287,9 @@ def test_overlay_invert_flips_the_axis_a_member_actually_ends_up_on():
     """.invert() on the RIGHT-axis member must flip yaxis2, not the LEFT
     axis shared by the other member -- confirmed by asserting the left
     axis stays untouched."""
-    overlay = timeseries(_series("a", start_value=100.0)) & timeseries(_series("b", start_value=5.0), axis="right").invert()
+    overlay = (
+        timeseries(_series("a", start_value=100.0)) & timeseries(_series("b", start_value=5.0), axis="right").invert()
+    )
     fig = overlay.render()
     assert fig.layout.yaxis2.autorange == "reversed"
     assert fig.layout.yaxis.autorange is None

@@ -1,12 +1,13 @@
 """upload() -- the Python SDK entry point. See tam.discovery's own package
 docstring for the one-line pitch; this module covers the mechanics.
 """
+
 from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Union, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from .auth import resolve_token
 from .git_info import capture_git_info
@@ -42,7 +43,7 @@ class UploadResult:
     type: str
 
 
-def _read_html(path_or_figure: Union[str, Path, Uploadable]) -> str:
+def _read_html(path_or_figure: str | Path | Uploadable) -> str:
     """The artifact's HTML text, however it was given: an existing .html
     file's contents (path_or_figure is path-like), or an Uploadable's own
     to_html() output (a Plotly Figure, a ChartCall/ChartPipeline, or any
@@ -73,17 +74,17 @@ def _read_html(path_or_figure: Union[str, Path, Uploadable]) -> str:
 
 
 def upload(
-    path_or_figure: Union[str, Path, Uploadable],
+    path_or_figure: str | Path | Uploadable,
     *,
     title: str,
     type: str = "dashboard",
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-    source_file: Optional[str] = None,
-    token: Optional[str] = None,
-    api_url: Optional[str] = None,
+    name: str | None = None,
+    description: str | None = None,
+    tags: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
+    source_file: str | None = None,
+    token: str | None = None,
+    api_url: str | None = None,
     capture_git: bool = True,
     timeout: float = 30.0,
 ) -> UploadResult:
@@ -126,7 +127,7 @@ def upload(
     discovery = client.create_discovery(title=title, type=type, name=name)
     discovery_id = discovery["discovery_id"]
 
-    version_fields: Dict[str, Any] = {
+    version_fields: dict[str, Any] = {
         "title": title,
         "description": description,
         "tags": tags or [],

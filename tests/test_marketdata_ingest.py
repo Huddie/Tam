@@ -3,11 +3,11 @@ import os
 from datetime import date, timedelta
 
 import pandas as pd
-import pyarrow.fs as fs
 import pytest
+from pyarrow import fs
 
 from tam.basket.universe import StaticUniverse, UniverseProvider
-from tam.marketdata.ingest import IngestResult, _Manifest, ingest, ingest_day, run_ingest
+from tam.marketdata.ingest import IngestResult, ingest, ingest_day, run_ingest
 from tam.marketdata.providers import MinuteBarProvider, _FlatFileS3Provider
 from tam.marketdata.store import LocalMinuteBarStore, MinuteBarStore
 from tam.registry import Registry
@@ -19,7 +19,14 @@ class _LocalFlatFileProvider(_FlatFileS3Provider):
             endpoint="unused",
             bucket=str(root),
             key_template="%Y-%m-%d.csv.gz",
-            column_map={"ticker": "symbol", "open": "open", "high": "high", "low": "low", "close": "close", "volume": "volume"},
+            column_map={
+                "ticker": "symbol",
+                "open": "open",
+                "high": "high",
+                "low": "low",
+                "close": "close",
+                "volume": "volume",
+            },
             timestamp_column="window_start",
             timestamp_unit="ns",
             access_key_id="unused",
@@ -34,9 +41,9 @@ def _write_day(root, day: str, rows) -> None:
     """rows: list of (ticker, minute_offset, open, close, high, low, volume)."""
     csv = "ticker,volume,open,close,high,low,window_start\n"
     base_ns = pd.Timestamp(f"{day}T14:30:00Z").value
-    for ticker, minute_offset, o, c, h, l, v in rows:
+    for ticker, minute_offset, o, c, h, low, v in rows:
         ts_ns = base_ns + minute_offset * 60_000_000_000
-        csv += f"{ticker},{v},{o},{c},{h},{l},{ts_ns}\n"
+        csv += f"{ticker},{v},{o},{c},{h},{low},{ts_ns}\n"
     path = os.path.join(str(root), f"{day}.csv.gz")
     with open(path, "wb") as handle:
         handle.write(gzip.compress(csv.encode()))
@@ -140,7 +147,9 @@ def test_ingest_over_a_range_tallies_processed_and_skipped_days(flat_files, stor
     provider = _LocalFlatFileProvider(flat_files)
     store = LocalMinuteBarStore(store_root)
 
-    result = ingest(date(2024, 1, 2), date(2024, 1, 4), provider=provider, store=store, universe=StaticUniverse(["AAPL"]))
+    result = ingest(
+        date(2024, 1, 2), date(2024, 1, 4), provider=provider, store=store, universe=StaticUniverse(["AAPL"])
+    )
 
     assert result == IngestResult(days_processed=2, days_skipped_already_done=0, days_skipped_no_data=1)
 
@@ -210,7 +219,9 @@ def test_manifest_persists_across_separate_store_instances_pointed_at_the_same_r
     provider = _LocalFlatFileProvider(flat_files)
     universe = StaticUniverse(["AAPL"])
 
-    ingest(date(2024, 1, 2), date(2024, 1, 2), provider=provider, store=LocalMinuteBarStore(store_root), universe=universe)
+    ingest(
+        date(2024, 1, 2), date(2024, 1, 2), provider=provider, store=LocalMinuteBarStore(store_root), universe=universe
+    )
 
     fresh_store = LocalMinuteBarStore(store_root)  # a brand new instance, same root
     result = ingest(date(2024, 1, 2), date(2024, 1, 2), provider=provider, store=fresh_store, universe=universe)
@@ -271,9 +282,13 @@ def test_ingest_resuming_after_a_crash_mid_batch_only_redoes_unflushed_days(flat
     # instead_of_one_per_day), where exact per-day ordering doesn't matter.
     with pytest.raises(RuntimeError, match="simulated crash"):
         ingest(
-            trading_days[0], trading_days[-1],
-            provider=_CrashingProvider(flat_files), store=store, universe=universe,
-            flush_every_days=5, max_workers=1,
+            trading_days[0],
+            trading_days[-1],
+            provider=_CrashingProvider(flat_files),
+            store=store,
+            universe=universe,
+            flush_every_days=5,
+            max_workers=1,
         )
 
     # The first 5 trading days hit the flush_every_days=5 trigger and were
@@ -286,9 +301,13 @@ def test_ingest_resuming_after_a_crash_mid_batch_only_redoes_unflushed_days(flat
     # Resuming (same range, a provider that no longer crashes) must skip
     # the already-flushed days and only redo what was actually lost.
     result = ingest(
-        trading_days[0], trading_days[-1],
-        provider=_LocalFlatFileProvider(flat_files), store=store, universe=universe,
-        flush_every_days=5, max_workers=1,
+        trading_days[0],
+        trading_days[-1],
+        provider=_LocalFlatFileProvider(flat_files),
+        store=store,
+        universe=universe,
+        flush_every_days=5,
+        max_workers=1,
     )
 
     assert result.days_skipped_already_done == 5

@@ -12,14 +12,32 @@ def local_root(tmp_path):
         "splits",
         pd.DataFrame(
             [
-                {"id": "s1", "ticker": "AAPL", "execution_date": "2020-08-31", "split_from": 1, "split_to": 4, "adjustment_type": "forward_split", "historical_adjustment_factor": 0.25},
-                {"id": "s2", "ticker": "TSLA", "execution_date": "2021-08-25", "split_from": 1, "split_to": 5, "adjustment_type": "forward_split", "historical_adjustment_factor": 0.2},
+                {
+                    "id": "s1",
+                    "ticker": "AAPL",
+                    "execution_date": "2020-08-31",
+                    "split_from": 1,
+                    "split_to": 4,
+                    "adjustment_type": "forward_split",
+                    "historical_adjustment_factor": 0.25,
+                },
+                {
+                    "id": "s2",
+                    "ticker": "TSLA",
+                    "execution_date": "2021-08-25",
+                    "split_from": 1,
+                    "split_to": 5,
+                    "adjustment_type": "forward_split",
+                    "historical_adjustment_factor": 0.2,
+                },
             ]
         ),
     )
     store.write(
         "float",
-        pd.DataFrame([{"ticker": "AAPL", "effective_date": "2025-11-01", "free_float": 15000000000, "free_float_percent": 98.5}]),
+        pd.DataFrame(
+            [{"ticker": "AAPL", "effective_date": "2025-11-01", "free_float": 15000000000, "free_float_percent": 98.5}]
+        ),
     )
     return tmp_path
 
@@ -49,6 +67,48 @@ def test_float_data_macro_reads_the_positioning_prefix(local_root):
     df = con.sql("SELECT * FROM float_data('AAPL')").df()
     assert len(df) == 1
     assert df["free_float_percent"].iloc[0] == 98.5
+
+
+def _short_volume_row(ticker: str) -> dict:
+    return {
+        "ticker": ticker,
+        "date": "2025-01-02",
+        "short_volume": 100.0,
+        "total_volume": 1000.0,
+        "short_volume_ratio": 0.1,
+        "exempt_volume": 0.0,
+        "non_exempt_volume": 100.0,
+        "adf_short_volume": 0.0,
+        "adf_short_volume_exempt": 0.0,
+        "nasdaq_carteret_short_volume": 0.0,
+        "nasdaq_carteret_short_volume_exempt": 0.0,
+        "nasdaq_chicago_short_volume": 0.0,
+        "nasdaq_chicago_short_volume_exempt": 0.0,
+        "nyse_short_volume": 0.0,
+        "nyse_short_volume_exempt": 0.0,
+    }
+
+
+def test_short_volume_macro_with_no_ticker_scans_every_ticker_directory(local_root):
+    store = LocalReferenceStore(local_root)
+    store.write("short_volume", pd.DataFrame([_short_volume_row("AAPL"), _short_volume_row("TSLA")]))
+
+    con = open_duckdb(local_root=str(local_root))
+    df = con.sql("SELECT * FROM short_volume()").df()
+
+    assert len(df) == 2
+    assert set(df["ticker"]) == {"AAPL", "TSLA"}
+
+
+def test_short_volume_macro_with_a_ticker_narrows_the_glob_to_that_directory(local_root):
+    store = LocalReferenceStore(local_root)
+    store.write("short_volume", pd.DataFrame([_short_volume_row("AAPL"), _short_volume_row("TSLA")]))
+
+    con = open_duckdb(local_root=str(local_root))
+    df = con.sql("SELECT * FROM short_volume('aapl')").df()
+
+    assert len(df) == 1
+    assert df["ticker"].iloc[0] == "AAPL"
 
 
 def test_reference_macros_register_without_the_data_present(tmp_path):

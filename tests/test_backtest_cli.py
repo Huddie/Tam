@@ -221,7 +221,16 @@ backtest:
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, poll_seconds=3.0, options=None):
+    def fake_serve(
+        checkpoint_path,
+        title,
+        ticker_colors=None,
+        prices=None,
+        port=8050,
+        verbose=False,
+        poll_seconds=3.0,
+        options=None,
+    ):
         serve_calls.append((checkpoint_path, title, port, verbose))
         deadline = time.time() + 5
         while not report_path.exists() and time.time() < deadline:
@@ -300,7 +309,16 @@ backtest:
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, poll_seconds=3.0, options=None):
+    def fake_serve(
+        checkpoint_path,
+        title,
+        ticker_colors=None,
+        prices=None,
+        port=8050,
+        verbose=False,
+        poll_seconds=3.0,
+        options=None,
+    ):
         serve_calls.append(checkpoint_path)
         deadline = time.time() + 5
         while not report_path.exists() and time.time() < deadline:
@@ -358,6 +376,7 @@ def test_run_backtest_returns_the_report_and_renders_inline(tmp_path, monkeypatc
     assert len(show_calls) == 1
 
 
+@pytest.mark.slow  # runs a real small end-to-end backtest with live redraws -- ~5s, the slowest single test in the suite
 def test_run_backtest_live_redraws_via_clear_output_not_dash(tmp_path, monkeypatch):
     # live=True does NOT use Dash (unlike --mode live on the CLI, which opens
     # a real server for a real browser tab) -- Dash's own inline-in-notebook
@@ -396,7 +415,17 @@ def test_run_backtest_live_native_dash_uses_serve_with_jupyter_mode(tmp_path, mo
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, jupyter_mode=None, poll_seconds=3.0, options=None):
+    def fake_serve(
+        checkpoint_path,
+        title,
+        ticker_colors=None,
+        prices=None,
+        port=8050,
+        verbose=False,
+        jupyter_mode=None,
+        poll_seconds=3.0,
+        options=None,
+    ):
         serve_calls.append({"jupyter_mode": jupyter_mode, "poll_seconds": poll_seconds})
         # Block until the background thread's tiny backtest actually
         # finishes and renders -- otherwise that daemon thread can still be
@@ -428,7 +457,17 @@ def test_run_backtest_presenter_kwargs_forwards_to_the_chosen_presenter(tmp_path
 
     serve_calls = []
 
-    def fake_serve(checkpoint_path, title, ticker_colors=None, prices=None, port=8050, verbose=False, jupyter_mode=None, poll_seconds=3.0, options=None):
+    def fake_serve(
+        checkpoint_path,
+        title,
+        ticker_colors=None,
+        prices=None,
+        port=8050,
+        verbose=False,
+        jupyter_mode=None,
+        poll_seconds=3.0,
+        options=None,
+    ):
         serve_calls.append({"jupyter_mode": jupyter_mode, "poll_seconds": poll_seconds})
         deadline = time.time() + 5
         while not show_calls and time.time() < deadline:

@@ -19,18 +19,20 @@ specifically equity/security price data) -- FRED is macro/economic data,
 a different category, with room for e.g. an eventual tam.research.data.sec
 alongside it.
 """
+
 from __future__ import annotations
 
 import time
 from datetime import date
 from enum import Enum
-from typing import Dict, Optional, Tuple, Union
 
 import pandas as pd
 
 from ...secrets import Secrets
 
-_CACHE_TTL_SECONDS = 24 * 60 * 60  # 1 day -- FRED series update at most daily, no reason to re-fetch more often than that
+_CACHE_TTL_SECONDS = (
+    24 * 60 * 60
+)  # 1 day -- FRED series update at most daily, no reason to re-fetch more often than that
 
 
 def _with_retries(func, attempts: int = 5, base_delay: float = 2.0):
@@ -93,7 +95,7 @@ class _Fred:
 
     def __init__(self) -> None:
         self._client = None  # lazy fredapi.Fred, built on first get()
-        self._cache: Dict[Tuple[str, Optional[str], Optional[str]], Tuple[float, pd.Series]] = {}
+        self._cache: dict[tuple[str, str | None, str | None], tuple[float, pd.Series]] = {}
 
     def _resolve_client(self):
         if self._client is None:
@@ -102,17 +104,17 @@ class _Fred:
             self._client = _FredApi(api_key=Secrets["FRED_API_KEY"])
         return self._client
 
-    def name_for(self, series_id: Union[str, _Datasets]) -> str:
+    def name_for(self, series_id: str | _Datasets) -> str:
         """The human-readable label for `series_id` if it's a known
         Fred.Datasets member, else the raw id itself unchanged."""
         return _NAMES.get(series_id, series_id.value if isinstance(series_id, _Datasets) else series_id)
 
     def get(
         self,
-        series_id: Union[str, _Datasets],
+        series_id: str | _Datasets,
         *,
-        start: Optional[Union[str, date]] = None,
-        end: Optional[Union[str, date]] = None,
+        start: str | date | None = None,
+        end: str | date | None = None,
     ) -> pd.Series:
         """Fetches `series_id` (a raw FRED id like "DGS10", or a
         Fred.Datasets member) as a pandas Series indexed by date, named

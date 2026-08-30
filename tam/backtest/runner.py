@@ -12,6 +12,7 @@ is pulled out behind the Presenter interface (see presenter.py) -- this
 module drives a backtest and hands the result to whichever Presenter it's
 given; it never branches on "am I in a notebook" itself.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,19 +21,18 @@ import tempfile
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
-from .config import build_strategies
-from .harness import BacktestHarness
-from .presenter import Presenter
-from .report import Report
-from .visualization import BUY_COLOR, RenderOptions, SELL_COLOR
 from ..config import Config
 from ..data.providers import DataProvider
 from ..data.repository import DataRepository
 from ..data.storage import DataStore
 from ..portfolio.costs import CostModel
 from ..registry import Registry
+from .config import build_strategies
+from .harness import BacktestHarness
+from .presenter import Presenter
+from .report import Report
+from .visualization import BUY_COLOR, SELL_COLOR, RenderOptions
 
 
 class DataSettings:
@@ -82,7 +82,7 @@ def _build_repository(data_settings: DataSettings) -> DataRepository:
     return DataRepository(provider, store)
 
 
-def _build_cost_model(backtest_settings: "BacktestSettings") -> Optional[CostModel]:
+def _build_cost_model(backtest_settings: BacktestSettings) -> CostModel | None:
     """`backtest.cost_model: {name: ..., **kwargs}` -- omitted (the default
     for every existing config) means None, which Portfolio itself turns into
     ZeroCost (today's exact behavior, unchanged)."""
@@ -93,7 +93,7 @@ def _build_cost_model(backtest_settings: "BacktestSettings") -> Optional[CostMod
     return Registry.create(CostModel, name, **spec)
 
 
-def _build_render_options(report_settings: "ReportSettings", **overrides) -> RenderOptions:
+def _build_render_options(report_settings: ReportSettings, **overrides) -> RenderOptions:
     fields = {
         field: getattr(report_settings, field)
         for field in ("show_trades_default", "height", "template")
@@ -103,7 +103,9 @@ def _build_render_options(report_settings: "ReportSettings", **overrides) -> Ren
     return replace(RenderOptions(), **fields)
 
 
-def _build_presenter(name: str, report_settings: "ReportSettings", render_options: Optional[RenderOptions] = None, **explicit_kwargs) -> Presenter:
+def _build_presenter(
+    name: str, report_settings: ReportSettings, render_options: RenderOptions | None = None, **explicit_kwargs
+) -> Presenter:
     """Construct a Presenter by its Registry(Presenter, ...) name, with
     `report_settings.presenter_kwargs` as the base and `explicit_kwargs`
     (whatever the caller passed directly -- run()'s always-required
@@ -116,7 +118,9 @@ def _build_presenter(name: str, report_settings: "ReportSettings", render_option
     kwargs = {**(report_settings.presenter_kwargs or {}), **explicit_kwargs}
     if report_settings.poll_seconds is not None:
         kwargs.setdefault("poll_seconds", report_settings.poll_seconds)
-    kwargs.setdefault("render_options", render_options if render_options is not None else _build_render_options(report_settings))
+    kwargs.setdefault(
+        "render_options", render_options if render_options is not None else _build_render_options(report_settings)
+    )
     try:
         return Registry.create(Presenter, name, **kwargs)
     except KeyError:
@@ -162,7 +166,7 @@ def _ephemeral_checkpoint_path() -> str:
     return str(Path(tempfile.mkdtemp(prefix="tam_live_")) / "checkpoint.pkl")
 
 
-def _apply_artifact_defaults(backtest_settings: "BacktestSettings", artifacts_dir: Path) -> None:
+def _apply_artifact_defaults(backtest_settings: BacktestSettings, artifacts_dir: Path) -> None:
     """Fill in checkpoint_path / each llm_trading strategy's log_path and
     lora.adapter_root from the config-hash-namespaced artifacts dir, but only
     where the config didn't already say explicitly -- an explicit value in
@@ -178,7 +182,7 @@ def _apply_artifact_defaults(backtest_settings: "BacktestSettings", artifacts_di
             lora.setdefault("adapter_root", str(artifacts_dir / "lora_adapters" / spec.portfolio_id))
 
 
-def _ticker_colors(backtest_settings: "BacktestSettings") -> dict:
+def _ticker_colors(backtest_settings: BacktestSettings) -> dict:
     """{ticker: color} for trade-marker coloring, derived from each strategy's
     own long_ticker/short_ticker config -- not hardcoded ticker names. A
     strategy without that concept (e.g. buy_and_hold) just contributes
@@ -195,7 +199,7 @@ def _ticker_colors(backtest_settings: "BacktestSettings") -> dict:
 
 
 def _collect_price_series(
-    repository: DataRepository, backtest_settings: "BacktestSettings", start: date, end: date
+    repository: DataRepository, backtest_settings: BacktestSettings, start: date, end: date
 ) -> dict:
     """{ticker: close-price Series} for the optional price panel above the
     equity chart, if `backtest.price_chart.tickers` is set -- {} (chart
@@ -254,7 +258,7 @@ def _print_banner(config_path: Path, config_hash: str, artifacts_dir: Path) -> N
     Console().print(Panel(grid, title="[bold]Backtest[/bold]", border_style="cyan", expand=False))
 
 
-def _load(config_path: Path, start_override: Optional[date] = None, end_override: Optional[date] = None):
+def _load(config_path: Path, start_override: date | None = None, end_override: date | None = None):
     """Everything shared by every entry point (CLI run(), notebook
     run_backtest()) up through "the harness is built and ready to run" --
     config resolution, artifact-dir namespacing, ticker validation, data
@@ -286,7 +290,10 @@ def _load(config_path: Path, start_override: Optional[date] = None, end_override
     price_series = _collect_price_series(repository, backtest_settings, start, end)
 
     strategies, portfolios, traders = build_strategies(
-        repository, backtest_settings.strategies, float(backtest_settings.cash), cost_model=_build_cost_model(backtest_settings)
+        repository,
+        backtest_settings.strategies,
+        float(backtest_settings.cash),
+        cost_model=_build_cost_model(backtest_settings),
     )
     harness = BacktestHarness(repository, strategies, portfolios, dates, traders=traders)
 
@@ -303,7 +310,7 @@ def _drive(
     live: bool,
     port: int,
     verbose: bool,
-) -> Optional[Report]:
+) -> Report | None:
     """Everything after "harness is built, presenter is chosen" -- neither
     run() nor run_backtest() know or care whether they're driving a
     CliPresenter or a NotebookPresenter past this point."""
@@ -339,7 +346,7 @@ def run(
     verbose: bool = False,
     port: int = 8050,
     no_save: bool = False,
-    presenter: Optional[Presenter] = None,
+    presenter: Presenter | None = None,
 ) -> None:
     """CLI entry point (examples/backtest.py) -- prints a Rich progress UI,
     writes the final report to backtest.report_path, and (mode="live") serves
@@ -371,12 +378,12 @@ def run_backtest(
     live: bool = True,
     verbose: bool = False,
     port: int = 8050,
-    render_mode: Optional[str] = None,
-    presenter_kwargs: Optional[dict] = None,
-    show_trades_default: Optional[bool] = False,
-    presenter: Optional[Presenter] = None,
+    render_mode: str | None = None,
+    presenter_kwargs: dict | None = None,
+    show_trades_default: bool | None = False,
+    presenter: Presenter | None = None,
     checkpoint: bool = False,
-) -> Optional[Report]:
+) -> Report | None:
     """Notebook/programmatic entry point -- same config-driven backtest as
     run() (the CLI's entry point), but tailored for interactive use instead
     of a terminal: no Rich progress UI, and the resulting chart renders

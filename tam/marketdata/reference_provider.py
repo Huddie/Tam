@@ -28,21 +28,26 @@ NEWER `/stocks/v1/splits`/`/stocks/v1/dividends` endpoints, which no typed
 SDK method wraps (not even under `vx`). Called directly via `requests`
 instead, with a hand-rolled `next_url` pagination loop.
 """
+
 from __future__ import annotations
 
 import dataclasses
 import os
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from . import reference_schema as schema
 from .store import _with_retries
 
+if TYPE_CHECKING:
+    import requests
+
 _BASE_URL = "https://api.massive.com"
 
 
-def _resolve_api_key(explicit: Optional[str]) -> str:
+def _resolve_api_key(explicit: str | None) -> str:
     """Same "env var, with a constructor override" convention
     tam.marketdata.providers._resolve_vendor_key() already uses for the
     flat-file S3 credentials -- kept as its own small independent copy
@@ -56,7 +61,7 @@ def _resolve_api_key(explicit: Optional[str]) -> str:
     return value
 
 
-def _model_to_dict(row: Any) -> Dict[str, Any]:
+def _model_to_dict(row: Any) -> dict[str, Any]:
     """Every massive SDK model (IPOListing, ShortVolume, ShortInterest,
     FinancialFloat, ...) is a real dataclass (confirmed live:
     dataclasses.is_dataclass() is True) -- dataclasses.asdict() converts
@@ -65,8 +70,12 @@ def _model_to_dict(row: Any) -> Dict[str, Any]:
 
 
 def _paginate_raw(
-    session: "requests.Session", url: str, params: Dict[str, Any], api_key: str, log: Optional[Callable[[str], None]] = None
-) -> List[dict]:
+    session: requests.Session,
+    url: str,
+    params: dict[str, Any],
+    api_key: str,
+    log: Callable[[str], None] | None = None,
+) -> list[dict]:
     """Follows `next_url` until exhausted -- for the two endpoints
     (splits/dividends) called directly via `requests` rather than through
     the `massive` SDK. Bearer auth matches the SDK's own convention
@@ -84,11 +93,12 @@ def _paginate_raw(
     pages, and this is the only one of the six fetches with no SDK-
     internal pagination to hide that latency."""
     headers = {"Authorization": f"Bearer {api_key}"}
-    results: List[dict] = []
-    next_url: Optional[str] = url
-    next_params: Optional[Dict[str, Any]] = params
+    results: list[dict] = []
+    next_url: str | None = url
+    next_params: dict[str, Any] | None = params
     page = 0
     while next_url:
+
         def _get() -> dict:
             response = session.get(next_url, headers=headers, params=next_params, timeout=30)
             response.raise_for_status()
@@ -112,7 +122,7 @@ class MassiveReferenceProvider:
     just a REST bearer token instead of S3 access keys (a different
     Massive product surface entirely, deliberately not reused)."""
 
-    def __init__(self, api_key: Optional[str] = None, *, client=None, session=None):
+    def __init__(self, api_key: str | None = None, *, client=None, session=None):
         self._api_key = _resolve_api_key(api_key)
         # `client=`/`session=` are test-only seams (inject a fake
         # massive.RESTClient / requests.Session instead of a real one,
@@ -137,14 +147,14 @@ class MassiveReferenceProvider:
         return self._session
 
     @staticmethod
-    def _to_frame(rows: List[dict], columns: List[str]) -> pd.DataFrame:
+    def _to_frame(rows: list[dict], columns: list[str]) -> pd.DataFrame:
         if not rows:
             return schema.empty_frame(columns)
         return pd.DataFrame(rows).reindex(columns=columns)
 
     # ---- append-only, date-cursor-based ------------------------------------
 
-    def fetch_splits(self, since: Optional[str] = None, *, log: Optional[Callable[[str], None]] = None) -> pd.DataFrame:
+    def fetch_splits(self, since: str | None = None, *, log: Callable[[str], None] | None = None) -> pd.DataFrame:
         """Every split with execution_date > `since` (all of them, if
         omitted) -- a global feed across every ticker, not per-symbol.
         `log`, if given, gets one line per page fetched (see
@@ -159,41 +169,41 @@ class MassiveReferenceProvider:
         greater. `>=` costs re-fetching (and re-writing) the cursor
         date's own rows every run, which write()'s own dedup-on-id
         already makes harmless."""
-        params: Dict[str, Any] = {"sort": "execution_date", "order": "asc", "limit": 1000}
+        params: dict[str, Any] = {"sort": "execution_date", "order": "asc", "limit": 1000}
         if since:
             params["execution_date.gte"] = since
         raw = _paginate_raw(self._http_session(), f"{_BASE_URL}/stocks/v1/splits", params, self._api_key, log=log)
         return self._to_frame(raw, schema.SPLIT_COLUMNS)
 
-    def fetch_dividends(self, since: Optional[str] = None, *, log: Optional[Callable[[str], None]] = None) -> pd.DataFrame:
+    def fetch_dividends(self, since: str | None = None, *, log: Callable[[str], None] | None = None) -> pd.DataFrame:
         """Every dividend with ex_dividend_date >= `since` (all of them, if
         omitted) -- global feed, typically the largest of the six (see
         _paginate_raw()'s own docstring). `>=` not `>` -- same
         future-scheduled-then-revised reasoning as fetch_splits()."""
-        params: Dict[str, Any] = {"sort": "ex_dividend_date", "order": "asc", "limit": 1000}
+        params: dict[str, Any] = {"sort": "ex_dividend_date", "order": "asc", "limit": 1000}
         if since:
             params["ex_dividend_date.gte"] = since
         raw = _paginate_raw(self._http_session(), f"{_BASE_URL}/stocks/v1/dividends", params, self._api_key, log=log)
         return self._to_frame(raw, schema.DIVIDEND_COLUMNS)
 
-    def fetch_short_volume(self, since: Optional[str] = None) -> pd.DataFrame:
+    def fetch_short_volume(self, since: str | None = None) -> pd.DataFrame:
         """Every short-volume row with date >= `since` (all of them, if
         omitted) -- global feed. `>=` not `>` -- FINRA-reported short
         volume/interest figures are occasionally restated for a date
         already published; re-checking the cursor date every run (safe,
         since write() dedups on (ticker, date) keeping the latest) catches
         that, same reasoning as fetch_splits()."""
-        kwargs: Dict[str, Any] = {"sort": "date", "order": "asc", "limit": 50000}
+        kwargs: dict[str, Any] = {"sort": "date", "order": "asc", "limit": 50000}
         if since:
             kwargs["date_gte"] = since
         rows = [_model_to_dict(row) for row in self._rest_client().list_short_volume(**kwargs)]
         return self._to_frame(rows, schema.SHORT_VOLUME_COLUMNS)
 
-    def fetch_short_interest(self, since: Optional[str] = None) -> pd.DataFrame:
+    def fetch_short_interest(self, since: str | None = None) -> pd.DataFrame:
         """Every short-interest row with settlement_date >= `since` (all of
         them, if omitted) -- global feed, biweekly cadence. `>=` not `>`
         -- same restatement reasoning as fetch_short_volume()."""
-        kwargs: Dict[str, Any] = {"sort": "settlement_date", "order": "asc", "limit": 50000}
+        kwargs: dict[str, Any] = {"sort": "settlement_date", "order": "asc", "limit": 50000}
         if since:
             kwargs["settlement_date_gte"] = since
         rows = [_model_to_dict(row) for row in self._rest_client().list_short_interest(**kwargs)]
@@ -208,7 +218,8 @@ class MassiveReferenceProvider:
         no cursor to resume from; see reference_ingest.py's own docstring
         for why this gets overwritten wholesale each time instead."""
         rows = [
-            _model_to_dict(row) for row in self._rest_client().vx.list_ipos(order="desc", sort="listing_date", limit=1000)
+            _model_to_dict(row)
+            for row in self._rest_client().vx.list_ipos(order="desc", sort="listing_date", limit=1000)
         ]
         return self._to_frame(rows, schema.IPO_COLUMNS)
 

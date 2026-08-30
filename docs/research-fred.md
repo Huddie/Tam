@@ -11,8 +11,8 @@ pip install "tam-quant[fred]"
 ```python
 import tam
 
-dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)   # or tam.Fred.get("DGS10") -- same series
-dgs10.name    # "10-Year Treasury Yield", not the raw "DGS10" code
+dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)  # or tam.Fred.get("DGS10") -- same series
+dgs10.name  # "10-Year Treasury Yield", not the raw "DGS10" code
 dgs10.tail()
 ```
 
@@ -24,13 +24,13 @@ series total, so pass any other raw series id (a plain string) straight to
 `.get()` just the same:
 
 ```python
-tam.Fred.get("DGS2", start="2015-01-01", end="2024-01-01")   # start/end optional; omit either for full history
+tam.Fred.get("DGS2", start="2015-01-01", end="2024-01-01")  # start/end optional; omit either for full history
 ```
 
 ## Authentication
 
 ```python
-fred_key = tam.Secrets["FRED_API_KEY"]      # raises a clear error if not set anywhere
+fred_key = tam.Secrets["FRED_API_KEY"]  # raises a clear error if not set anywhere
 fred_key = tam.Secrets.get("FRED_API_KEY")  # None instead of raising
 ```
 
@@ -48,5 +48,7 @@ with no special-casing via [`timeseries()`](charting.md):
 ```python
 from tam.charting import timeseries
 
-timeseries([tam.Fred.get(tam.Fred.Datasets.TREASURY_2Y), tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)], title="Treasury Yields")
+timeseries(
+    [tam.Fred.get(tam.Fred.Datasets.TREASURY_2Y), tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)], title="Treasury Yields"
+)
 ```

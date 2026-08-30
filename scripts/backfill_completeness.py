@@ -33,11 +33,11 @@ rewritten automatically, same as a missing one, with no --force needed.
 bump wouldn't otherwise catch). One symbol-year failing doesn't abort the
 rest -- failures are collected and reported at the end.
 """
+
 from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Tuple
 
 from tam.marketdata.completeness import SCHEMA_VERSION, compute_completeness, sidecar_schema_version
 from tam.marketdata.store import R2MinuteBarStore
@@ -67,10 +67,15 @@ def _backfill_one(store: R2MinuteBarStore, symbol: str, year: int, force: bool) 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
-        "--symbol", action="append", dest="symbols", help="Backfill only this symbol (repeatable) -- default: every symbol in the bucket"
+        "--symbol",
+        action="append",
+        dest="symbols",
+        help="Backfill only this symbol (repeatable) -- default: every symbol in the bucket",
     )
     parser.add_argument("--force", action="store_true", help="Recompute even if a sidecar already exists")
-    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help=f"Concurrent worker threads (default: {DEFAULT_WORKERS})")
+    parser.add_argument(
+        "--workers", type=int, default=DEFAULT_WORKERS, help=f"Concurrent worker threads (default: {DEFAULT_WORKERS})"
+    )
     args = parser.parse_args()
 
     store = R2MinuteBarStore()
@@ -83,7 +88,7 @@ def main() -> None:
     # hang. Same thread pool, same reasoning as the backfill work below:
     # I/O-bound, so parallelize it instead of waiting on it one symbol at
     # a time.
-    jobs: List[Tuple[str, int]] = []
+    jobs: list[tuple[str, int]] = []
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(store._partition_years, symbol): symbol for symbol in symbols}
         for i, future in enumerate(as_completed(futures), 1):
@@ -97,7 +102,7 @@ def main() -> None:
 
     written = 0
     skipped = 0
-    failed: List[Tuple[str, int, Exception]] = []
+    failed: list[tuple[str, int, Exception]] = []
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(_backfill_one, store, symbol, year, args.force): (symbol, year) for symbol, year in jobs}

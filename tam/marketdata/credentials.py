@@ -20,6 +20,7 @@ for the simpler existing convention: an env var with a constructor override,
 nothing more), which is only ever used from wherever the backfill itself
 runs.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,7 +28,6 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from dotenv import dotenv_values, find_dotenv
 
@@ -48,7 +48,7 @@ def credentials_file_path() -> Path:
     return Path.home() / ".config" / "tam-marketdata" / "r2_credentials.json"
 
 
-def _from_colab(env_var: str) -> Optional[str]:
+def _from_colab(env_var: str) -> str | None:
     """Colab's key-icon secret panel, checked under the SAME name as the env
     var (e.g. a secret literally named "R2_ACCESS_KEY_ID") -- only attempted
     when actually running in Colab. See tam.discovery.auth._from_colab for
@@ -67,7 +67,7 @@ def _from_colab(env_var: str) -> Optional[str]:
     return value or None
 
 
-def _from_file(field: str) -> Optional[str]:
+def _from_file(field: str) -> str | None:
     try:
         payload = json.loads(credentials_file_path().read_text())
     except (OSError, json.JSONDecodeError):
@@ -76,7 +76,7 @@ def _from_file(field: str) -> Optional[str]:
     return value or None
 
 
-def _from_dotenv(env_var: str) -> Optional[str]:
+def _from_dotenv(env_var: str) -> str | None:
     """python-dotenv's own find_dotenv() walks up from the current working
     directory looking for a .env file (so this works whether a script runs
     from the repo root or one of its subdirectories); dotenv_values() just
@@ -92,7 +92,7 @@ def _from_dotenv(env_var: str) -> Optional[str]:
     return dotenv_values(path).get(env_var) or None
 
 
-def _resolve_field(field: str, explicit: Optional[str]) -> Optional[str]:
+def _resolve_field(field: str, explicit: str | None) -> str | None:
     env_var = _FIELD_ENV_VARS[field]
     return resolve_chain(
         lambda: explicit,
@@ -120,10 +120,10 @@ class R2Credentials:
 
 def resolve_r2_credentials(
     *,
-    account_id: Optional[str] = None,
-    access_key_id: Optional[str] = None,
-    secret_access_key: Optional[str] = None,
-    bucket: Optional[str] = None,
+    account_id: str | None = None,
+    access_key_id: str | None = None,
+    secret_access_key: str | None = None,
+    bucket: str | None = None,
 ) -> R2Credentials:
     """Resolution order per field: the matching keyword argument here, then
     its R2_* env var (directly, or via a .env file found by walking up from
@@ -132,7 +132,12 @@ def resolve_r2_credentials(
     to ~/.config/tam-marketdata/r2_credentials.json. Raises one clear,
     actionable RuntimeError naming every field still missing after all
     sources, rather than a bare KeyError on the first one it happens to hit."""
-    explicit = {"account_id": account_id, "access_key_id": access_key_id, "secret_access_key": secret_access_key, "bucket": bucket}
+    explicit = {
+        "account_id": account_id,
+        "access_key_id": access_key_id,
+        "secret_access_key": secret_access_key,
+        "bucket": bucket,
+    }
     resolved = {field: _resolve_field(field, explicit[field]) for field in _FIELD_ENV_VARS}
 
     missing = [field for field, value in resolved.items() if not value]

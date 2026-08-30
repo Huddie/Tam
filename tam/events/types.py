@@ -1,4 +1,5 @@
 """Core event/lifecycle types shared across the event bus, clock, and strategies."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

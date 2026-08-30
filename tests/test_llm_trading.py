@@ -82,8 +82,14 @@ def test_no_trade_before_the_fastest_signal_has_any_history(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "80", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "80",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -99,8 +105,14 @@ def test_starts_trading_as_soon_as_the_fastest_signal_is_ready(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "80", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "80",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -121,8 +133,14 @@ def test_prompt_shows_a_placeholder_for_signals_not_yet_warmed_up(tmp_path):
         return "10"
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=recording_client, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=recording_client,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -130,7 +148,7 @@ def test_prompt_shows_a_placeholder_for_signals_not_yet_warmed_up(tmp_path):
 
     assert prompts
     assert "n/a (needs" in prompts[0]  # sma_10/rsi_14/volatility_20d not ready yet
-    assert "return_1d" in prompts[0]   # the fast one has real values
+    assert "return_1d" in prompts[0]  # the fast one has real values
 
 
 def test_positive_output_buys_tqqq_at_the_suggested_percentage(tmp_path):
@@ -139,8 +157,14 @@ def test_positive_output_buys_tqqq_at_the_suggested_percentage(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "80", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "80",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -159,8 +183,14 @@ def test_negative_output_buys_sqqq_at_the_suggested_percentage(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "-65", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "-65",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -178,8 +208,14 @@ def test_zero_output_stays_in_cash(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "0", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "0",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -201,8 +237,15 @@ def test_small_change_below_threshold_does_not_rebalance(tmp_path):
         return "50" if calls["n"] == 1 else "52"  # +2pp drift, below the 5pp threshold
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=drifting_client, rebalance_threshold_pct=5.0, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=drifting_client,
+        rebalance_threshold_pct=5.0,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -224,8 +267,15 @@ def test_zero_threshold_disables_it_trading_on_any_nonzero_change(tmp_path):
         return {1: "50", 2: "50", 3: "50.5"}.get(calls["n"], "50.5")
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=drifting_client, rebalance_threshold_pct=0, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=drifting_client,
+        rebalance_threshold_pct=0,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -250,8 +300,14 @@ def test_large_change_crossing_zero_flips_from_long_to_short(tmp_path):
         return "70" if calls["n"] == 1 else "-40"
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=flipping_client, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=flipping_client,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -273,8 +329,14 @@ def test_failing_client_falls_back_to_current_exposure_without_crashing(tmp_path
         raise ConnectionError("model server not running")
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=flaky_client, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=flaky_client,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -292,7 +354,12 @@ def test_unparseable_response_falls_back_to_current_exposure(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
         llm_client=lambda prompt: "I'm not sure what to suggest here.",
         **_small_windows(),
     )
@@ -310,8 +377,14 @@ def test_out_of_range_output_is_clipped_to_100(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "250", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "250",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -332,8 +405,14 @@ def test_prompt_includes_signal_history_and_calibration_track_record(tmp_path):
         return "10"
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=recording_client, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=recording_client,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -373,8 +452,14 @@ def test_calls_record_outcome_with_the_hindsight_optimal_percentage(tmp_path):
             recorded.append(completion)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=LearningClient(), **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=LearningClient(),
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -407,7 +492,7 @@ def test_trailing_daily_vol_is_none_for_a_degenerate_zero_variance_window(tmp_pa
     strategy = LLMTradingStrategy.__new__(LLMTradingStrategy)
     strategy._vol_window = 5
 
-    flat = pd.Series([100.0 * (1.01 ** i) for i in range(7)])  # identical return every day -> zero variance
+    flat = pd.Series([100.0 * (1.01**i) for i in range(7)])  # identical return every day -> zero variance
 
     assert strategy._trailing_daily_vol(flat) is None
 
@@ -425,8 +510,14 @@ def test_plain_callable_client_without_record_outcome_still_works(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "30", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "30",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -441,8 +532,15 @@ def test_get_state_and_load_state_round_trip(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "42", memory_window=3, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "42",
+        memory_window=3,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -451,8 +549,15 @@ def test_get_state_and_load_state_round_trip(tmp_path):
     assert len(strategy._memory) > 0
 
     restored = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "42", memory_window=3, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "42",
+        memory_window=3,
+        **_small_windows(),
     )
     restored.load_state(strategy.get_state())
 
@@ -482,8 +587,14 @@ def test_get_state_delegates_to_a_client_that_supports_it(tmp_path):
 
     client = StatefulClient()
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=client, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=client,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -494,8 +605,14 @@ def test_get_state_delegates_to_a_client_that_supports_it(tmp_path):
 
     restored_client = StatefulClient()
     restored = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=restored_client, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=restored_client,
+        **_small_windows(),
     )
     restored.load_state(state)
 
@@ -509,8 +626,15 @@ def test_log_path_writes_a_header_and_one_row_per_call(tmp_path):
     log_path = tmp_path / "llm_log.csv"
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "42", log_path=str(log_path), **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "42",
+        log_path=str(log_path),
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -536,8 +660,14 @@ def test_multiple_numbers_in_response_triggers_one_retry_and_uses_its_answer():
         return "63.60 66.10 68.8" if len(prompts_seen) == 1 else "42"
 
     strategy = LLMTradingStrategy(
-        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=rambling_then_clean_client, **_small_windows(),
+        None,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=rambling_then_clean_client,
+        **_small_windows(),
     )
 
     target_pct, raw, retried = strategy._ask_llm("original prompt")
@@ -559,8 +689,14 @@ def test_unparseable_response_also_triggers_a_retry():
         return "I'm not sure" if calls["n"] == 1 else "-55"
 
     strategy = LLMTradingStrategy(
-        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=confused_then_clean_client, **_small_windows(),
+        None,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=confused_then_clean_client,
+        **_small_windows(),
     )
 
     target_pct, raw, retried = strategy._ask_llm("prompt")
@@ -578,15 +714,21 @@ def test_retry_that_also_fails_gives_up_without_looping():
         return "1 2 3"
 
     strategy = LLMTradingStrategy(
-        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=always_rambling_client, **_small_windows(),
+        None,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=always_rambling_client,
+        **_small_windows(),
     )
 
     target_pct, raw, retried = strategy._ask_llm("prompt")
 
     assert calls["n"] == 2  # 1 call + 1 retry, never more -- confirms no retry loop
     assert target_pct is None  # caller falls back to holding current exposure
-    assert raw == "1 2 3"      # the retry's (still bad) response, for the log
+    assert raw == "1 2 3"  # the retry's (still bad) response, for the log
     assert retried is True
 
 
@@ -598,8 +740,14 @@ def test_hard_failure_does_not_trigger_a_retry():
         raise ConnectionError("model server not running")
 
     strategy = LLMTradingStrategy(
-        None, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=flaky_client, **_small_windows(),
+        None,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=flaky_client,
+        **_small_windows(),
     )
 
     target_pct, raw, retried = strategy._ask_llm("prompt")
@@ -620,8 +768,15 @@ def test_log_path_records_error_for_a_failing_call(tmp_path):
         raise ConnectionError("model server not running")
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=flaky_client, log_path=str(log_path), **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=flaky_client,
+        log_path=str(log_path),
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -640,8 +795,14 @@ def test_no_log_path_means_no_log_file(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "42", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "42",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -657,8 +818,16 @@ def test_warmup_days_predicts_and_logs_but_never_trades_during_warmup(tmp_path):
     log_path = tmp_path / "llm_log.csv"
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "80", log_path=str(log_path), warmup_days=3, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "80",
+        log_path=str(log_path),
+        warmup_days=3,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -683,8 +852,14 @@ def test_zero_warmup_days_is_the_default_and_trades_immediately(tmp_path):
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "80", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "80",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -705,8 +880,14 @@ def test_prompt_states_the_task_and_output_scale_explicitly(tmp_path):
         return "10"
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=recording_client, **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=recording_client,
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -724,8 +905,14 @@ def test_iteration_counter_round_trips_through_get_state_and_load_state(tmp_path
     repo = _setup(tmp_path, closes, dates)
 
     strategy = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "42", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "42",
+        **_small_windows(),
     )
     portfolio = Portfolio("main", cash=10_000.0)
     harness = BacktestHarness(repo, [strategy], {"main": portfolio}, dates)
@@ -734,8 +921,14 @@ def test_iteration_counter_round_trips_through_get_state_and_load_state(tmp_path
     assert strategy._iteration > 0
 
     restored = LLMTradingStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", sell_qty=10, portfolio_id="main",
-        llm_client=lambda prompt: "42", **_small_windows(),
+        repo,
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        sell_qty=10,
+        portfolio_id="main",
+        llm_client=lambda prompt: "42",
+        **_small_windows(),
     )
     restored.load_state(strategy.get_state())
 

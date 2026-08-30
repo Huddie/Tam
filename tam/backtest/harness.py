@@ -1,13 +1,14 @@
 """Wires strategies, portfolios, and market data into a day-by-day event loop."""
+
 from __future__ import annotations
 
 import os
 import pickle
 import tempfile
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence
 
 from ..data.repository import DataRepository
 from ..events.bus import EventBus
@@ -45,13 +46,13 @@ class BacktestHarness:
         self,
         repository: DataRepository,
         strategies: Sequence[Strategy],
-        portfolios: Dict[str, Portfolio],
+        portfolios: dict[str, Portfolio],
         dates: Sequence[date],
-        traders: Optional[Sequence[Trader]] = None,
+        traders: Sequence[Trader] | None = None,
     ):
         self._repository = repository
         self._bus = EventBus()
-        self._annotations: List[dict] = []
+        self._annotations: list[dict] = []
         self._bus.subscribe(ANNOTATION_TOPIC, self._on_annotation)
         self._portfolios = PortfolioRegistry(portfolios)
         self._trader = TradeGateway(self._portfolios, self._price_on)
@@ -77,8 +78,8 @@ class BacktestHarness:
 
     def run(
         self,
-        on_progress: Optional[OnProgress] = None,
-        checkpoint_path: Optional[str] = None,
+        on_progress: OnProgress | None = None,
+        checkpoint_path: str | None = None,
         checkpoint_every: int = 1,
     ) -> Report:
         """Run the full date range. If checkpoint_path is given: resume from it if
@@ -91,7 +92,7 @@ class BacktestHarness:
         same config from scratch after success should start fresh, not replay
         a stale checkpoint from a previous, unrelated run.
         """
-        snapshots: List[dict] = []
+        snapshots: list[dict] = []
         completed_days = 0
         if checkpoint_path is not None and Path(checkpoint_path).exists():
             completed_days, snapshots, self._annotations = self._load_checkpoint(checkpoint_path)
@@ -136,7 +137,7 @@ class BacktestHarness:
 
         return Report(snapshots, self._trades(), self._annotations)
 
-    def _write_checkpoint(self, checkpoint_path: str, day_index: int, snapshots: List[dict]) -> None:
+    def _write_checkpoint(self, checkpoint_path: str, day_index: int, snapshots: list[dict]) -> None:
         state = {
             "day_index": day_index,
             "snapshots": snapshots,
@@ -152,7 +153,7 @@ class BacktestHarness:
             pickle.dump(state, handle)
         os.replace(tmp_name, path)
 
-    def _load_checkpoint(self, checkpoint_path: str) -> tuple[int, List[dict], List[dict]]:
+    def _load_checkpoint(self, checkpoint_path: str) -> tuple[int, list[dict], list[dict]]:
         with open(checkpoint_path, "rb") as handle:
             state = pickle.load(handle)
         for portfolio_id, portfolio_state in state["portfolios"].items():
@@ -161,7 +162,7 @@ class BacktestHarness:
             strategy.load_state(strategy_state)
         return state["day_index"], state["snapshots"], state.get("annotations", [])
 
-    def _trades(self) -> List[dict]:
+    def _trades(self) -> list[dict]:
         return [
             {
                 "date": trade.date,
@@ -175,7 +176,7 @@ class BacktestHarness:
             for trade in portfolio.trades
         ]
 
-    def _snapshot(self, as_of: date, price_date: Optional[date] = None) -> List[dict]:
+    def _snapshot(self, as_of: date, price_date: date | None = None) -> list[dict]:
         """`price_date` (defaults to `as_of`) is what's used to look up mark-to-
         market prices -- distinct from `as_of` only for the pre-trade anchor
         snapshot, which is labeled a day before the data range starts (so no

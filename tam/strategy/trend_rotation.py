@@ -43,9 +43,8 @@ constant 100% regardless of how turbulent or calm the underlying currently is:
   inside an otherwise-intact bull trend, where the trend/momentum signal
   itself never turns bearish).
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from ..data.repository import DataRepository
 from ..events.clock import EOD_TOPIC
@@ -55,7 +54,7 @@ from ..registry import Registry
 from .base import Strategy
 from .indicators import sma
 
-ANNUALIZATION_FACTOR = 252 ** 0.5
+ANNUALIZATION_FACTOR = 252**0.5
 
 
 class TrendRotationStrategy(Strategy):
@@ -70,12 +69,12 @@ class TrendRotationStrategy(Strategy):
         buy_qty,
         sell_qty,
         portfolio_id: str,
-        target_vol: Optional[float] = None,
+        target_vol: float | None = None,
         vol_window: int = 20,
         min_exposure_pct: float = 20.0,
         max_exposure_pct: float = 100.0,
         rebalance_threshold_pct: float = 10.0,
-        max_position_drawdown: Optional[float] = None,
+        max_position_drawdown: float | None = None,
         breaker_cooldown_days: int = 10,
     ):
         super().__init__()
@@ -147,13 +146,13 @@ class TrendRotationStrategy(Strategy):
         history = self._repository.history(ticker).window_ending(as_of, 1)
         return history["close"].iloc[-1] if len(history) else None
 
-    def _realized_vol(self, as_of) -> Optional[float]:
+    def _realized_vol(self, as_of) -> float | None:
         history = self._repository.history(self._signal_ticker).window_ending(as_of, self._vol_window + 1)
         if len(history) < self._vol_window + 1:
             return None
         return history["close"].pct_change().dropna().std() * ANNUALIZATION_FACTOR
 
-    def _target_exposure_pct(self, as_of) -> Optional[float]:
+    def _target_exposure_pct(self, as_of) -> float | None:
         if self._target_vol is None:
             return None
         vol = self._realized_vol(as_of)
@@ -177,9 +176,7 @@ class TrendRotationStrategy(Strategy):
             return
         self._entry_peak = max(self._entry_peak, price)
         if price / self._entry_peak - 1 <= -self._max_position_drawdown:
-            self.trade.stocks(
-                [Order(ticker=ticker, side=Side.SELL, qty=self._sell_qty, portfolio=self._portfolio_id)]
-            )
+            self.trade.stocks([Order(ticker=ticker, side=Side.SELL, qty=self._sell_qty, portfolio=self._portfolio_id)])
             self._blocked_side = self._held
             self._cooldown_remaining = self._breaker_cooldown_days
             self._held = None
@@ -197,7 +194,14 @@ class TrendRotationStrategy(Strategy):
         ticker = self._long_ticker if self._held == "long" else self._short_ticker
         self.trade.stocks([Order(ticker=ticker, side=Side.SELL, qty=self._sell_qty, portfolio=self._portfolio_id)])
         self.trade.stocks(
-            [Order(ticker=ticker, side=Side.BUY, qty=Qty(pct=exposure_pct, basis=QtyBasis.CASH), portfolio=self._portfolio_id)]
+            [
+                Order(
+                    ticker=ticker,
+                    side=Side.BUY,
+                    qty=Qty(pct=exposure_pct, basis=QtyBasis.CASH),
+                    portfolio=self._portfolio_id,
+                )
+            ]
         )
         self._last_exposure_pct = exposure_pct
 
@@ -210,9 +214,7 @@ class TrendRotationStrategy(Strategy):
 
         entry_ticker = self._long_ticker if target == "long" else self._short_ticker
         buy_qty, exposure_pct = self._entry_qty(as_of)
-        self.trade.stocks(
-            [Order(ticker=entry_ticker, side=Side.BUY, qty=buy_qty, portfolio=self._portfolio_id)]
-        )
+        self.trade.stocks([Order(ticker=entry_ticker, side=Side.BUY, qty=buy_qty, portfolio=self._portfolio_id)])
         self._held = target
         self._entry_peak = self._current_price(entry_ticker, as_of)
         self._last_exposure_pct = exposure_pct

@@ -77,7 +77,7 @@ def fake_client(monkeypatch):
 
     monkeypatch.setattr(_upload_module, "DiscoveryClient", factory)
     monkeypatch.setattr(_upload_module, "resolve_token", lambda explicit: explicit or "tamdisc_test")
-    monkeypatch.setattr(_upload_module, "capture_git_info", lambda: {})
+    monkeypatch.setattr(_upload_module, "capture_git_info", dict)
     return holder
 
 
@@ -93,7 +93,12 @@ def test_upload_happy_path_with_a_non_default_type(tmp_path, fake_client):
     assert result.version == 1
 
     client = fake_client["client"]
-    assert [call[0] for call in client.calls] == ["create_discovery", "create_version", "upload_artifact", "finalize_version"]
+    assert [call[0] for call in client.calls] == [
+        "create_discovery",
+        "create_version",
+        "upload_artifact",
+        "finalize_version",
+    ]
 
     _, create_discovery_body = client.calls[0]
     assert create_discovery_body == {"title": "Q3 Report", "type": "report", "name": None}
@@ -176,7 +181,13 @@ def test_upload_short_circuits_on_already_exists_without_uploading_or_finalizing
     class _DedupingFakeClient(_FakeClient):
         def create_version(self, discovery_id, **fields):
             self.calls.append(("create_version", discovery_id, fields))
-            return {"version_id": "ver-existing", "already_exists": True, "url": "https://discovery.example.com/d/existing", "version": 3, "title": "T"}
+            return {
+                "version_id": "ver-existing",
+                "already_exists": True,
+                "url": "https://discovery.example.com/d/existing",
+                "version": 3,
+                "title": "T",
+            }
 
         def upload_artifact(self, *args, **kwargs):
             raise AssertionError("upload_artifact() must not be called when already_exists is True")
@@ -193,7 +204,7 @@ def test_upload_short_circuits_on_already_exists_without_uploading_or_finalizing
 
     monkeypatch.setattr(_upload_module, "DiscoveryClient", factory)
     monkeypatch.setattr(_upload_module, "resolve_token", lambda explicit: explicit or "tamdisc_test")
-    monkeypatch.setattr(_upload_module, "capture_git_info", lambda: {})
+    monkeypatch.setattr(_upload_module, "capture_git_info", dict)
 
     html_path = tmp_path / "report.html"
     html_path.write_text("<html>hi</html>")

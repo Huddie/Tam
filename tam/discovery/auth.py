@@ -8,10 +8,10 @@ Data Explorer (tam.marketdata.explorer_client uses the identical name for
 exactly this reason), so naming it after just one of the two sites it
 works on would be misleading.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from ..secrets import Secrets, resolve_chain
 
@@ -27,7 +27,7 @@ def token_file_path() -> Path:
     return Path.home() / ".config" / "upload-discovery" / "token"
 
 
-def _from_file() -> Optional[str]:
+def _from_file() -> str | None:
     try:
         text = token_file_path().read_text().strip()
     except OSError:
@@ -35,7 +35,7 @@ def _from_file() -> Optional[str]:
     return text or None
 
 
-def resolve_token(explicit: Optional[str] = None, *, required: bool = True) -> Optional[str]:
+def resolve_token(explicit: str | None = None, *, required: bool = True) -> str | None:
     """Resolution order: an explicit `token=`/`--token` argument, then
     TAM_PAT via tam.Secrets (env var, directly or via a .env file, then a
     Colab secret if running in Colab), then whatever `upload-discovery

@@ -17,11 +17,11 @@ installed (e.g. this repo's own test suite) -- only actually loading the
 extension inside a real kernel needs it, same as `run_backtest(..., live=True)`
 already requires the `notebook` extra outside one.
 """
+
 from __future__ import annotations
 
 import argparse
 import shlex
-from typing import Optional
 
 from ..backtest.report import Report
 from ..backtest.runner import run_backtest
@@ -55,7 +55,7 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_backtest_magic(line: str) -> Optional[Report]:
+def run_backtest_magic(line: str) -> Report | None:
     args = _parser().parse_args(shlex.split(line))
     presenter_kwargs = {"poll_seconds": args.poll_seconds} if args.poll_seconds is not None else None
     return run_backtest(

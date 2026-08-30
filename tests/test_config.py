@@ -224,7 +224,7 @@ def test_vars_resolved_once_after_full_base_chain_not_per_base_file(tmp_path):
     # base.yaml references {{vars.env}} but doesn't define it -- the leaf
     # config supplies it. Resolving vars per-file (instead of once, after the
     # full chain merges) would raise here on the base file alone.
-    (tmp_path / "base.yaml").write_text("path: \"/data/{{vars.env}}/set\"\n")
+    (tmp_path / "base.yaml").write_text('path: "/data/{{vars.env}}/set"\n')
     (tmp_path / "leaf.yaml").write_text("base: base.yaml\nvars:\n  env: prod\n")
 
     cfg = Config(tmp_path / "leaf.yaml")
@@ -234,7 +234,7 @@ def test_vars_resolved_once_after_full_base_chain_not_per_base_file(tmp_path):
 
 def test_missing_var_raises_clear_error(tmp_path):
     path = tmp_path / "cfg.yaml"
-    path.write_text("x: \"{{vars.does_not_exist}}\"\n")
+    path.write_text('x: "{{vars.does_not_exist}}"\n')
 
     with pytest.raises(ValueError, match="does_not_exist"):
         Config(path)

@@ -29,13 +29,13 @@ an already-synced symbol is identical, so re-running is a harmless no-op.
 Runs concurrently via a thread pool -- each unit of work is one local read
 plus one R2 write, I/O-bound like every other backfill script here.
 """
+
 from __future__ import annotations
 
 import os
 import time
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Tuple
 
 from tam.data.storage import DataStore, ParquetStore
 from tam.registry import Registry
@@ -43,7 +43,7 @@ from tam.registry import Registry
 DEFAULT_WORKERS = 8
 
 
-def _local_symbols(root: str) -> List[str]:
+def _local_symbols(root: str) -> list[str]:
     return sorted(
         name
         for name in os.listdir(root)
@@ -65,7 +65,10 @@ def main() -> None:
     parser = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument("--root", default="data/eod", help="Local DataStore root to read from (default: data/eod)")
     parser.add_argument(
-        "--symbol", action="append", dest="symbols", help="Only sync this symbol (repeatable) -- default: every symbol dir under --root"
+        "--symbol",
+        action="append",
+        dest="symbols",
+        help="Only sync this symbol (repeatable) -- default: every symbol dir under --root",
     )
     parser.add_argument(
         "--workers", type=int, default=DEFAULT_WORKERS, help=f"Concurrent worker threads (default: {DEFAULT_WORKERS})"
@@ -81,7 +84,7 @@ def main() -> None:
     started = time.monotonic()
     synced = 0
     empty = 0
-    failed: List[Tuple[str, Exception]] = []
+    failed: list[tuple[str, Exception]] = []
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(_sync_one, local_store, r2_store, symbol): symbol for symbol in symbols}

@@ -68,6 +68,7 @@ def test_register_duplicate_key_raises_value_error():
         pass
 
     with pytest.raises(ValueError):
+
         @Registry.register(_BaseDuplicate, "thing")
         class _ImplDuplicateTwo(_BaseDuplicate):
             pass

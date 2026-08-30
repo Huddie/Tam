@@ -1,9 +1,9 @@
 """Tracks cash, open positions, and trade history for a single book."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -27,19 +27,19 @@ class Trade(BaseModel):
 
 
 class Portfolio:
-    def __init__(self, portfolio_id: str, cash: float, cost_model: Optional[CostModel] = None):
+    def __init__(self, portfolio_id: str, cash: float, cost_model: CostModel | None = None):
         self.id = portfolio_id
         self.cash = cash
         self._cost_model = cost_model or ZeroCost()
-        self._positions: Dict[str, Position] = {}
-        self._trades: List[Trade] = []
+        self._positions: dict[str, Position] = {}
+        self._trades: list[Trade] = []
 
     @property
-    def tickers(self) -> List[str]:
+    def tickers(self) -> list[str]:
         return list(self._positions.keys())
 
     @property
-    def trades(self) -> List[Trade]:
+    def trades(self) -> list[Trade]:
         return list(self._trades)
 
     def position(self, ticker: str) -> Position:
@@ -55,20 +55,16 @@ class Portfolio:
         if order.side is Side.BUY:
             self.cash -= notional
             new_qty = position.qty + qty
-            position.avg_price = (
-                (position.avg_price * position.qty + notional) / new_qty if new_qty else 0.0
-            )
+            position.avg_price = (position.avg_price * position.qty + notional) / new_qty if new_qty else 0.0
             position.qty = new_qty
         else:
             self.cash += notional
             position.qty -= qty
         self.cash -= cost
 
-        self._trades.append(
-            Trade(date=as_of, ticker=order.ticker, side=order.side, qty=qty, price=price)
-        )
+        self._trades.append(Trade(date=as_of, ticker=order.ticker, side=order.side, qty=qty, price=price))
 
-    def market_value(self, prices: Dict[str, float]) -> float:
+    def market_value(self, prices: dict[str, float]) -> float:
         holdings = sum(p.qty * prices.get(t, 0.0) for t, p in self._positions.items())
         return self.cash + holdings
 

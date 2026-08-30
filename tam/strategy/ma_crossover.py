@@ -4,6 +4,7 @@ it crosses back above. Order the two windows however produces the signal you
 want — e.g. first_window=250, second_window=50 gives a classic golden cross
 (buy when the 50-day average rises above the 250-day average).
 """
+
 from __future__ import annotations
 
 from ..data.repository import DataRepository

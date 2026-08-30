@@ -4,9 +4,8 @@ several top-scored tickers can all be expressing the same underlying edge
 moment that one factor weakens. Cluster by return correlation, then cap how
 many picks come from any one cluster.
 """
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import pandas as pd
 
@@ -14,8 +13,8 @@ import pandas as pd
 def cluster(
     returns: pd.DataFrame,
     n_clusters: int,
-    downside_quantile: Optional[float] = None,
-    market_returns: Optional[pd.Series] = None,
+    downside_quantile: float | None = None,
+    market_returns: pd.Series | None = None,
 ) -> pd.Series:
     """{ticker: cluster_id}, from agglomerative clustering on correlation
     distance ((1 - corr) / 2, bounded [0, 1]).
@@ -48,12 +47,12 @@ def cluster(
     return pd.Series(labels, index=corr.index)
 
 
-def select_diversified(scores: pd.Series, clusters: pd.Series, n: int, max_per_cluster: int) -> List[str]:
+def select_diversified(scores: pd.Series, clusters: pd.Series, n: int, max_per_cluster: int) -> list[str]:
     """Highest-scored tickers first, skipping any ticker once its cluster has
     already contributed `max_per_cluster` picks -- "select across clusters,"
     not just top-N by score regardless of how concentrated they are."""
     cluster_counts: dict = {}
-    selected: List[str] = []
+    selected: list[str] = []
     for ticker in scores.sort_values(ascending=False).index:
         if len(selected) >= n:
             break

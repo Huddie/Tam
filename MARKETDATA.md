@@ -174,14 +174,14 @@ and re-ingested automatically, not skipped.
 ```python
 from tam.marketdata.duckdb_query import open_duckdb
 
-con = open_duckdb(bucket="tam-data")   # reads from R2 directly
+con = open_duckdb(bucket="tam-data")  # reads from R2 directly
 # con = open_duckdb(local_root="data/minute")  # or: plain local Parquet, no R2/network
 
 con.sql("SELECT * FROM minute_bars('SPY') WHERE ts >= '2020-03-01' ORDER BY ts").df()
 con.sql("SELECT * FROM daily_bars('SPY') ORDER BY day").df()
 con.sql("SELECT * FROM weekly_bars('SPY') ORDER BY week").df()
 con.sql("SELECT * FROM monthly_bars('SPY') ORDER BY month").df()
-con.sql("SELECT * FROM rollup_bars('SPY', 5) ORDER BY bucket").df()   # any N-minute bars
+con.sql("SELECT * FROM rollup_bars('SPY', 5) ORDER BY bucket").df()  # any N-minute bars
 con.sql("SELECT * FROM daily_returns('SPY') ORDER BY day").df()
 con.sql("SELECT * FROM rolling_volatility('SPY', 21) ORDER BY day").df()  # 21-day annualized vol
 ```

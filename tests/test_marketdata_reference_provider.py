@@ -6,6 +6,7 @@ massive.RESTClient (ipos/short_volume/short_interest/float, called
 through the SDK) -- neither test ever needs a real MASSIVE_API_KEY or
 network access.
 """
+
 import pytest
 
 from tam.marketdata.reference_provider import MassiveReferenceProvider, _resolve_api_key

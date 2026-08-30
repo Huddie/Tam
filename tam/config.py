@@ -20,13 +20,14 @@ intentionally incomplete (e.g. it names {{vars.env}} but leaves `env` for
 whatever leafs onto it to supply), so resolving per-file would raise on a var
 that a later merge step was always going to fill in.
 """
+
 from __future__ import annotations
 
 import json
 import os
 import re
 from pathlib import Path
-from typing import Any, FrozenSet, Optional
+from typing import Any
 
 import yaml
 
@@ -62,7 +63,7 @@ def _expand_env(obj: Any) -> Any:
     return obj
 
 
-def _resolve_includes(obj: Any, base_dir: Path, seen: FrozenSet[Path]) -> Any:
+def _resolve_includes(obj: Any, base_dir: Path, seen: frozenset[Path]) -> Any:
     """Recursively resolve `<< file.yaml` / `<< file.yaml#section` includes."""
     if isinstance(obj, dict):
         return {k: _resolve_includes(v, base_dir, seen) for k, v in obj.items()}
@@ -97,7 +98,9 @@ def _lookup_var(dotted_path: str, vars_dict: dict) -> Any:
     value: Any = vars_dict
     for part in parts:
         if not isinstance(value, dict) or part not in value:
-            raise ValueError(f"template variable '{{{{vars.{dotted_path}}}}}' not found; available vars: {list(vars_dict)}")
+            raise ValueError(
+                f"template variable '{{{{vars.{dotted_path}}}}}' not found; available vars: {list(vars_dict)}"
+            )
         value = value[part]
     return value
 
@@ -148,13 +151,15 @@ def _read_raw(path: Path) -> dict:
     return data
 
 
-def _load_with_base(path: Path, _seen: Optional[FrozenSet[Path]] = None) -> dict:
+def _load_with_base(path: Path, _seen: frozenset[Path] | None = None) -> dict:
     is_top_level = _seen is None
     path = path.resolve()
     seen = _seen or frozenset()
 
     if path in seen:
-        raise ValueError(f"circular base/include reference: {path} already visited in chain {sorted(str(p) for p in seen)}")
+        raise ValueError(
+            f"circular base/include reference: {path} already visited in chain {sorted(str(p) for p in seen)}"
+        )
     seen = seen | {path}
 
     raw = _read_raw(path)

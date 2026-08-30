@@ -6,11 +6,12 @@ database table, or return an in-memory object instead. That's the whole reason
 this exists as its own Registry(RepoWriter, ...) type rather than reusing
 FileFormat directly: DataRepository.write() doesn't know or care which.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 
@@ -26,7 +27,7 @@ class RepoWriter(ABC):
     writer documents, same as any other Registry(RepoWriter, ...) entry."""
 
     @abstractmethod
-    def write(self, data: Dict[str, pd.DataFrame]) -> Any: ...
+    def write(self, data: dict[str, pd.DataFrame]) -> Any: ...
 
 
 class _FlatFileRepoWriter(RepoWriter):
@@ -41,7 +42,7 @@ class _FlatFileRepoWriter(RepoWriter):
         self._format_name = format_name
         self._format: FileFormat = Registry.get(FileFormat, format_name)
 
-    def write(self, data: Dict[str, pd.DataFrame]) -> Dict[str, Path]:
+    def write(self, data: dict[str, pd.DataFrame]) -> dict[str, Path]:
         self._root.mkdir(parents=True, exist_ok=True)
         paths = {}
         for symbol, df in data.items():

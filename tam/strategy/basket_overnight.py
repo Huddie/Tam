@@ -20,10 +20,10 @@ Optional overlays, both off by default:
   basket has beta to that," per tam.basket.factors.OvernightAlpha's own
   rationale.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Dict, Optional, Tuple
 
 import pandas as pd
 
@@ -68,17 +68,17 @@ class BasketOvernightStrategy(Strategy):
         repository: DataRepository,
         universe: UniverseProvider,
         benchmark_ticker: str,
-        factor_specs: Dict[str, Tuple[Factor, float]],
+        factor_specs: dict[str, tuple[Factor, float]],
         selection_params: dict,
         weighting_params: dict,
         portfolio_id: str,
         rebalance_frequency: str = "monthly",
-        target_vol: Optional[float] = None,
+        target_vol: float | None = None,
         vol_window_days: int = 60,
-        hedge_ticker: Optional[str] = None,
-        hedge_fraction: Optional[float] = None,
+        hedge_ticker: str | None = None,
+        hedge_fraction: float | None = None,
         beta_window_days: int = 252,
-        sectors: Optional[Dict[str, str]] = None,
+        sectors: dict[str, str] | None = None,
         min_history_days: int = 252,
         scoring_method: str = "zscore",
     ):
@@ -103,7 +103,7 @@ class BasketOvernightStrategy(Strategy):
         lookback = max([min_history_days, beta_window_days, vol_window_days] + [0])
         self._lookback_calendar_days = _calendar_days_for(lookback)
 
-        self._target_weights: Dict[str, float] = {}
+        self._target_weights: dict[str, float] = {}
         self._portfolio_beta: float = 0.0
         self._hedge_shares: int = 0
         self._last_rebalance_period = None
@@ -123,7 +123,15 @@ class BasketOvernightStrategy(Strategy):
     def _on_open(self, as_of: date) -> None:
         for ticker in self._target_weights:
             self.trade.stocks(
-                [Order(ticker=ticker, side=Side.SELL, qty=Qty(pct=100), portfolio=self._portfolio_id, price_basis=PriceBasis.OPEN)]
+                [
+                    Order(
+                        ticker=ticker,
+                        side=Side.SELL,
+                        qty=Qty(pct=100),
+                        portfolio=self._portfolio_id,
+                        price_basis=PriceBasis.OPEN,
+                    )
+                ]
             )
         if self._hedge_shares:
             self.trade.stocks(
@@ -295,12 +303,14 @@ class BasketOvernightStrategy(Strategy):
 
 
 @Registry.register(Strategy, "basket_overnight")
-def build_basket_overnight(repository: DataRepository, portfolio_id: str, params, cash: float) -> BasketOvernightStrategy:
+def build_basket_overnight(
+    repository: DataRepository, portfolio_id: str, params, cash: float
+) -> BasketOvernightStrategy:
     universe_cfg = dict(params["universe"])
     universe_provider_name = universe_cfg.pop("provider")
     universe = Registry.create(UniverseProvider, universe_provider_name, **universe_cfg)
 
-    factor_specs: Dict[str, Tuple[Factor, float]] = {}
+    factor_specs: dict[str, tuple[Factor, float]] = {}
     for name, spec in params["factors"].items():
         spec = dict(spec)
         factor_name = spec.pop("factor")

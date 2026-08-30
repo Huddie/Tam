@@ -121,9 +121,7 @@ def test_features_have_expected_shape_and_no_nans(tmp_path):
     dates = [date(2024, 1, 2) + timedelta(days=i) for i in range(len(closes))]
     repo = _setup(tmp_path, closes, dates)
 
-    strategy = MLWalkForwardStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main"
-    )
+    strategy = MLWalkForwardStrategy(repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main")
     history = repo.query("QQQ").tail(25)
     features = strategy._compute_features(history["close"])
 
@@ -139,9 +137,7 @@ def test_get_state_and_load_state_round_trip_preserves_the_fitted_model(tmp_path
     strategy, _ = _run(repo, dates, seed=42)
     assert strategy._fitted is True
 
-    restored = MLWalkForwardStrategy(
-        repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main", seed=42
-    )
+    restored = MLWalkForwardStrategy(repo, "QQQ", "TQQQ", "SQQQ", buy_qty=10, sell_qty=10, portfolio_id="main", seed=42)
     restored.load_state(strategy.get_state())
 
     assert restored._held == strategy._held

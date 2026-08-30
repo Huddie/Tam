@@ -6,11 +6,11 @@ prevent structurally, not just document: a factor computed "as of" some date
 must never see what happens after it, or a backtest built on it is measuring
 something that couldn't have been known at the time.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import date
-from typing import Dict, Optional
 
 import pandas as pd
 
@@ -19,7 +19,7 @@ from ..registry import Registry
 _TRADING_DAYS_PER_YEAR = 252
 
 
-def _window(returns: pd.DataFrame, as_of: date, window_days: Optional[int]) -> pd.DataFrame:
+def _window(returns: pd.DataFrame, as_of: date, window_days: int | None) -> pd.DataFrame:
     """Everything on or before `as_of`, then (if given) only the trailing
     `window_days` rows of THAT -- the one place point-in-time slicing happens,
     so every Factor below inherits it automatically rather than re-implementing
@@ -65,7 +65,7 @@ class Persistence(Factor):
     scores far lower here than one that's worked in most rolling years, even
     if their long-run means are similar."""
 
-    def __init__(self, period_days: int = _TRADING_DAYS_PER_YEAR, lookback_days: Optional[int] = None):
+    def __init__(self, period_days: int = _TRADING_DAYS_PER_YEAR, lookback_days: int | None = None):
         self._period_days = period_days
         self._lookback_days = lookback_days
 
@@ -183,7 +183,7 @@ class OvernightBeta(Factor):
         return _regress(returns, as_of, self._window_days, self._benchmark)["beta"]
 
 
-def compute_factors(returns: pd.DataFrame, as_of: date, factors: Dict[str, Factor]) -> pd.DataFrame:
+def compute_factors(returns: pd.DataFrame, as_of: date, factors: dict[str, Factor]) -> pd.DataFrame:
     """{factor_name: Factor} -> one date's factor table, index=ticker,
     columns=factor name."""
     return pd.DataFrame({name: factor.compute(returns, as_of) for name, factor in factors.items()})
@@ -206,7 +206,7 @@ class ScoreFn(ABC):
     implementation below."""
 
     @abstractmethod
-    def compute(self, factor_table: pd.DataFrame, weights: Dict[str, float]) -> pd.Series: ...
+    def compute(self, factor_table: pd.DataFrame, weights: dict[str, float]) -> pd.Series: ...
 
 
 @Registry.register(ScoreFn, "zscore")
@@ -217,7 +217,7 @@ class ZScoreScoreFn(ScoreFn):
     contributes 0 (not NaN/inf) for every ticker. The default -- today's
     exact (and only, before ScoreFn existed) behavior."""
 
-    def compute(self, factor_table: pd.DataFrame, weights: Dict[str, float]) -> pd.Series:
+    def compute(self, factor_table: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
         total = pd.Series(0.0, index=factor_table.index)
         for name, weight in weights.items():
             column = factor_table[name]
@@ -236,7 +236,7 @@ class RankScoreFn(ScoreFn):
     distinguishing "slightly above average" from "way above average" the
     way a z-score does."""
 
-    def compute(self, factor_table: pd.DataFrame, weights: Dict[str, float]) -> pd.Series:
+    def compute(self, factor_table: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
         total = pd.Series(0.0, index=factor_table.index)
         for name, weight in weights.items():
             centered_rank = factor_table[name].rank(pct=True) - 0.5
@@ -244,7 +244,7 @@ class RankScoreFn(ScoreFn):
         return total
 
 
-def score(factor_table: pd.DataFrame, weights: Dict[str, float], method: str = "zscore") -> pd.Series:
+def score(factor_table: pd.DataFrame, weights: dict[str, float], method: str = "zscore") -> pd.Series:
     """Registry.get(ScoreFn, method).compute(factor_table, weights) --
     `method` defaults to "zscore" (today's exact behavior, unchanged), so
     every existing caller keeps working as before. Pass method="rank" (or

@@ -37,11 +37,12 @@ plus a new `export:` section for the declarative ticker/date-range/path/format.
 fetch+write only -- call export_history()/run_export(transform=...) directly
 from a script or notebook for that.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
-from typing import Callable, Optional
 
 import pandas as pd
 
@@ -62,8 +63,8 @@ def export_history(
     provider: str = "yfinance",
     cache_store: str = "parquet",
     cache_root: str = "data/eod",
-    transform: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
-    format: Optional[str] = None,
+    transform: Callable[[pd.DataFrame], pd.DataFrame] | None = None,
+    format: str | None = None,
 ) -> Path:
     """Fetch `symbol`'s history for [start, end] (via Registry(DataProvider,
     provider), caching through Registry(DataStore, cache_store) at cache_root so
@@ -76,7 +77,9 @@ def export_history(
     built in) -- inferred from `path`'s own suffix when omitted, e.g. "mu.csv"
     needs no explicit format=.
     """
-    repository = DataRepository(Registry.get(DataProvider, provider), Registry.create(DataStore, cache_store, cache_root))
+    repository = DataRepository(
+        Registry.get(DataProvider, provider), Registry.create(DataStore, cache_store, cache_root)
+    )
     repository.ingest([symbol], start, end)
     df = repository.query(symbol, start, end)
 
@@ -117,7 +120,7 @@ class ExportSettings:
     format: str = None
 
 
-def run_export(config_path, transform: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None) -> Path:
+def run_export(config_path, transform: Callable[[pd.DataFrame], pd.DataFrame] | None = None) -> Path:
     """Config-driven counterpart to export_history() -- reads `data:` + `export:`
     from `config_path` (see DataSettings/ExportSettings) and calls export_history()
     with them. `transform`, if given, is applied exactly like export_history()'s

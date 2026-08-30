@@ -1,7 +1,8 @@
 import io
-from tam.research.data.sec.store import SecStore
-from tam.research.data.sec import schema
+
 import pyarrow.parquet as pq
+
+from tam.research.data.sec.store import SecStore
 
 store = SecStore()
 
@@ -21,6 +22,8 @@ else:
         stats = pf.metadata.row_group(i).column(cik_idx).statistics
         print(f"  row group {i}: cik range [{stats.min}, {stats.max}]")
     if pf.num_row_groups == 1:
-        print("\n=> Still ONE row group spanning the whole file -- the re-encode has NOT happened yet (or ran before the fix was live). Re-run reconcile_sec_parquet_schema.py + rebuild_sec_financials.py now.")
+        print(
+            "\n=> Still ONE row group spanning the whole file -- the re-encode has NOT happened yet (or ran before the fix was live). Re-run reconcile_sec_parquet_schema.py + rebuild_sec_financials.py now."
+        )
     else:
         print(f"\n=> {pf.num_row_groups} row groups with narrow CIK ranges -- the fix IS live on this file.")

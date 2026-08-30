@@ -22,11 +22,11 @@ Worker just reads back verbatim -- it never recomputes this itself
 (porting a full NYSE trading calendar into a Cloudflare Worker isn't worth
 it for something already computed correctly at ingest time in Python).
 """
+
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -45,7 +45,7 @@ class MonthCompleteness:
     actual_bars: int
     expected_bars: int
     extended_hours_bars: int = 0
-    days: List[DayCompleteness] = field(default_factory=list)
+    days: list[DayCompleteness] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -56,7 +56,7 @@ class CompletenessIndex:
     actual_bars: int
     expected_bars: int
     extended_hours_bars: int = 0
-    months: List[MonthCompleteness] = field(default_factory=list)
+    months: list[MonthCompleteness] = field(default_factory=list)
 
     def to_json(self) -> str:
         return json.dumps(
@@ -123,7 +123,9 @@ def sidecar_schema_version(sidecar_bytes: bytes) -> int:
     return int(payload.get("schema_version") or 1)
 
 
-def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: str = "NYSE") -> Optional[CompletenessIndex]:
+def compute_completeness(
+    symbol: str, year: int, df: pd.DataFrame, *, calendar: str = "NYSE"
+) -> CompletenessIndex | None:
     """Builds a CompletenessIndex from `df` -- one symbol-year's already-
     UPSERTed 1-minute bars (tz-aware UTC `ts` index), the SAME frame
     MinuteBarStore._upsert_partition just wrote to disk/R2, not re-read
@@ -142,8 +144,8 @@ def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: 
 
     schedule = mcal.get_calendar(calendar).schedule(start_date=f"{year}-01-01", end_date=f"{year}-12-31")
 
-    expected_by_day: Dict = {}
-    session_bounds: Dict = {}
+    expected_by_day: dict = {}
+    session_bounds: dict = {}
     for date, row in schedule.iterrows():
         day = date.date()
         expected_by_day[day] = int((row["market_close"] - row["market_open"]).total_seconds() // 60)
@@ -164,8 +166,8 @@ def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: 
     # to, so it keeps its raw, unscoped count as actual_bars instead --
     # still worth surfacing (via expected_bars=0) rather than silently
     # dropped.
-    actual_by_day: Dict = {}
-    extended_by_day: Dict = {}
+    actual_by_day: dict = {}
+    extended_by_day: dict = {}
     if not df.empty:
         for day, group in df.groupby(df.index.date):
             bounds = session_bounds.get(day)
@@ -178,7 +180,7 @@ def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: 
                 extended_by_day[day] = int((~in_session).sum())
 
     all_days = sorted(set(expected_by_day) | set(actual_by_day))
-    by_month: Dict[int, List[DayCompleteness]] = {}
+    by_month: dict[int, list[DayCompleteness]] = {}
     for day in all_days:
         by_month.setdefault(day.month, []).append(
             DayCompleteness(
@@ -189,7 +191,7 @@ def compute_completeness(symbol: str, year: int, df: pd.DataFrame, *, calendar: 
             )
         )
 
-    months: List[MonthCompleteness] = []
+    months: list[MonthCompleteness] = []
     total_actual = 0
     total_expected = 0
     total_extended = 0

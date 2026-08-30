@@ -31,9 +31,10 @@ combine them once another partition's start_date is a real string
 means every file gets the SAME column types regardless of what happens to
 be null in that particular partition.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -147,7 +148,7 @@ _COLUMN_TYPE_NAMES = {
 }
 
 
-def pyarrow_schema(columns: List[str]) -> "pa.Schema":
+def pyarrow_schema(columns: list[str]) -> pa.Schema:
     """An explicit PyArrow schema for `columns` (one of the *_COLUMNS lists
     above) -- see this module's own docstring for why an explicit,
     per-column-name schema is required here rather than letting

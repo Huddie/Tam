@@ -8,6 +8,7 @@ config example.
 Usage:
     python -m examples.ingest_minute_bars examples/ingest_minute_bars_config.yaml
 """
+
 from __future__ import annotations
 
 import argparse

@@ -4,11 +4,11 @@ repeat that. Not a general-purpose API client; only the handful of calls
 tam.discovery actually needs (see /tam-discovery's own route table for the
 full API this is a client for).
 """
+
 from __future__ import annotations
 
 import os
 import time
-from typing import Optional
 
 import requests
 
@@ -16,7 +16,7 @@ _ENV_VAR = "TAM_DISCOVERY_API_URL"
 _DEFAULT_API_URL = "https://discovery.tamquant.com"
 
 
-def resolve_api_url(explicit: Optional[str] = None) -> str:
+def resolve_api_url(explicit: str | None = None) -> str:
     """explicit `api_url=`/`--api-url` wins, then the TAM_DISCOVERY_API_URL
     env var, then the real production Discovery site -- overridable for
     anyone self-hosting their own separate Discovery instance, but nothing
@@ -33,7 +33,7 @@ def _with_retries(func, attempts: int = 3, base_delay: float = 1.0):
     behind 3 retries would only make a real auth failure slower to
     surface. Re-raises the last exception once every attempt is
     exhausted."""
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(attempts):
         try:
             return func()
@@ -53,7 +53,7 @@ class DiscoveryClient:
     """A requests.Session pre-configured with the bearer token and base
     URL, plus the specific endpoints tam.discovery calls."""
 
-    def __init__(self, token: str, api_url: Optional[str] = None, timeout: float = 30.0):
+    def __init__(self, token: str, api_url: str | None = None, timeout: float = 30.0):
         self._base_url = resolve_api_url(api_url).rstrip("/")
         self._timeout = timeout
         self._session = requests.Session()
@@ -70,7 +70,7 @@ class DiscoveryClient:
     def whoami(self) -> dict:
         return self._request("GET", "/api/publish/whoami").json()
 
-    def create_discovery(self, *, title: str, type: str, name: Optional[str]) -> dict:
+    def create_discovery(self, *, title: str, type: str, name: str | None) -> dict:
         body = {"title": title, "type": type}
         if name:
             body["name"] = name
@@ -108,4 +108,3 @@ class DiscoveryClient:
             return response
 
         _with_retries(_do)
-

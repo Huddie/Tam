@@ -29,7 +29,10 @@ def test_capture_git_info_in_a_real_repo_with_no_remote_and_a_dirty_tree(tmp_pat
 def test_capture_git_info_picks_up_the_configured_remote_and_a_clean_tree(tmp_path):
     _init_repo(tmp_path)
     subprocess.run(
-        ["git", "remote", "add", "origin", "https://example.com/repo.git"], cwd=tmp_path, check=True, capture_output=True
+        ["git", "remote", "add", "origin", "https://example.com/repo.git"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
     )
 
     info = capture_git_info(tmp_path)

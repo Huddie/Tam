@@ -3,12 +3,14 @@ Parquet, or R2 Parquet, partitioned by year (<root or bucket-prefix>/<SYMBOL>/
 <year>.<ext>). An incremental daily ingest then only reads/rewrites the
 year(s) actually touched by new data instead of the symbol's entire history.
 """
+
 from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, TypeVar
+from typing import TypeVar
 
 import pandas as pd
 
@@ -39,9 +41,9 @@ class DataStore(ABC):
         tam.data.completeness) for one symbol-year. Default: a no-op -- a
         custom third-party DataStore that doesn't override this just
         doesn't get a completeness sidecar written."""
-        return None
+        return
 
-    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+    def read_completeness_bytes(self, symbol: str, year: int) -> bytes | None:
         """Raw bytes of one symbol-year's completeness sidecar, or None if
         it doesn't exist. Default: None, matching write_completeness_bytes()'s
         own "opt-in via override" default."""
@@ -58,7 +60,7 @@ class MultiDataStore(DataStore):
     if they ever disagree, so this only fans out the one operation where
     "do it to all of them" has one obvious meaning."""
 
-    def __init__(self, stores: List[DataStore]):
+    def __init__(self, stores: list[DataStore]):
         if not stores:
             raise ValueError("MultiDataStore needs at least one store")
         self._stores = list(stores)
@@ -87,7 +89,7 @@ class _YearPartitionedStore(DataStore):
     def _partition_path(self, symbol: str, year: int) -> Path:
         return self._symbol_dir(symbol) / f"{year}{self._suffix}"
 
-    def _partition_years(self, symbol: str) -> List[int]:
+    def _partition_years(self, symbol: str) -> list[int]:
         symbol_dir = self._symbol_dir(symbol)
         if not symbol_dir.exists():
             return []
@@ -135,7 +137,7 @@ class _YearPartitionedStore(DataStore):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
 
-    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+    def read_completeness_bytes(self, symbol: str, year: int) -> bytes | None:
         from .completeness import completeness_sidecar_suffix
 
         path = self._symbol_dir(symbol) / f"{year}{completeness_sidecar_suffix()}"
@@ -184,7 +186,7 @@ def _with_retries(func: Callable[[], _T], attempts: int = 5, base_delay: float =
     subpackage, matching this codebase's existing convention (see e.g. the
     three separate _from_dotenv() copies across tam.discovery.auth,
     tam.marketdata.explorer_client, tam.marketdata.credentials)."""
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(attempts):
         try:
             return func()
@@ -249,8 +251,8 @@ class R2DataStore(DataStore):
     def _key(self, symbol: str, year: int) -> str:
         return f"{self._symbol_prefix(symbol)}{year}.parquet"
 
-    def _partition_years(self, symbol: str) -> List[int]:
-        def _list() -> List[int]:
+    def _partition_years(self, symbol: str) -> list[int]:
+        def _list() -> list[int]:
             found = []
             paginator = self._client.get_paginator("list_objects_v2")
             for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=self._symbol_prefix(symbol)):
@@ -306,14 +308,14 @@ class R2DataStore(DataStore):
 
         _with_retries(_put)
 
-    def read_completeness_bytes(self, symbol: str, year: int) -> Optional[bytes]:
+    def read_completeness_bytes(self, symbol: str, year: int) -> bytes | None:
         from botocore.exceptions import ClientError
 
         from .completeness import completeness_sidecar_suffix
 
         key = f"{self._symbol_prefix(symbol)}{year}{completeness_sidecar_suffix()}"
 
-        def _get() -> Optional[bytes]:
+        def _get() -> bytes | None:
             try:
                 response = self._client.get_object(Bucket=self._credentials.bucket, Key=key)
                 return response["Body"].read()
@@ -338,7 +340,7 @@ class R2DataStore(DataStore):
 
         return _with_retries(_head)
 
-    def _read_object_if_exists(self, key: str) -> Optional[pd.DataFrame]:
+    def _read_object_if_exists(self, key: str) -> pd.DataFrame | None:
         if not self._object_exists(key):
             return None
         return self._read_object(key)

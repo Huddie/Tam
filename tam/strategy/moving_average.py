@@ -1,6 +1,7 @@
 """Buys when price crosses above its own N-day moving average, sells when it
 crosses back below (gated by a held flag so it only fires on the transition).
 """
+
 from __future__ import annotations
 
 from ..data.repository import DataRepository
@@ -12,9 +13,7 @@ from .base import Strategy
 
 
 class MovingAverageStrategy(Strategy):
-    def __init__(
-        self, repository: DataRepository, ticker: str, window: int, buy_qty, sell_qty, portfolio_id: str
-    ):
+    def __init__(self, repository: DataRepository, ticker: str, window: int, buy_qty, sell_qty, portfolio_id: str):
         super().__init__()
         self._repository = repository
         self._ticker = ticker

@@ -4,12 +4,13 @@ a given date, not just today's list. Backtesting today's S&P 500 back to
 show up); a UniverseProvider is how tam.strategy.basket_overnight (and any
 other cross-sectional strategy) avoids that.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from datetime import date
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
 
 import pandas as pd
 
@@ -18,7 +19,7 @@ from ..registry import Registry
 
 class UniverseProvider(ABC):
     @abstractmethod
-    def constituents(self, as_of: date) -> List[str]:
+    def constituents(self, as_of: date) -> list[str]:
         """The tickers that qualified as of `as_of` -- only ever backward-looking
         (a caller resolving this for day T must not see additions/removals that
         happen after T, or selection built on it leaks the future)."""
@@ -30,10 +31,10 @@ class StaticUniverse(UniverseProvider):
     behavior (`backtest.tickers`), kept as the default so nothing existing
     needs a UniverseProvider to keep working."""
 
-    def __init__(self, tickers: List[str]):
+    def __init__(self, tickers: list[str]):
         self._tickers = list(tickers)
 
-    def constituents(self, as_of: date) -> List[str]:
+    def constituents(self, as_of: date) -> list[str]:
         return list(self._tickers)
 
 
@@ -45,7 +46,7 @@ class _EventsUniverse(UniverseProvider):
 
     _events: pd.DataFrame
 
-    def constituents(self, as_of: date) -> List[str]:
+    def constituents(self, as_of: date) -> list[str]:
         events = self._events[self._events["date"] <= pd.Timestamp(as_of)]
         members = set()
         for action, ticker in zip(events["action"], events["ticker"]):
@@ -77,7 +78,7 @@ class CsvUniverse(_EventsUniverse):
 def build_membership_events(
     current_members: Iterable[str],
     changes: pd.DataFrame,
-    fallback_date: Optional[date] = None,
+    fallback_date: date | None = None,
 ) -> pd.DataFrame:
     """Turn (today's current members, a change log of `date`/`added_ticker`/
     `removed_ticker` rows -- either ticker column may be null per row) into
@@ -119,7 +120,7 @@ def _label(column) -> str:
     return " ".join(str(part) for part in parts).lower()
 
 
-def _find_column(columns, required: Tuple[str, ...]):
+def _find_column(columns, required: tuple[str, ...]):
     for column in columns:
         label = _label(column)
         if all(keyword in label for keyword in required):
@@ -137,7 +138,7 @@ def _find_column_any(columns, required_options):
     raise ValueError(f"no column matched any of {required_options}: {errors}")
 
 
-def fetch_sp500_from_wikipedia() -> Tuple[List[str], pd.DataFrame]:
+def fetch_sp500_from_wikipedia() -> tuple[list[str], pd.DataFrame]:
     """Fetch the S&P 500's current constituents and historical additions/
     removals from Wikipedia's community-maintained "List of S&P 500
     companies" page -- free, no API key, but not an official data feed;
@@ -225,13 +226,12 @@ class PitIndexUniverse(UniverseProvider):
     def __init__(self, index: str = "sp500"):
         self._index = index
 
-    def constituents(self, as_of: date) -> List[str]:
+    def constituents(self, as_of: date) -> list[str]:
         try:
             import pitindex
         except ImportError as exc:
             raise ImportError(
-                'PitIndexUniverse needs the `pitindex` extra (Python >=3.11): '
+                "PitIndexUniverse needs the `pitindex` extra (Python >=3.11): "
                 'run `uv sync --extra pitindex` or `pip install "tam-quant[pitindex]"`.'
             ) from exc
         return sorted(pitindex.get_constituents(as_of, index=self._index)["ticker"].tolist())
-

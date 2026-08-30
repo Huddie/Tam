@@ -24,17 +24,21 @@ from tam.data.schema import CLOSE, OPEN
 #    stays the same:
 opens = price_matrix(repository, tickers, date(2015, 1, 1), date(2024, 1, 1), column=OPEN)
 closes = price_matrix(repository, tickers, date(2015, 1, 1), date(2024, 1, 1), column=CLOSE)
-returns = opens.shift(-1) / closes - 1   # BCSO: buy close, sell next open
+returns = opens.shift(-1) / closes - 1  # BCSO: buy close, sell next open
 # returns = closes.pct_change()          # ...or the classic close-to-close daily return
 # returns = closes / opens - 1           # ...or intraday (buy open, sell same close)
 
 # 2. rolling, point-in-time-safe factors (only ever see data on/before as_of)
 as_of = date(2023, 6, 1)
-factors = compute_factors(returns, as_of, {
-    "sharpe_3y": RollingSharpe(window_days=756),
-    "persistence": Persistence(period_days=252),
-    "alpha": OvernightAlpha(window_days=756, benchmark="SPY"),
-})
+factors = compute_factors(
+    returns,
+    as_of,
+    {
+        "sharpe_3y": RollingSharpe(window_days=756),
+        "persistence": Persistence(period_days=252),
+        "alpha": OvernightAlpha(window_days=756, benchmark="SPY"),
+    },
+)
 scores = score(factors, {"sharpe_3y": 0.5, "persistence": 0.3, "alpha": 0.2})
 
 # 3. don't just take the top-N -- diversify across correlation clusters first
@@ -96,7 +100,7 @@ from tam.basket.universe import UniverseProvider  # just for the Registry.create
 # `pitindex` extra (Python >=3.11: `pip install "tam-quant[pitindex]"`).
 # Covers "sp500" (default), "sp400", "sp600", or the composite "sp1500".
 universe = PitIndexUniverse(index="sp500")
-universe.constituents(date(2018, 6, 1))   # who was actually in the S&P 500 back then
+universe.constituents(date(2018, 6, 1))  # who was actually in the S&P 500 back then
 
 # or resolve it by name, e.g. straight from config:
 universe = Registry.create(UniverseProvider, "pitindex", index="sp600")
@@ -105,7 +109,7 @@ universe = Registry.create(UniverseProvider, "pitindex", index="sp600")
 ```python
 from tam.basket.universe import fetch_sp500_from_wikipedia, fetch_sp500_membership, CsvUniverse, WikipediaUniverse
 
-current_tickers, _changes = fetch_sp500_from_wikipedia()   # just today's list, no history
+current_tickers, _changes = fetch_sp500_from_wikipedia()  # just today's list, no history
 
 # WikipediaUniverse fetches once at construction (needs network then;
 # constituents(as_of) itself doesn't hit the network again) -- or persist it

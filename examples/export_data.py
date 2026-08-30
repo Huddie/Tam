@@ -11,6 +11,7 @@ For a transform (a `DataFrame -> DataFrame` UDF applied before writing), call
 notebook instead -- arbitrary code has no YAML representation, so this CLI
 only covers the declarative fetch+write path.
 """
+
 from __future__ import annotations
 
 import argparse

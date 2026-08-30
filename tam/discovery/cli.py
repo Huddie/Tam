@@ -3,6 +3,7 @@
 tam.discovery.upload(), plus login/list/info/versions for everyday use from a
 plain shell (a notebook uses tam.discovery.upload() directly instead).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -11,7 +12,6 @@ import json
 import stat
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from .auth import resolve_token, token_file_path
 from .http import DiscoveryClient
@@ -20,7 +20,7 @@ from .upload import upload
 _SUBCOMMANDS = {"publish", "login", "list", "info", "versions"}
 
 
-def _parse_metadata(raw: Optional[str]) -> dict:
+def _parse_metadata(raw: str | None) -> dict:
     """`--metadata-json` accepts either a literal JSON object, or `@path` to
     read that JSON from a file -- the latter for metadata too large/awkward
     to type inline (e.g. a config dict already written to disk)."""
@@ -39,13 +39,29 @@ def _parse_metadata(raw: Optional[str]) -> dict:
 def _add_publish_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("path", help="Path to a self-contained .html file to publish")
     parser.add_argument("--title", required=True, help="Human-readable title shown in the catalog")
-    parser.add_argument("--type", default="dashboard", help="Groups this with other discoveries of the same kind (default: dashboard)")
-    parser.add_argument("--name", help="Stable slug -- publishing again with the same --name adds a new version instead of a new discovery")
+    parser.add_argument(
+        "--type", default="dashboard", help="Groups this with other discoveries of the same kind (default: dashboard)"
+    )
+    parser.add_argument(
+        "--name",
+        help="Stable slug -- publishing again with the same --name adds a new version instead of a new discovery",
+    )
     parser.add_argument("--description", help="Longer free-text description")
-    parser.add_argument("--tag", dest="tags", action="append", default=[], help="Repeatable, e.g. --tag earnings --tag q3")
-    parser.add_argument("--source", dest="source_file", help="Recorded verbatim as provenance -- e.g. the notebook/script that generated this artifact")
-    parser.add_argument("--metadata-json", help="A JSON object (or @path to a file containing one) stored verbatim as this version's metadata")
-    parser.add_argument("--no-git", action="store_true", help="Skip auto-capturing git commit/branch/repo/dirty-tree provenance")
+    parser.add_argument(
+        "--tag", dest="tags", action="append", default=[], help="Repeatable, e.g. --tag earnings --tag q3"
+    )
+    parser.add_argument(
+        "--source",
+        dest="source_file",
+        help="Recorded verbatim as provenance -- e.g. the notebook/script that generated this artifact",
+    )
+    parser.add_argument(
+        "--metadata-json",
+        help="A JSON object (or @path to a file containing one) stored verbatim as this version's metadata",
+    )
+    parser.add_argument(
+        "--no-git", action="store_true", help="Skip auto-capturing git commit/branch/repo/dirty-tree provenance"
+    )
     parser.add_argument("--token", help="Overrides the usual token resolution (env var / Colab secret / saved login)")
     parser.add_argument("--api-url", help=f"Overrides {os_env_hint()}")
 
@@ -135,7 +151,7 @@ def cmd_login(args: argparse.Namespace) -> int:
     return 0
 
 
-def _print_table(rows: List[dict], columns: List[str]) -> None:
+def _print_table(rows: list[dict], columns: list[str]) -> None:
     if not rows:
         print("(none)")
         return
@@ -149,7 +165,17 @@ def _print_table(rows: List[dict], columns: List[str]) -> None:
 
 def cmd_list(args: argparse.Namespace) -> int:
     client = DiscoveryClient(resolve_token(args.token), api_url=args.api_url)
-    params = {k: v for k, v in {"q": args.q, "tag": args.tag, "type": args.type, "creator": args.creator, "sort": args.sort}.items() if v}
+    params = {
+        k: v
+        for k, v in {
+            "q": args.q,
+            "tag": args.tag,
+            "type": args.type,
+            "creator": args.creator,
+            "sort": args.sort,
+        }.items()
+        if v
+    }
     result = client.list_discoveries(**params)
     _print_table(result.get("discoveries", []), ["name", "type", "title", "created_by", "updated_at"])
     return 0
@@ -170,7 +196,7 @@ def cmd_versions(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] not in _SUBCOMMANDS and not argv[0].startswith("-"):
         argv = ["publish", *argv]

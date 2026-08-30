@@ -176,6 +176,7 @@ Configuration guide -- constructor parameters, grouped by what they trade off
       so it can override a nested key like lora_parameters without repeating
       its untouched siblings.
 """
+
 from __future__ import annotations
 
 import json
@@ -186,7 +187,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import yaml
 
@@ -230,12 +231,12 @@ class MLXLoRAClient:
         model: str = DEFAULT_MODEL,
         system_prompt: str = "",
         fine_tune_every_n_days: int = 20,
-        adapter_root: Optional[str] = None,
+        adapter_root: str | None = None,
         iters: int = 50,
         learning_rate: float = 1e-5,
         grad_checkpoint: bool = True,
         max_seq_length: int = 4096,
-        batch_size: Optional[int] = None,
+        batch_size: int | None = None,
         num_layers: int = 16,
         fine_tune_type: str = "lora",
         lora_rank: int = 8,
@@ -244,8 +245,8 @@ class MLXLoRAClient:
         optimizer: str = "adamw",
         weight_decay: float = 0.01,
         val_split: float = 0.2,
-        max_val_examples: Optional[int] = 100,
-        extra_mlx_config: Optional[dict] = None,
+        max_val_examples: int | None = 100,
+        extra_mlx_config: dict | None = None,
     ):
         self._model_path = model
         self._system_prompt = system_prompt
@@ -274,16 +275,16 @@ class MLXLoRAClient:
         # Every realized outcome ever recorded, oldest first, never cleared
         # -- see the module docstring for why this replaced a per-round
         # buffer that got cleared after each fine-tune.
-        self._history: List[Tuple[str, str]] = []
+        self._history: list[tuple[str, str]] = []
         self._days_since_fine_tune = 0
         self._generation = int(self._current_adapter.name.split("_")[1]) if self._current_adapter else 0
         # (iteration, val_loss) pairs from the most recent _run_training call
         # -- an early-warning divergence signal, reset per fine-tune round
         # (see _training_diverged). Not persisted: it's a diagnostic for the
         # round just run, not state that needs to survive a restart.
-        self._last_val_losses: List[Tuple[int, float]] = []
+        self._last_val_losses: list[tuple[int, float]] = []
 
-    def _latest_generation(self) -> Optional[Path]:
+    def _latest_generation(self) -> Path | None:
         """Resume from whatever's already on disk under adapter_root, if anything --
         so a fresh process (e.g. after a crash/restart) doesn't silently drop back to
         the un-fine-tuned base model despite prior generations being saved."""
@@ -310,7 +311,7 @@ class MLXLoRAClient:
         self._model, self._tokenizer = load(self._model_path, adapter_path=adapter_path)
         report(f"loaded {self._model_path} in {time.time() - start:.1f}s")
 
-    def _messages_for(self, prompt: str, completion: Optional[str] = None) -> list:
+    def _messages_for(self, prompt: str, completion: str | None = None) -> list:
         messages = []
         if self._system_prompt:
             messages.append({"role": "system", "content": self._system_prompt})
@@ -343,7 +344,9 @@ class MLXLoRAClient:
             self._fine_tune()
             self._days_since_fine_tune = 0
 
-    def _split_for_validation(self, history: List[Tuple[str, str]]) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+    def _split_for_validation(
+        self, history: list[tuple[str, str]]
+    ) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
         """Holds out `val_split` of the FULL accumulated history so mlx_lm
         can report a real Val loss during training (see _training_diverged)
         -- the most RECENT examples become the validation set, not a random
@@ -371,13 +374,13 @@ class MLXLoRAClient:
             val_count = min(val_count, self._max_val_examples)
         return list(history[:-val_count]), list(history[-val_count:])
 
-    def _write_jsonl(self, path: Path, examples: List[Tuple[str, str]]) -> None:
+    def _write_jsonl(self, path: Path, examples: list[tuple[str, str]]) -> None:
         with path.open("w") as handle:
             for prompt, realized_side in examples:
                 messages = self._messages_for(prompt, completion=realized_side)
                 handle.write(json.dumps({"messages": messages}) + "\n")
 
-    def _check_completion_token_budget(self, new_examples: List[Tuple[str, str]]) -> None:
+    def _check_completion_token_budget(self, new_examples: list[tuple[str, str]]) -> None:
         """mlx_lm truncates every training sequence to max_seq_length -- if
         that cuts off before an example's assistant turn even starts (i.e.
         the prompt alone, tokenized, is already >= max_seq_length), that
@@ -420,14 +423,14 @@ class MLXLoRAClient:
             f"(max_seq_length={self._max_seq_length})"
         )
 
-    def _mlx_lm_config(self, data_dir: Path, new_adapter: Path, has_validation_set: bool) -> Dict[str, Any]:
+    def _mlx_lm_config(self, data_dir: Path, new_adapter: Path, has_validation_set: bool) -> dict[str, Any]:
         """Everything handed to `mlx_lm.lora -c <this>`, in mlx_lm's own
         config schema -- the single place any mlx_lm training knob lives, so
         adding one means adding a field here (or passing it via
         extra_mlx_config) rather than growing a parallel argv-flag builder.
         Deliberately has no resume_adapter_file -- every round trains a
         fresh adapter from the base model (see module docstring)."""
-        settings: Dict[str, Any] = {
+        settings: dict[str, Any] = {
             "model": self._model_path,
             "train": True,
             "data": str(data_dir),
@@ -559,7 +562,7 @@ class MLXLoRAClient:
                 return False
         return True
 
-    def _run_training(self, args: List[str]) -> None:
+    def _run_training(self, args: list[str]) -> None:
         """Runs mlx_lm's training CLI as a subprocess, captured rather than
         streamed raw -- "Iter N: ..." lines update a real (current/total)
         sub-progress bar via tam.status instead of scrolling the terminal, but
@@ -570,10 +573,8 @@ class MLXLoRAClient:
         import subprocess
 
         self._last_val_losses = []
-        process = subprocess.Popen(
-            args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-        )
-        lines: List[str] = []
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        lines: list[str] = []
         for line in process.stdout:
             lines.append(line)
             match = _ITER_RE.match(line.strip())

@@ -58,9 +58,7 @@ class _OneShotStrategy(Strategy):
     def on_event(self, event):
         if self._fired:
             return
-        self.trade.stocks(
-            [Order(ticker=self._ticker, side=self._side, qty=self._qty, portfolio=self._portfolio_id)]
-        )
+        self.trade.stocks([Order(ticker=self._ticker, side=self._side, qty=self._qty, portfolio=self._portfolio_id)])
         self._fired = True
 
 

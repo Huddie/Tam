@@ -11,9 +11,7 @@ def test_yfinance_flattens_multiindex_columns(monkeypatch):
     for a single symbol, which used to make history["close"] a 1-column DataFrame
     instead of a Series and break float(history["close"].iloc[0]) downstream."""
     dates = pd.to_datetime(["2023-01-03", "2023-01-04"])
-    columns = pd.MultiIndex.from_product(
-        [["Open", "High", "Low", "Close", "Adj Close", "Volume"], ["AAPL"]]
-    )
+    columns = pd.MultiIndex.from_product([["Open", "High", "Low", "Close", "Adj Close", "Volume"], ["AAPL"]])
     raw = pd.DataFrame(
         [
             [100.0, 101.0, 99.0, 100.5, 100.5, 1000],
@@ -95,7 +93,9 @@ def test_yfinance_translates_dot_share_class_tickers_to_hyphenated_form(monkeypa
 
 def test_yfinance_defaults_to_unadjusted_ohlc(monkeypatch):
     captured = {}
-    monkeypatch.setattr("yfinance.download", lambda *a, **kw: captured.update(auto_adjust=kw["auto_adjust"]) or pd.DataFrame())
+    monkeypatch.setattr(
+        "yfinance.download", lambda *a, **kw: captured.update(auto_adjust=kw["auto_adjust"]) or pd.DataFrame()
+    )
 
     YFinanceProvider().fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
 
@@ -104,7 +104,9 @@ def test_yfinance_defaults_to_unadjusted_ohlc(monkeypatch):
 
 def test_yfinance_adjust_true_requests_auto_adjusted_ohlc_from_yfinance(monkeypatch):
     captured = {}
-    monkeypatch.setattr("yfinance.download", lambda *a, **kw: captured.update(auto_adjust=kw["auto_adjust"]) or pd.DataFrame())
+    monkeypatch.setattr(
+        "yfinance.download", lambda *a, **kw: captured.update(auto_adjust=kw["auto_adjust"]) or pd.DataFrame()
+    )
 
     YFinanceProvider(adjust=True).fetch_eod("AAPL", date(2023, 1, 3), date(2023, 1, 4))
 
@@ -198,6 +200,8 @@ def test_yfinance_fetch_eod_calls_never_overlap_across_threads(monkeypatch):
 
     provider = YFinanceProvider()
     with ThreadPoolExecutor(max_workers=8) as pool:
-        list(pool.map(lambda s: provider.fetch_eod(s, date(2023, 1, 3), date(2023, 1, 4)), [f"SYM{i}" for i in range(8)]))
+        list(
+            pool.map(lambda s: provider.fetch_eod(s, date(2023, 1, 3), date(2023, 1, 4)), [f"SYM{i}" for i in range(8)])
+        )
 
     assert max_observed == 1

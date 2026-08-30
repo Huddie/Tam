@@ -12,21 +12,22 @@ Usage:
     provider = Registry[DataProvider, "fmp"]                   # sugar for Registry.get(...)
     store = Registry.create(DataStore, "parquet", "data/eod")  # fresh instance, args passed through
 """
+
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Type, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
-_Key = Tuple[type, str]
+_Key = tuple[type, str]
 
 
 class Registry:
-    _classes: Dict[_Key, type] = {}
-    _singletons: Dict[_Key, object] = {}
+    _classes: dict[_Key, type] = {}
+    _singletons: dict[_Key, object] = {}
 
     @classmethod
     def register(cls, base_type: type, name: str):
-        def decorator(impl: Type[T]) -> Type[T]:
+        def decorator(impl: type[T]) -> type[T]:
             key = (base_type, name)
             if key in cls._classes:
                 raise ValueError(f"{base_type.__name__} {name!r} is already registered")
@@ -58,7 +59,7 @@ class Registry:
         return cls._singletons[key]
 
     @classmethod
-    def names(cls, base_type: type) -> List[str]:
+    def names(cls, base_type: type) -> list[str]:
         return sorted(name for (b, name) in cls._classes if b is base_type)
 
     def __class_getitem__(cls, key: _Key):
@@ -75,7 +76,7 @@ class RunRegistry:
     leak into each other, unlike Registry._singletons, which is never cleared."""
 
     def __init__(self):
-        self._instances: Dict[_Key, object] = {}
+        self._instances: dict[_Key, object] = {}
 
     def put(self, base_type: type, name: str, instance: object) -> None:
         self._instances[(base_type, name)] = instance

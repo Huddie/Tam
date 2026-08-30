@@ -8,6 +8,7 @@ will pick up (resumable -- only refetches what's missing, nothing else).
 Usage:
     python -m examples.check_ingest_coverage examples/ingest_minute_bars_5yr_config.yaml
 """
+
 from __future__ import annotations
 
 import argparse

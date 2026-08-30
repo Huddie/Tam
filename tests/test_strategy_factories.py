@@ -52,9 +52,7 @@ def test_buy_and_hold_factory_defaults_to_full_cash_investment(tmp_path):
     dates = [date(2024, 1, 2), date(2024, 1, 3)]
     repo = _repo_with_prices(tmp_path, dates, [50.0, 51.0])
 
-    strategy = Registry.create(
-        Strategy, "buy_and_hold", repo, "baseline", {"ticker": "AAPL"}, 1_000.0
-    )
+    strategy = Registry.create(Strategy, "buy_and_hold", repo, "baseline", {"ticker": "AAPL"}, 1_000.0)
 
     assert isinstance(strategy, BuyAndHoldStrategy)
     assert strategy._qty == Qty(pct=100)
@@ -65,9 +63,7 @@ def test_buy_and_hold_factory_respects_explicit_qty(tmp_path):
     dates = [date(2024, 1, 2)]
     repo = _repo_with_prices(tmp_path, dates, [50.0])
 
-    strategy = Registry.create(
-        Strategy, "buy_and_hold", repo, "baseline", {"ticker": "AAPL", "qty": 7}, 1_000.0
-    )
+    strategy = Registry.create(Strategy, "buy_and_hold", repo, "baseline", {"ticker": "AAPL", "qty": 7}, 1_000.0)
 
     assert strategy._qty == Qty(static=7)
 

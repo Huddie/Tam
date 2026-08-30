@@ -1,8 +1,9 @@
 """Drives the backtest timeline: one open + one close event per trading date."""
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
-from typing import List, Sequence
 
 from .bus import EventBus
 from .types import Event
@@ -13,7 +14,7 @@ EOD_TOPIC = "clock.eod"  # end-of-day / close tick -- name kept for backward com
 
 class Clock:
     def __init__(self, dates: Sequence[date], bus: EventBus):
-        self.dates: List[date] = sorted(dates)
+        self.dates: list[date] = sorted(dates)
         self._bus = bus
 
     def tick(self, current_date: date) -> None:

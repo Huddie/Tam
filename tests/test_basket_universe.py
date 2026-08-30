@@ -193,7 +193,9 @@ def test_build_membership_events_produces_csv_universe_compatible_output(tmp_pat
 
 
 def test_build_membership_events_accepts_an_explicit_fallback_date():
-    events = build_membership_events(["AAPL"], pd.DataFrame(columns=["date", "added_ticker", "removed_ticker"]), fallback_date=date(1999, 1, 1))
+    events = build_membership_events(
+        ["AAPL"], pd.DataFrame(columns=["date", "added_ticker", "removed_ticker"]), fallback_date=date(1999, 1, 1)
+    )
 
     assert events.iloc[0]["date"] == pd.Timestamp(1999, 1, 1)
 

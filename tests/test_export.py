@@ -3,6 +3,7 @@ transform (UDF) hook, and the Registry(FileFormat, ...) output-format lookup.
 Follows tests/test_data.py's FakeProvider/_bars convention so this never
 touches the network.
 """
+
 from datetime import date
 
 import pandas as pd
@@ -89,12 +90,20 @@ def test_export_history_reuses_the_cache_on_a_second_call(tmp_path):
     cache_root = str(tmp_path / "cache")
 
     export_history(
-        "AAPL", date(2024, 1, 2), date(2024, 1, 4), str(tmp_path / "one.csv"),
-        provider="fake_export_history_cache_reuse", cache_root=cache_root,
+        "AAPL",
+        date(2024, 1, 2),
+        date(2024, 1, 4),
+        str(tmp_path / "one.csv"),
+        provider="fake_export_history_cache_reuse",
+        cache_root=cache_root,
     )
     export_history(
-        "AAPL", date(2024, 1, 2), date(2024, 1, 4), str(tmp_path / "two.csv"),
-        provider="fake_export_history_cache_reuse", cache_root=cache_root,
+        "AAPL",
+        date(2024, 1, 2),
+        date(2024, 1, 4),
+        str(tmp_path / "two.csv"),
+        provider="fake_export_history_cache_reuse",
+        cache_root=cache_root,
     )
 
     assert len(provider.calls) == 1  # second export_history() call didn't re-fetch
@@ -105,8 +114,12 @@ def test_export_history_infers_format_from_path_suffix(tmp_path):
     Registry.register(DataProvider, "fake_export_history_format_infer")(lambda: provider)
 
     parquet_path = export_history(
-        "AAPL", date(2024, 1, 2), date(2024, 1, 4), str(tmp_path / "out.parquet"),
-        provider="fake_export_history_format_infer", cache_root=str(tmp_path / "cache"),
+        "AAPL",
+        date(2024, 1, 2),
+        date(2024, 1, 4),
+        str(tmp_path / "out.parquet"),
+        provider="fake_export_history_format_infer",
+        cache_root=str(tmp_path / "cache"),
     )
 
     assert pd.read_parquet(parquet_path)["close"].tolist() == _CLOSES
@@ -117,8 +130,12 @@ def test_export_history_explicit_format_overrides_suffix(tmp_path):
     Registry.register(DataProvider, "fake_export_history_format_override")(lambda: provider)
 
     out_path = export_history(
-        "AAPL", date(2024, 1, 2), date(2024, 1, 4), str(tmp_path / "out.dat"),
-        provider="fake_export_history_format_override", cache_root=str(tmp_path / "cache"),
+        "AAPL",
+        date(2024, 1, 2),
+        date(2024, 1, 4),
+        str(tmp_path / "out.dat"),
+        provider="fake_export_history_format_override",
+        cache_root=str(tmp_path / "cache"),
         format="csv",
     )
 
@@ -131,8 +148,12 @@ def test_export_history_rejects_an_unregistered_format(tmp_path):
 
     with pytest.raises(ValueError, match="csv.*parquet|parquet.*csv"):
         export_history(
-            "AAPL", date(2024, 1, 2), date(2024, 1, 4), str(tmp_path / "out.xyz"),
-            provider="fake_export_history_bad_format", cache_root=str(tmp_path / "cache"),
+            "AAPL",
+            date(2024, 1, 2),
+            date(2024, 1, 4),
+            str(tmp_path / "out.xyz"),
+            provider="fake_export_history_bad_format",
+            cache_root=str(tmp_path / "cache"),
         )
 
 

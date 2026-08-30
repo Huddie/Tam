@@ -2,6 +2,7 @@
 data is read from disk once per DataRepository/session rather than on every
 price lookup or lookback window a strategy asks for.
 """
+
 from __future__ import annotations
 
 from datetime import date

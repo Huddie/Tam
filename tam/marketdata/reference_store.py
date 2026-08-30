@@ -7,14 +7,30 @@ dividends, IPOs -- things a company actively does) and `positioning/`
 or traded). Sibling to `minute/`/`eod/`, not nested under either.
 
 Four datasets (splits, dividends, short_volume, short_interest) are
-append-only and year-partitioned -- `<group>/<dataset>/<year>.parquet` --
-UPSERTed the same way tam.marketdata.store.R2MinuteBarStore already
-upserts minute bars (read existing year, concat, dedup, rewrite), just
-deduplicated on each dataset's own natural key (see _DEDUP_KEYS) instead
-of a timestamp index, since these aren't indexed by a single always-unique
-timestamp the way bars are. Two datasets (ipos, float) have no history/
-cursor concept at all -- `<group>/<dataset>/all.parquet`, wholesale
-overwritten on every write.
+append-only and UPSERTed the same way tam.marketdata.store.R2MinuteBarStore
+already upserts minute bars (read existing partition, concat, dedup,
+rewrite), just deduplicated on each dataset's own natural key (see
+_DEDUP_KEYS) instead of a timestamp index, since these aren't indexed by a
+single always-unique timestamp the way bars are. Two datasets (ipos,
+float) have no history/cursor concept at all -- `<group>/<dataset>/
+all.parquet`, wholesale overwritten on every write.
+
+Two of those four append-only datasets are also PER-TICKER partitioned
+(see _PER_TICKER_DATASETS below) -- `<group>/<dataset>/<TICKER>/
+<year>.parquet`, the same layout minute bars use (`minute/<SYMBOL>/
+<year>.parquet`), for the same reason: short_volume/short_interest are
+FINRA-reported figures for EVERY US-listed ticker, every trading day
+(short_volume) or biweekly (short_interest) -- confirmed live, a single
+global year file hit 3.1M rows for short_volume alone. write()'s
+UPSERT-by-year cost (read the whole partition, concat, dedup, rewrite)
+is only cheap because each partition is small; a single global-year
+file for these two keeps growing without bound and gets re-read/
+re-written in full on every incremental run. Splits/dividends/ipos/float
+stay as single global files -- confirmed live, splits/dividends are a
+few thousand to tens of thousands of rows/year TOTAL across the whole
+market (not per ticker), and ipos/float are a few thousand rows,
+ALL-TIME -- genuinely small enough that per-ticker partitioning would
+just create thousands of near-empty files for zero benefit.
 
 Two concrete backends, same reasoning as tam.marketdata.store's own split:
 - LocalReferenceStore: plain local disk, for tests and local dev.
@@ -24,11 +40,11 @@ Two concrete backends, same reasoning as tam.marketdata.store's own split:
   handshake in production; boto3's single-shot put_object()/get_object()
   never touches multipart for objects this size).
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional
 
 import pandas as pd
 
@@ -36,13 +52,10 @@ from . import reference_schema as schema
 from .credentials import R2Credentials, resolve_r2_credentials
 from .store import _with_retries
 
-if TYPE_CHECKING:
-    pass
-
 _MANIFEST_FILENAME = "_manifest.json"
 
 # Which top-level R2 prefix each dataset lives under -- see module docstring.
-_DATASET_GROUPS: Dict[str, str] = {
+_DATASET_GROUPS: dict[str, str] = {
     "splits": "corporate_actions",
     "dividends": "corporate_actions",
     "ipos": "corporate_actions",
@@ -57,8 +70,14 @@ _DATASET_GROUPS: Dict[str, str] = {
 # year-partitioned.
 _SNAPSHOT_DATASETS = {"ipos", "float"}
 
+# short_volume/short_interest are additionally split by ticker --
+# <group>/<dataset>/<TICKER>/<year>.parquet -- unlike splits/dividends,
+# which stay a single global year file. See module docstring for the
+# real-scale numbers that justify treating these two differently.
+_PER_TICKER_DATASETS = {"short_volume", "short_interest"}
+
 # The date column each append-only dataset's rows are year-partitioned by.
-_DATE_COLUMNS: Dict[str, str] = {
+_DATE_COLUMNS: dict[str, str] = {
     "splits": schema.SPLIT_EXECUTION_DATE,
     "dividends": schema.DIVIDEND_EX_DIVIDEND_DATE,
     "short_volume": schema.SHORT_VOLUME_DATE,
@@ -70,14 +89,14 @@ _DATE_COLUMNS: Dict[str, str] = {
 # carry a real vendor-assigned `id`; short volume/interest don't, so
 # (ticker, date) is the natural key instead (one row per ticker per
 # reporting date).
-_DEDUP_KEYS: Dict[str, List[str]] = {
+_DEDUP_KEYS: dict[str, list[str]] = {
     "splits": [schema.SPLIT_ID],
     "dividends": [schema.DIVIDEND_ID],
     "short_volume": [schema.TICKER, schema.SHORT_VOLUME_DATE],
     "short_interest": [schema.TICKER, schema.SHORT_INTEREST_SETTLEMENT_DATE],
 }
 
-_COLUMNS: Dict[str, List[str]] = {
+_COLUMNS: dict[str, list[str]] = {
     "splits": schema.SPLIT_COLUMNS,
     "dividends": schema.DIVIDEND_COLUMNS,
     "ipos": schema.IPO_COLUMNS,
@@ -97,12 +116,12 @@ class ReferenceStore(ABC):
     `write()` looks it up via _SNAPSHOT_DATASETS itself."""
 
     @abstractmethod
-    def read(self, dataset: str) -> pd.DataFrame: ...
+    def read(self, dataset: str, ticker: str | None = None) -> pd.DataFrame: ...
 
     @abstractmethod
     def write(self, dataset: str, df: pd.DataFrame) -> None: ...
 
-    def read_manifest_bytes(self, group: str) -> Optional[bytes]:
+    def read_manifest_bytes(self, group: str) -> bytes | None:
         """Raw bytes of `group`'s manifest ("corporate_actions" |
         "positioning") -- see tam.marketdata.reference_ingest.Manifest.
         Default: no manifest support (every run re-does everything, which
@@ -119,19 +138,23 @@ class LocalReferenceStore(ReferenceStore):
     just plain file I/O rather than boto3, so validating a local backfill
     before pointing it at R2 exercises the equivalent code path."""
 
-    def __init__(self, root: "str | Path"):
+    def __init__(self, root: str | Path):
         self._root = Path(root)
 
-    def _path(self, dataset: str, year: Optional[int] = None) -> Path:
+    def _path(self, dataset: str, year: int | None = None, ticker: str | None = None) -> Path:
         group = _DATASET_GROUPS[dataset]
-        name = "all.parquet" if dataset in _SNAPSHOT_DATASETS else f"{year}.parquet"
-        return self._root / group / dataset / name
+        if dataset in _SNAPSHOT_DATASETS:
+            return self._root / group / dataset / "all.parquet"
+        if dataset in _PER_TICKER_DATASETS:
+            return self._root / group / dataset / ticker.upper() / f"{year}.parquet"
+        return self._root / group / dataset / f"{year}.parquet"
 
-    def _dataset_dir(self, dataset: str) -> Path:
-        return self._root / _DATASET_GROUPS[dataset] / dataset
+    def _dataset_dir(self, dataset: str, ticker: str | None = None) -> Path:
+        base = self._root / _DATASET_GROUPS[dataset] / dataset
+        return base / ticker.upper() if ticker else base
 
-    def _partition_years(self, dataset: str) -> List[int]:
-        directory = self._dataset_dir(dataset)
+    def _partition_years(self, dataset: str, ticker: str | None = None) -> list[int]:
+        directory = self._dataset_dir(dataset, ticker=ticker)
         if not directory.exists():
             return []
         years = []
@@ -140,13 +163,27 @@ class LocalReferenceStore(ReferenceStore):
                 years.append(int(path.stem))
         return sorted(years)
 
-    def read(self, dataset: str) -> pd.DataFrame:
+    def _list_tickers(self, dataset: str) -> list[str]:
+        directory = self._dataset_dir(dataset)
+        if not directory.exists():
+            return []
+        return sorted(path.name for path in directory.iterdir() if path.is_dir())
+
+    def read(self, dataset: str, ticker: str | None = None) -> pd.DataFrame:
         columns = _COLUMNS[dataset]
         if dataset in _SNAPSHOT_DATASETS:
             path = self._path(dataset)
             if not path.exists():
                 return schema.empty_frame(columns)
             return pd.read_parquet(path)[columns]
+        if dataset in _PER_TICKER_DATASETS:
+            tickers = [ticker.upper()] if ticker else self._list_tickers(dataset)
+            frames = [
+                pd.read_parquet(self._path(dataset, year, ticker=t))[columns]
+                for t in tickers
+                for year in self._partition_years(dataset, ticker=t)
+            ]
+            return pd.concat(frames, ignore_index=True) if frames else schema.empty_frame(columns)
         years = self._partition_years(dataset)
         if not years:
             return schema.empty_frame(columns)
@@ -155,43 +192,45 @@ class LocalReferenceStore(ReferenceStore):
 
     def write(self, dataset: str, df: pd.DataFrame) -> None:
         if dataset in _SNAPSHOT_DATASETS:
-            self._write_file(self._path(dataset), df)
+            self._write_file(self._path(dataset), df, dataset)
             return
         if df.empty:
             return
         date_col = _DATE_COLUMNS[dataset]
         years = pd.to_datetime(df[date_col]).dt.year
-        for year, group in df.groupby(years):
-            self._upsert_partition(dataset, int(year), group)
+        if dataset in _PER_TICKER_DATASETS:
+            tickers = df[schema.TICKER].str.upper()
+            for (ticker, year), group in df.groupby([tickers, years]):
+                self._upsert_partition(dataset, int(year), group, ticker=ticker)
+        else:
+            for year, group in df.groupby(years):
+                self._upsert_partition(dataset, int(year), group)
 
-    def _upsert_partition(self, dataset: str, year: int, group: pd.DataFrame) -> None:
-        path = self._path(dataset, year)
+    def _upsert_partition(self, dataset: str, year: int, group: pd.DataFrame, ticker: str | None = None) -> None:
+        path = self._path(dataset, year, ticker=ticker)
         if path.exists():
             existing = pd.read_parquet(path)
             combined = pd.concat([existing, group], ignore_index=True)
         else:
             combined = group
         combined = combined.drop_duplicates(subset=_DEDUP_KEYS[dataset], keep="last")
-        self._write_file(path, combined)
+        self._write_file(path, combined, dataset)
 
-    def _write_file(self, path: Path, df: pd.DataFrame) -> None:
+    def _write_file(self, path: Path, df: pd.DataFrame, dataset: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        dataset = path.parent.name
-        table_columns = _COLUMNS.get(dataset)
-        if table_columns is not None:
-            import pyarrow as pa
+        table_columns = _COLUMNS[dataset]
+        import pyarrow as pa
+        import pyarrow.parquet as pq
 
-            table = pa.Table.from_pandas(df.reindex(columns=table_columns), schema=schema.pyarrow_schema(table_columns), preserve_index=False)
-            import pyarrow.parquet as pq
-
-            pq.write_table(table, path)
-        else:
-            df.to_parquet(path, index=False)
+        table = pa.Table.from_pandas(
+            df.reindex(columns=table_columns), schema=schema.pyarrow_schema(table_columns), preserve_index=False
+        )
+        pq.write_table(table, path)
 
     def _manifest_path(self, group: str) -> Path:
         return self._root / group / _MANIFEST_FILENAME
 
-    def read_manifest_bytes(self, group: str) -> Optional[bytes]:
+    def read_manifest_bytes(self, group: str) -> bytes | None:
         path = self._manifest_path(group)
         if not path.exists():
             return None
@@ -212,7 +251,7 @@ class R2ReferenceStore(ReferenceStore):
     same underlying reason, unlike the vendor-key-resolution helpers,
     which differ enough per-vendor-product to stay independent copies)."""
 
-    def __init__(self, credentials: Optional[R2Credentials] = None, client=None):
+    def __init__(self, credentials: R2Credentials | None = None, client=None):
         self._credentials = credentials or resolve_r2_credentials()
         self._client = client or self._build_client()
 
@@ -231,22 +270,28 @@ class R2ReferenceStore(ReferenceStore):
             config=Config(signature_version="s3v4"),
         )
 
-    def _key(self, dataset: str, year: Optional[int] = None) -> str:
+    def _key(self, dataset: str, year: int | None = None, ticker: str | None = None) -> str:
         group = _DATASET_GROUPS[dataset]
-        name = "all.parquet" if dataset in _SNAPSHOT_DATASETS else f"{year}.parquet"
-        return f"{group}/{dataset}/{name}"
+        if dataset in _SNAPSHOT_DATASETS:
+            return f"{group}/{dataset}/all.parquet"
+        if dataset in _PER_TICKER_DATASETS:
+            return f"{group}/{dataset}/{ticker.upper()}/{year}.parquet"
+        return f"{group}/{dataset}/{year}.parquet"
 
-    def _dataset_prefix(self, dataset: str) -> str:
-        return f"{_DATASET_GROUPS[dataset]}/{dataset}/"
+    def _dataset_prefix(self, dataset: str, ticker: str | None = None) -> str:
+        prefix = f"{_DATASET_GROUPS[dataset]}/{dataset}/"
+        return f"{prefix}{ticker.upper()}/" if ticker else prefix
 
     def _manifest_key(self, group: str) -> str:
         return f"{group}/{_MANIFEST_FILENAME}"
 
-    def _partition_years(self, dataset: str) -> List[int]:
-        def _list() -> List[int]:
+    def _partition_years(self, dataset: str, ticker: str | None = None) -> list[int]:
+        def _list() -> list[int]:
             found = []
             paginator = self._client.get_paginator("list_objects_v2")
-            for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=self._dataset_prefix(dataset)):
+            for page in paginator.paginate(
+                Bucket=self._credentials.bucket, Prefix=self._dataset_prefix(dataset, ticker=ticker)
+            ):
                 for obj in page.get("Contents", []):
                     name = obj["Key"].rsplit("/", 1)[-1]
                     stem = name[: -len(".parquet")] if name.endswith(".parquet") else ""
@@ -256,11 +301,34 @@ class R2ReferenceStore(ReferenceStore):
 
         return sorted(_with_retries(_list))
 
-    def read(self, dataset: str) -> pd.DataFrame:
+    def _list_tickers(self, dataset: str) -> list[str]:
+        root = self._dataset_prefix(dataset)
+
+        def _list() -> list[str]:
+            found = []
+            paginator = self._client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=root, Delimiter="/"):
+                for entry in page.get("CommonPrefixes", []):
+                    name = entry["Prefix"][len(root) :].rstrip("/")
+                    if name:
+                        found.append(name)
+            return found
+
+        return sorted(_with_retries(_list))
+
+    def read(self, dataset: str, ticker: str | None = None) -> pd.DataFrame:
         columns = _COLUMNS[dataset]
         if dataset in _SNAPSHOT_DATASETS:
             df = self._read_object_if_exists(self._key(dataset))
             return df if df is not None else schema.empty_frame(columns)
+        if dataset in _PER_TICKER_DATASETS:
+            tickers = [ticker.upper()] if ticker else self._list_tickers(dataset)
+            frames = [
+                self._read_object(self._key(dataset, year, ticker=t))
+                for t in tickers
+                for year in self._partition_years(dataset, ticker=t)
+            ]
+            return pd.concat(frames, ignore_index=True) if frames else schema.empty_frame(columns)
         years = self._partition_years(dataset)
         if not years:
             return schema.empty_frame(columns)
@@ -275,11 +343,16 @@ class R2ReferenceStore(ReferenceStore):
             return
         date_col = _DATE_COLUMNS[dataset]
         years = pd.to_datetime(df[date_col]).dt.year
-        for year, group in df.groupby(years):
-            self._upsert_partition(dataset, int(year), group)
+        if dataset in _PER_TICKER_DATASETS:
+            tickers = df[schema.TICKER].str.upper()
+            for (ticker, year), group in df.groupby([tickers, years]):
+                self._upsert_partition(dataset, int(year), group, ticker=ticker)
+        else:
+            for year, group in df.groupby(years):
+                self._upsert_partition(dataset, int(year), group)
 
-    def _upsert_partition(self, dataset: str, year: int, group: pd.DataFrame) -> None:
-        key = self._key(dataset, year)
+    def _upsert_partition(self, dataset: str, year: int, group: pd.DataFrame, ticker: str | None = None) -> None:
+        key = self._key(dataset, year, ticker=ticker)
         existing = self._read_object_if_exists(key)
         combined = pd.concat([existing, group], ignore_index=True) if existing is not None else group
         combined = combined.drop_duplicates(subset=_DEDUP_KEYS[dataset], keep="last")
@@ -299,7 +372,7 @@ class R2ReferenceStore(ReferenceStore):
 
         return _with_retries(_head)
 
-    def _read_object_if_exists(self, key: str) -> Optional[pd.DataFrame]:
+    def _read_object_if_exists(self, key: str) -> pd.DataFrame | None:
         if not self._object_exists(key):
             return None
         return self._read_object(key)
@@ -324,7 +397,9 @@ class R2ReferenceStore(ReferenceStore):
         import pyarrow.parquet as pq
 
         columns = _COLUMNS[dataset]
-        table = pa.Table.from_pandas(df.reindex(columns=columns), schema=schema.pyarrow_schema(columns), preserve_index=False)
+        table = pa.Table.from_pandas(
+            df.reindex(columns=columns), schema=schema.pyarrow_schema(columns), preserve_index=False
+        )
         buffer = io.BytesIO()
         pq.write_table(table, buffer)
         data = buffer.getvalue()
@@ -334,10 +409,10 @@ class R2ReferenceStore(ReferenceStore):
 
         _with_retries(_put)
 
-    def read_manifest_bytes(self, group: str) -> Optional[bytes]:
+    def read_manifest_bytes(self, group: str) -> bytes | None:
         from botocore.exceptions import ClientError
 
-        def _get() -> Optional[bytes]:
+        def _get() -> bytes | None:
             try:
                 response = self._client.get_object(Bucket=self._credentials.bucket, Key=self._manifest_key(group))
                 return response["Body"].read()

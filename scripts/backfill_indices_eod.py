@@ -22,6 +22,7 @@ same MultiDataStore fan-out as scripts/backfill_sp500_eod.py, so see that
 script's own docstring for why (one fetch per ticker, not one per
 destination).
 """
+
 from __future__ import annotations
 
 import argparse

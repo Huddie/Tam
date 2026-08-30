@@ -2,11 +2,11 @@
 
 Kept free of any plotting dependency; see backtest/visualization.py for rendering.
 """
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
 
 import pandas as pd
 
@@ -25,17 +25,17 @@ _EMPTY_SUMMARY_KEYS = (
 
 @dataclass
 class Report:
-    snapshots: List[dict] = field(default_factory=list)
-    trades: List[dict] = field(default_factory=list)
-    annotations: List[dict] = field(default_factory=list)
+    snapshots: list[dict] = field(default_factory=list)
+    trades: list[dict] = field(default_factory=list)
+    annotations: list[dict] = field(default_factory=list)
 
     @classmethod
     def from_curves(
         cls,
-        curves: Union[pd.DataFrame, Dict[str, pd.Series]],
-        trades: Optional[pd.DataFrame] = None,
-        annotations: Optional[List[dict]] = None,
-    ) -> "Report":
+        curves: pd.DataFrame | dict[str, pd.Series],
+        trades: pd.DataFrame | None = None,
+        annotations: list[dict] | None = None,
+    ) -> Report:
         """Build a Report straight from equity curves you already have --
         no BacktestHarness, no Strategy/Portfolio, no event-driven simulation
         involved. `curves` is either {name: pd.Series} (one named curve per
@@ -95,7 +95,7 @@ class Report:
             return df
         return df[df["portfolio"] == portfolio_id].sort_values("date")
 
-    def portfolio_ids(self) -> List[str]:
+    def portfolio_ids(self) -> list[str]:
         if not self.snapshots:
             return []
         return sorted(self.to_frame()["portfolio"].unique())

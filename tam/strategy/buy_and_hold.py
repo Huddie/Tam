@@ -1,4 +1,5 @@
 """Reference baseline strategy: buys a fixed quantity on the first event, then holds."""
+
 from __future__ import annotations
 
 from ..events.clock import EOD_TOPIC
@@ -23,9 +24,7 @@ class BuyAndHoldStrategy(Strategy):
     def on_event(self, event: Event) -> None:
         if self._bought:
             return
-        self.trade.stocks(
-            [Order(ticker=self._ticker, side=Side.BUY, qty=self._qty, portfolio=self._portfolio_id)]
-        )
+        self.trade.stocks([Order(ticker=self._ticker, side=Side.BUY, qty=self._qty, portfolio=self._portfolio_id)])
         self._bought = True
 
     def get_state(self) -> dict:

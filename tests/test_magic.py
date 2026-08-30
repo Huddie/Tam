@@ -4,6 +4,7 @@ No real IPython kernel needed: `load_ipython_extension` only touches the
 `ipython` object it's handed, so a tiny fake standing in for
 `register_magic_function` is enough to test the wiring in isolation.
 """
+
 from tam.notebook.magic import load_ipython_extension, run_backtest_magic
 
 
@@ -37,7 +38,9 @@ def test_run_backtest_magic_parses_the_line_and_forwards_to_run_backtest(monkeyp
 
     monkeypatch.setattr("tam.notebook.magic.run_backtest", fake_run_backtest)
 
-    result = run_backtest_magic("config.yaml --live --render-mode native_dash --poll-seconds 5 --show-trades false --port 9000")
+    result = run_backtest_magic(
+        "config.yaml --live --render-mode native_dash --poll-seconds 5 --show-trades false --port 9000"
+    )
 
     assert result == "the-report"
     assert captured["config_path"] == "config.yaml"

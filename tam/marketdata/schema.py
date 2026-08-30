@@ -14,6 +14,7 @@ point a naive local timestamp is genuinely ambiguous (the same wall-clock
 time occurs twice, or not at all). Convert to America/New_York only at
 query/display time (`tz_convert`), never store it that way.
 """
+
 from __future__ import annotations
 
 import pandas as pd

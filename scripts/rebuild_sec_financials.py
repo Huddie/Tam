@@ -23,6 +23,7 @@ holding it all in memory for this maintenance-only job is the simple,
 correct choice -- not something to run on every ingest, just when the
 normalization logic itself changes.
 """
+
 from __future__ import annotations
 
 import time

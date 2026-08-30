@@ -6,7 +6,7 @@ import pytest
 from tam.basket.matrix import price_matrix
 from tam.data.providers import DataProvider
 from tam.data.repository import DataRepository
-from tam.data.schema import CLOSE, OPEN, OHLCV_COLUMNS
+from tam.data.schema import CLOSE, OHLCV_COLUMNS, OPEN
 from tam.data.storage import CsvStore
 
 
@@ -22,7 +22,14 @@ class _TwoTickerProvider(DataProvider):
 def _bars(dates, opens, closes):
     idx = pd.to_datetime(dates)
     return pd.DataFrame(
-        {"open": opens, "high": closes, "low": opens, "close": closes, "adj_close": closes, "volume": [100] * len(dates)},
+        {
+            "open": opens,
+            "high": closes,
+            "low": opens,
+            "close": closes,
+            "adj_close": closes,
+            "volume": [100] * len(dates),
+        },
         index=idx,
     ).rename_axis("date")[OHLCV_COLUMNS]
 

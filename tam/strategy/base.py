@@ -1,9 +1,9 @@
 """Base class for user strategies; bound to the runtime by the harness before use."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import date
-from typing import Optional
 
 from ..events.bus import EventBus
 from ..events.types import ANNOTATION_TOPIC, Event, State
@@ -13,9 +13,9 @@ from ..trading.gateway import TradeGateway
 
 class Strategy(ABC):
     def __init__(self):
-        self._bus: Optional[EventBus] = None
-        self._trader: Optional[TradeGateway] = None
-        self._portfolios: Optional[PortfolioRegistry] = None
+        self._bus: EventBus | None = None
+        self._trader: TradeGateway | None = None
+        self._portfolios: PortfolioRegistry | None = None
 
     def bind(self, bus: EventBus, trader: TradeGateway, portfolios: PortfolioRegistry) -> None:
         self._bus = bus
@@ -28,7 +28,7 @@ class Strategy(ABC):
     def publish(self, topic: str, event: Event) -> None:
         self._bus.publish(topic, event)
 
-    def annotate(self, label: str, date: Optional[date] = None) -> None:
+    def annotate(self, label: str, date: date | None = None) -> None:
         """Mark a moment for the final report/live dashboard -- e.g. "fine-tuned
         to gen 3" -- rendered as a dotted vertical line on the equity chart.
         `date` defaults to the harness's current simulation date (from the

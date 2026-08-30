@@ -28,9 +28,8 @@ Kept out of report.py/visualization.py so those stay free of this dependency
 -- the same separation report.py's own docstring already describes for
 plotly ("Kept free of any plotting dependency; see visualization.py").
 """
-from __future__ import annotations
 
-from typing import Optional, Union
+from __future__ import annotations
 
 import pandas as pd
 
@@ -50,7 +49,7 @@ def returns_for(report: Report, portfolio_id: str) -> pd.Series:
     return curve.pct_change().dropna()
 
 
-def resolve_benchmark(report: Report, benchmark: Optional[Union[str, pd.Series]]):
+def resolve_benchmark(report: Report, benchmark: str | pd.Series | None):
     """A benchmark that names another portfolio already in THIS Report
     resolves to that portfolio's own returns (comparing two strategies from
     the same backtest run, no network involved) -- anything else (a raw

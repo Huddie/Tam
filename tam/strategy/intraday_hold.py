@@ -3,6 +3,7 @@ day's close, capturing only the regular-session return while staying flat
 overnight -- the mirror-image comparison to overnight_hold. General across
 tickers -- point it at any symbol via config.
 """
+
 from __future__ import annotations
 
 from ..events.clock import EOD_TOPIC, OPEN_TOPIC

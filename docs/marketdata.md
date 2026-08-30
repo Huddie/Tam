@@ -48,17 +48,17 @@ Massive flat files  -->  filter to universe  -->  validate  -->  R2 (Parquet)
 ```python
 from tam.marketdata.duckdb_query import open_duckdb
 
-con = open_duckdb(bucket="tam-data")           # reads from R2 directly
+con = open_duckdb(bucket="tam-data")  # reads from R2 directly
 # con = open_duckdb(local_root="data/minute")  # or: plain local Parquet, no R2/network
 
 con.sql("SELECT * FROM minute_bars('SPY') WHERE ts >= '2020-03-01' ORDER BY ts").df()
 con.sql("SELECT * FROM daily_bars('SPY') ORDER BY day").df()
 con.sql("SELECT * FROM weekly_bars('SPY') ORDER BY week").df()
 con.sql("SELECT * FROM monthly_bars('SPY') ORDER BY month").df()
-con.sql("SELECT * FROM rollup_bars('SPY', 5) ORDER BY bucket").df()       # any N-minute bars
+con.sql("SELECT * FROM rollup_bars('SPY', 5) ORDER BY bucket").df()  # any N-minute bars
 con.sql("SELECT * FROM daily_returns('SPY') ORDER BY day").df()
 con.sql("SELECT * FROM rolling_volatility('SPY', 21) ORDER BY day").df()  # 21-day annualized vol
-con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()              # true EOD (tam.data's lake), adj_close included
+con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()  # true EOD (tam.data's lake), adj_close included
 ```
 
 Every one of these is a DuckDB SQL macro over the raw 1-minute Parquet
@@ -93,7 +93,8 @@ No boto3 dependency for this lake: reads/writes go through
 `pyarrow.fs.S3FileSystem`; interactive querying goes through DuckDB's own
 `httpfs` extension.
 
-## Backfilling data
+<details>
+<summary>Backfilling / ingesting new data (maintainers only — not needed to query the lake)</summary>
 
 Validate against a small range/universe locally first (no R2/Massive
 credentials needed):
@@ -114,7 +115,7 @@ flush_every_days:`) batches store writes rather than writing after every
 single day — `MinuteBarStore.write()` reads/merges/rewrites a symbol's
 entire year-partition file per call.
 
-### Backfilling completeness sidecars for already-ingested data
+**Backfilling completeness sidecars for already-ingested data:**
 
 ```bash
 uv run python scripts/backfill_completeness.py            # every symbol currently in the bucket
@@ -126,12 +127,86 @@ uv run python scripts/backfill_completeness.py --workers 16  # default: 8 -- I/O
 Safe to re-run: without `--force` it skips any symbol-year that already
 has a sidecar.
 
-### Ongoing daily ingestion
+**Ongoing daily ingestion:** two scheduled GitHub Actions workflows,
+gated on the test suite passing first: `.github/workflows/ingest_minute_bars.yml`
+and `.github/workflows/ingest_eod_bars.yml`. Both run daily via
+`schedule:`, plus `workflow_dispatch` for an on-demand run.
 
-Two scheduled GitHub Actions workflows, gated on the test suite passing
-first: `.github/workflows/ingest_minute_bars.yml` and
-`.github/workflows/ingest_eod_bars.yml`. Both run daily via `schedule:`,
-plus `workflow_dispatch` for an on-demand run.
+</details>
+
+## Reference data — splits, dividends, IPOs, short interest/volume, float
+
+Corporate actions and positioning data for every US-listed ticker, from
+the same vendor (Massive, formerly Polygon.io) as the minute bars above,
+ingested into the same R2 bucket so it stays queryable even after
+subscription access to the vendor lapses. Same `open_duckdb()`/DuckDB-
+macro pattern as `minute_bars`/`eod_bars` — no Python wrapper class.
+
+```bash
+pip install "tam-quant[marketdata]"   # same extra as minute bars — adds the `massive` SDK
+```
+
+```python
+from tam.marketdata.duckdb_query import open_duckdb
+
+con = open_duckdb(bucket="tam-data")
+
+con.sql("SELECT * FROM splits('AAPL') ORDER BY execution_date").df()
+con.sql("SELECT * FROM dividends('AAPL') ORDER BY ex_dividend_date").df()
+con.sql("SELECT * FROM ipos() ORDER BY listing_date DESC").df()  # every ticker, no arg needed
+con.sql("SELECT * FROM short_volume('AAPL') ORDER BY date").df()
+con.sql("SELECT * FROM short_interest('AAPL') ORDER BY settlement_date").df()
+con.sql("SELECT * FROM float_data('AAPL')").df()
+```
+
+Every macro takes an **optional** ticker (`splits()` with no argument
+returns every ticker's rows at once) — pass one to scope to a single
+company.
+
+### R2 layout
+
+Grouped under two top-level prefixes by what the data represents, not by
+which vendor call fetched it: `corporate_actions/` (things a company
+actively does) and `positioning/` (things about how its shares are held
+or traded).
+
+| Dataset | R2 path | Partitioning |
+|---|---|---|
+| Splits | `corporate_actions/splits/<year>.parquet` | year, append-only |
+| Dividends | `corporate_actions/dividends/<year>.parquet` | year, append-only |
+| IPOs | `corporate_actions/ipos/all.parquet` | single file, full refresh every run |
+| Short volume | `positioning/short_volume/<TICKER>/<year>.parquet` | **ticker + year**, append-only |
+| Short interest | `positioning/short_interest/<TICKER>/<year>.parquet` | **ticker + year**, append-only |
+| Float | `positioning/float/all.parquet` | single file, full refresh every run |
+
+Short volume and short interest are the two datasets partitioned
+per-ticker (`positioning/short_volume/AAPL/2025.parquet`, same layout as
+minute bars' `minute/<SYMBOL>/<year>.parquet`) — every other dataset here
+is small enough market-wide that a single global year (or all-time) file
+is fine. Short volume in particular is a daily figure for every US
+ticker; a single global year file for it runs into the millions of rows.
+
+Each group also has its own manifest tracking incremental-ingest
+cursors: `corporate_actions/_manifest.json`, `positioning/_manifest.json`.
+
+<details>
+<summary>Ingesting new reference data (maintainers only — not needed to query the lake)</summary>
+
+```bash
+python -m examples.ingest_reference_data --local-root data   # local dry-run, no R2/vendor credentials needed
+python -m examples.ingest_reference_data                      # real R2 + MASSIVE_API_KEY
+```
+
+Needs `MASSIVE_API_KEY` — the vendor's REST bearer token, a **different**
+credential from the `MASSIVE_S3_ACCESS_KEY_ID`/`MASSIVE_S3_SECRET_ACCESS_KEY`
+flat-file keys minute bars use. Splits/dividends/short volume/short
+interest resume from their own stored cursor automatically; IPOs/float
+have no incremental concept and re-fetch their full current table every
+run. Scheduled daily via `.github/workflows/ingest_reference_data.yml`
+(same gated-on-tests, `schedule:` + `workflow_dispatch` shape as the
+other ingestion workflows).
+
+</details>
 
 ## Data model notes — things that can silently break a backtest
 

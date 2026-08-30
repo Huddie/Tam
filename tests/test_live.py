@@ -62,10 +62,14 @@ def test_report_from_checkpoint_reconstructs_snapshots_and_trades_mid_run(tmp_pa
     harness.run(checkpoint_path=str(checkpoint_path), checkpoint_every=1)
     # A clean finish deletes the checkpoint -- write a fresh one directly so this
     # test exercises reading a *live*, not-yet-finished checkpoint.
-    harness._write_checkpoint(str(checkpoint_path), day_index=3, snapshots=[
-        {"date": _DATES[0], "portfolio": "main", "cash": 9_500.0, "value": 10_000.0},
-        {"date": _DATES[1], "portfolio": "main", "cash": 9_500.0, "value": 10_010.0},
-    ])
+    harness._write_checkpoint(
+        str(checkpoint_path),
+        day_index=3,
+        snapshots=[
+            {"date": _DATES[0], "portfolio": "main", "cash": 9_500.0, "value": 10_000.0},
+            {"date": _DATES[1], "portfolio": "main", "cash": 9_500.0, "value": 10_010.0},
+        ],
+    )
 
     report = report_from_checkpoint(str(checkpoint_path))
 
@@ -127,7 +131,6 @@ def test_live_render_never_draws_if_next_frame_always_returns_none(monkeypatch):
 
     def next_frame():
         calls["n"] += 1
-        return None
 
     live_render(next_frame, poll_seconds=0, should_continue=lambda: calls["n"] < 2)
 

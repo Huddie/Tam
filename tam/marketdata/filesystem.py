@@ -7,6 +7,7 @@ directly from SQL, so no Python-side client is needed for querying at all --
 just this module's configure_duckdb_r2() to point it at the right endpoint
 and hand it credentials.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -18,14 +19,14 @@ if TYPE_CHECKING:
     import pyarrow.fs
 
 
-def r2_filesystem(credentials: R2Credentials) -> "pyarrow.fs.S3FileSystem":
+def r2_filesystem(credentials: R2Credentials) -> pyarrow.fs.S3FileSystem:
     """A pyarrow S3FileSystem pointed at this account's R2 endpoint --
     passed to MinuteBarStore for either ingestion writes or ad hoc Python-
     side reads (interactive querying should prefer DuckDB's httpfs instead;
     see open_r2_duckdb() below). `region="auto"` is R2's own documented
     value -- R2 has no real regions, but the S3 protocol requires the field
     to be present."""
-    import pyarrow.fs as fs
+    from pyarrow import fs
 
     return fs.S3FileSystem(
         endpoint_override=credentials.endpoint,
@@ -50,7 +51,7 @@ def r2_uri(credentials: R2Credentials, *parts: str) -> str:
     return "s3://" + r2_bucket_path(credentials, *parts)
 
 
-def configure_duckdb_r2(con: "duckdb.DuckDBPyConnection", credentials: R2Credentials) -> None:
+def configure_duckdb_r2(con: duckdb.DuckDBPyConnection, credentials: R2Credentials) -> None:
     """Installs/loads `httpfs` and points it at this account's R2 endpoint
     with the given credentials -- after this call, `con` can read/write
     `s3://<bucket>/...` paths directly in SQL. One shared setup path for

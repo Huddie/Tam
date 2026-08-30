@@ -11,10 +11,7 @@ def _snap(d, portfolio, value, cash=0.0):
 
 def _series(portfolio, values, start=date(2024, 1, 1)):
     """Build a list of daily snapshot dicts for one portfolio from a list of values."""
-    return [
-        _snap(start + timedelta(days=i), portfolio, v)
-        for i, v in enumerate(values)
-    ]
+    return [_snap(start + timedelta(days=i), portfolio, v) for i, v in enumerate(values)]
 
 
 def test_summary_total_return_and_max_drawdown():
@@ -203,4 +200,3 @@ def test_from_curves_accepts_a_trades_dataframe_and_annotations():
     assert len(report.trades_for("main")) == 1
     assert report.trades_for("main").iloc[0]["ticker"] == "AAPL"
     assert report.annotations == annotations
-

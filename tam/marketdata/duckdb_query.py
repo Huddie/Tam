@@ -37,20 +37,36 @@ get there). Every one takes an OPTIONAL `sym` (a plain ticker string, no
 CIK resolution needed -- these datasets store ticker as a plain column,
 not by CIK): omit it for every ticker at once, or pass it to scope to one.
 
-Every one of those macros' read_parquet() calls appends a `substr(coalesce(
-try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)` (always an empty string) to
-the glob path -- NOT dead code. Confirmed live: DuckDB eagerly resolves
-(and errors on zero matches for) a table macro's read_parquet() glob AT
-`CREATE MACRO` TIME, UNLESS the path expression textually references the
-macro's own parameter somewhere -- purely syntactic, not about the actual
-resolved value (a defaulted `sym := 'X'` used directly in a path still
-defers; an unrelated `ticker_or_cik` used only in a later `WHERE` clause
-does not). Without this no-op reference, `open_duckdb()` against a bucket/
-local_root that doesn't have a `sec/` prefix YET (e.g. before the first
-SEC backfill has ever run, or any EOD-only/minute-only test fixture) would
-fail to even construct a connection at all -- caught live by this
-project's own pre-existing marketdata test suite the first time these
-macros shipped.
+`short_volume`/`short_interest` are partitioned per-ticker on disk
+(`positioning/short_volume/<TICKER>/<year>.parquet`, same layout as
+`minute/<SYMBOL>/<year>.parquet` -- see reference_store.py's own
+docstring for why only these two, not all six) -- their macros build
+`sym` (or `*` when omitted) directly into the glob's PATH rather than
+filtering with a `WHERE ticker = ...` clause afterward, so passing a
+`sym` narrows the actual files scanned instead of reading every ticker's
+data and discarding most of it. `splits`/`dividends`/`ipos`/`float_data`
+stay single global files, so those four still filter with `WHERE` after
+reading everything -- there's nothing to narrow the scan to.
+
+Every one of those macros' read_parquet() calls references its own `sym`/
+`ticker_or_cik` parameter directly inside the glob path expression --
+NOT dead code. Confirmed live: DuckDB eagerly resolves (and errors on
+zero matches for) a table macro's read_parquet() glob AT `CREATE MACRO`
+TIME, UNLESS the path expression textually references the macro's own
+parameter somewhere -- purely syntactic, not about the actual resolved
+value (a defaulted `sym := 'X'` used directly in a path still defers; an
+unrelated parameter used only in a later `WHERE` clause does not). The
+four single-global-file macros (`sec_facts`/`sec_financials`/`splits`/
+etc.) use a no-op `substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)`
+suffix (always an empty string) purely to satisfy this syntactic
+requirement, since their path doesn't otherwise need the parameter;
+`short_volume`/`short_interest` don't need that trick since their
+`CASE WHEN sym IS NULL THEN '*' ELSE upper(sym) END` is ALREADY a real,
+meaningful part of the path. Without either form, `open_duckdb()` against
+a bucket/local_root that doesn't have the relevant prefix YET (e.g.
+before the first backfill has ever run) would fail to even construct a
+connection at all -- caught live by this project's own pre-existing
+marketdata test suite the first time these macros shipped.
 
 All three lakes live in the same bucket under different prefixes
 ("minute/"/"eod/"/"sec/"), so one open_duckdb() call queries all of them.
@@ -67,9 +83,10 @@ All three lakes live in the same bucket under different prefixes
 
     con = open_duckdb(local_root="data")          # reads local Parquet instead (data/minute, data/eod, data/sec)
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .credentials import R2Credentials, resolve_r2_credentials
 from .filesystem import configure_duckdb_r2, r2_uri
@@ -185,17 +202,17 @@ CREATE OR REPLACE MACRO ipos(sym := NULL) AS TABLE
 
 CREATE OR REPLACE MACRO short_volume(sym := NULL) AS TABLE
     SELECT * FROM read_parquet(
-        getvariable('positioning_root') || '/short_volume/*.parquet'
-        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
-    )
-    WHERE sym IS NULL OR ticker = upper(sym);
+        getvariable('positioning_root') || '/short_volume/'
+        || CASE WHEN sym IS NULL THEN '*' ELSE upper(sym) END
+        || '/*.parquet'
+    );
 
 CREATE OR REPLACE MACRO short_interest(sym := NULL) AS TABLE
     SELECT * FROM read_parquet(
-        getvariable('positioning_root') || '/short_interest/*.parquet'
-        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
-    )
-    WHERE sym IS NULL OR ticker = upper(sym);
+        getvariable('positioning_root') || '/short_interest/'
+        || CASE WHEN sym IS NULL THEN '*' ELSE upper(sym) END
+        || '/*.parquet'
+    );
 
 CREATE OR REPLACE MACRO float_data(sym := NULL) AS TABLE
     SELECT * FROM read_parquet(
@@ -206,11 +223,11 @@ CREATE OR REPLACE MACRO float_data(sym := NULL) AS TABLE
 """
 
 
-def _register_macros(con: "duckdb.DuckDBPyConnection") -> None:
+def _register_macros(con: duckdb.DuckDBPyConnection) -> None:
     con.sql(_MACROS)
 
 
-def _configure_connection(con: "duckdb.DuckDBPyConnection") -> None:
+def _configure_connection(con: duckdb.DuckDBPyConnection) -> None:
     """Disables DuckDB's own progress bar, then registers every SQL macro
     via _register_macros(). The progress bar isn't just cosmetic noise --
     confirmed live (a real Colab notebook session) that leaving it
@@ -234,15 +251,15 @@ def _configure_connection(con: "duckdb.DuckDBPyConnection") -> None:
 
 def open_duckdb(
     *,
-    bucket: Optional[str] = None,
-    credentials: Optional[R2Credentials] = None,
-    local_root: Optional[str] = None,
+    bucket: str | None = None,
+    credentials: R2Credentials | None = None,
+    local_root: str | None = None,
     minute_prefix: str = "minute",
     eod_prefix: str = "eod",
     sec_prefix: str = "sec",
     corporate_actions_prefix: str = "corporate_actions",
     positioning_prefix: str = "positioning",
-) -> "duckdb.DuckDBPyConnection":
+) -> duckdb.DuckDBPyConnection:
     """A fresh DuckDB connection ready to query all five Parquet lakes --
     the minute-bar lake (minute_bars(sym) and its rollup macros), tam.data's
     end-of-day lake (eod_bars(sym)), tam.research.data.sec's XBRL/filings
@@ -299,4 +316,3 @@ def open_duckdb(
     con.sql(f"SET VARIABLE positioning_root = '{positioning_root}'")
     _configure_connection(con)
     return con
-

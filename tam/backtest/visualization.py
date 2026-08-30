@@ -3,10 +3,10 @@
 Kept separate from report.py so computing metrics never requires plotly installed;
 only call into this module when you actually want a chart.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Union
 
 import pandas as pd
 import plotly.colors
@@ -26,8 +26,9 @@ class RenderOptions:
     default everywhere it's accepted) reproduces today's behavior exactly."""
 
     show_trades_default: bool = True
-    height: Optional[int] = None
+    height: int | None = None
     template: str = "plotly_white"
+
 
 _PERCENT_METRICS = {"total_return", "cagr", "volatility", "max_drawdown"}
 _CURRENCY_METRICS = {"start_value", "end_value"}
@@ -83,7 +84,7 @@ def _trade_marker_trace(
     report: Report,
     portfolio_id: str,
     normalized_curve: pd.Series,
-    ticker_colors: Dict[str, str],
+    ticker_colors: dict[str, str],
     fallback_color: str,
     visible_default: bool,
 ):
@@ -128,8 +129,10 @@ def _trade_marker_trace(
                 buy_notional = buy_row["qty"] * buy_row["price"]
                 sell_notional = sell_row["qty"] * sell_row["price"]
                 symbol = (
-                    "triangle-up" if buy_notional > sell_notional
-                    else "triangle-down" if buy_notional < sell_notional
+                    "triangle-up"
+                    if buy_notional > sell_notional
+                    else "triangle-down"
+                    if buy_notional < sell_notional
                     else "diamond"
                 )
             else:
@@ -168,9 +171,9 @@ def _trade_marker_trace(
 def render(
     report: Report,
     title: str = "Backtest Report",
-    ticker_colors: Optional[Dict[str, str]] = None,
-    prices: Optional[Dict[str, pd.Series]] = None,
-    options: Optional[RenderOptions] = None,
+    ticker_colors: dict[str, str] | None = None,
+    prices: dict[str, pd.Series] | None = None,
+    options: RenderOptions | None = None,
 ) -> go.Figure:
     """Build the dashboard figure: normalized equity curves, drawdown, and a
     metrics table -- plus an optional raw ticker-price panel above the equity
@@ -323,7 +326,11 @@ def render(
     trade_trace_indices = []
     for portfolio_id in portfolio_ids:
         marker_trace = _trade_marker_trace(
-            report, portfolio_id, normalized_curves[portfolio_id], ticker_colors, colors[portfolio_id],
+            report,
+            portfolio_id,
+            normalized_curves[portfolio_id],
+            ticker_colors,
+            colors[portfolio_id],
             options.show_trades_default,
         )
         if marker_trace is not None:
@@ -336,13 +343,25 @@ def render(
     cells = [summary.index.tolist()]
     for col in metric_cols:
         if col in _CURRENCY_METRICS:
-            fmt = lambda v: f"${v:,.2f}"
+
+            def fmt(v):
+                return f"${v:,.2f}"
+
         elif col in _PERCENT_METRICS:
-            fmt = lambda v: f"{v:.2%}"
+
+            def fmt(v):
+                return f"{v:.2%}"
+
         elif col in _INT_METRICS:
-            fmt = lambda v: f"{v:.0f}"
+
+            def fmt(v):
+                return f"{v:.0f}"
+
         else:
-            fmt = lambda v: f"{v:.2f}"
+
+            def fmt(v):
+                return f"{v:.2f}"
+
         cells.append([fmt(v) for v in summary[col]])
 
     fig.add_trace(
@@ -390,21 +409,21 @@ def write_html(
     report: Report,
     path: str,
     title: str = "Backtest Report",
-    ticker_colors: Optional[Dict[str, str]] = None,
-    prices: Optional[Dict[str, pd.Series]] = None,
-    options: Optional[RenderOptions] = None,
+    ticker_colors: dict[str, str] | None = None,
+    prices: dict[str, pd.Series] | None = None,
+    options: RenderOptions | None = None,
 ) -> None:
     render(report, title=title, ticker_colors=ticker_colors, prices=prices, options=options).write_html(path)
 
 
 def render_curves(
-    curves: Union[pd.DataFrame, Dict[str, pd.Series]],
-    trades: Optional[pd.DataFrame] = None,
-    annotations: Optional[list] = None,
+    curves: pd.DataFrame | dict[str, pd.Series],
+    trades: pd.DataFrame | None = None,
+    annotations: list | None = None,
     title: str = "Backtest Report",
-    ticker_colors: Optional[Dict[str, str]] = None,
-    prices: Optional[Dict[str, pd.Series]] = None,
-    options: Optional[RenderOptions] = None,
+    ticker_colors: dict[str, str] | None = None,
+    prices: dict[str, pd.Series] | None = None,
+    options: RenderOptions | None = None,
 ) -> go.Figure:
     """render(), straight from equity curves you already have -- no
     BacktestHarness/Strategy/Portfolio involved. `curves`/`trades`/`annotations`
@@ -415,4 +434,10 @@ def render_curves(
 
         render_curves({"my_strategy": wealth_series}).show()
     """
-    return render(Report.from_curves(curves, trades, annotations), title=title, ticker_colors=ticker_colors, prices=prices, options=options)
+    return render(
+        Report.from_curves(curves, trades, annotations),
+        title=title,
+        ticker_colors=ticker_colors,
+        prices=prices,
+        options=options,
+    )

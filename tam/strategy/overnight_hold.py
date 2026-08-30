@@ -3,6 +3,7 @@ day's open, capturing only the close-to-open ("overnight") return while
 staying flat during the regular session. General across tickers -- point it
 at any symbol via config.
 """
+
 from __future__ import annotations
 
 from ..events.clock import EOD_TOPIC, OPEN_TOPIC

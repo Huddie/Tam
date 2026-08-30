@@ -12,17 +12,11 @@ def _snap(d, portfolio, value, cash=0.0):
 
 
 def _series(portfolio, values, start=date(2024, 1, 1)):
-    return [
-        _snap(start + timedelta(days=i), portfolio, v)
-        for i, v in enumerate(values)
-    ]
+    return [_snap(start + timedelta(days=i), portfolio, v) for i, v in enumerate(values)]
 
 
 def _two_portfolio_report():
-    snapshots = (
-        _series("main", [100.0, 120.0, 90.0, 110.0, 150.0])
-        + _series("alt", [200.0, 190.0, 210.0, 220.0])
-    )
+    snapshots = _series("main", [100.0, 120.0, 90.0, 110.0, 150.0]) + _series("alt", [200.0, 190.0, 210.0, 220.0])
     return Report(snapshots)
 
 
@@ -203,10 +197,16 @@ def test_render_uses_the_same_line_color_for_a_portfolio_s_equity_and_drawdown()
 
     fig = render(report)
 
-    equity_color = {t.name: t.line.color for t in fig.data if isinstance(t, go.Scatter) and t.mode == "lines"
-                     and t.name in ("main", "alt")}
-    drawdown_color = {t.name.removesuffix(" drawdown"): t.line.color for t in fig.data
-                       if isinstance(t, go.Scatter) and t.mode == "lines" and t.name.endswith(" drawdown")}
+    equity_color = {
+        t.name: t.line.color
+        for t in fig.data
+        if isinstance(t, go.Scatter) and t.mode == "lines" and t.name in ("main", "alt")
+    }
+    drawdown_color = {
+        t.name.removesuffix(" drawdown"): t.line.color
+        for t in fig.data
+        if isinstance(t, go.Scatter) and t.mode == "lines" and t.name.endswith(" drawdown")
+    }
 
     assert equity_color["main"] == drawdown_color["main"]
     assert equity_color["alt"] == drawdown_color["alt"]
@@ -293,5 +293,7 @@ def test_render_curves_accepts_a_wide_dataframe_and_render_options():
     fig = render_curves(df, options=RenderOptions(height=700))
 
     assert fig.layout.height == 700
-    equity_names = sorted(t.name for t in fig.data if isinstance(t, go.Scatter) and t.mode == "lines" and t.name in ("a", "b"))
+    equity_names = sorted(
+        t.name for t in fig.data if isinstance(t, go.Scatter) and t.mode == "lines" and t.name in ("a", "b")
+    )
     assert equity_names == ["a", "b"]

@@ -20,9 +20,10 @@ each sample response in the vendor's own docs), NOT the small integer the
 older SDK model uses for the OLDER endpoint of the same name -- confirmed
 by reading the vendor's own documented sample responses directly.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -85,7 +86,9 @@ IPO_ANNOUNCED_DATE = "announced_date"
 IPO_CURRENCY_CODE = "currency_code"
 IPO_FINAL_ISSUE_PRICE = "final_issue_price"
 IPO_HIGHEST_OFFER_PRICE = "highest_offer_price"
-IPO_STATUS = "ipo_status"  # "direct_listing_process" | "history" | "new" | "pending" | "postponed" | "rumor" | "withdrawn"
+IPO_STATUS = (
+    "ipo_status"  # "direct_listing_process" | "history" | "new" | "pending" | "postponed" | "rumor" | "withdrawn"
+)
 IPO_ISIN = "isin"
 IPO_ISSUER_NAME = "issuer_name"
 IPO_LAST_UPDATED = "last_updated"
@@ -259,7 +262,7 @@ _COLUMN_TYPE_NAMES = {
 }
 
 
-def pyarrow_schema(columns: List[str]) -> "pa.Schema":
+def pyarrow_schema(columns: list[str]) -> pa.Schema:
     """An explicit PyArrow schema for `columns` (one of the *_COLUMNS lists
     above) -- same reasoning (and same shape) as
     tam.research.data.sec.schema.pyarrow_schema(): a column that's entirely
@@ -272,5 +275,5 @@ def pyarrow_schema(columns: List[str]) -> "pa.Schema":
     return pa.schema([pa.field(name, types[_COLUMN_TYPE_NAMES[name]]) for name in columns])
 
 
-def empty_frame(columns: List[str]) -> pd.DataFrame:
+def empty_frame(columns: list[str]) -> pd.DataFrame:
     return pd.DataFrame(columns=columns)

@@ -6,14 +6,13 @@ directly against tam.strategy.basket_overnight's own
 BasketOvernightStrategy._target_weights, or any other {ticker: weight} you
 already have.
 """
-from __future__ import annotations
 
-from typing import Dict, Union
+from __future__ import annotations
 
 import pandas as pd
 
 
-def stress_test(weights: Union[pd.Series, Dict[str, float]], shocks: Union[pd.Series, Dict[str, float]]) -> float:
+def stress_test(weights: pd.Series | dict[str, float], shocks: pd.Series | dict[str, float]) -> float:
     """Hypothetical portfolio return under `shocks` (e.g. {"NVDA": -0.50} for
     "NVDA gaps down 50% overnight") -- sum(weight_i * shock_i) over every
     ticker in `weights`; a ticker with no shock given contributes 0 (assumed
@@ -26,7 +25,7 @@ def stress_test(weights: Union[pd.Series, Dict[str, float]], shocks: Union[pd.Se
     return float(weights.mul(shocks.reindex(weights.index).fillna(0.0)).sum())
 
 
-def flat_shock(weights: Union[pd.Series, Dict[str, float]], magnitude: float) -> Dict[str, float]:
+def flat_shock(weights: pd.Series | dict[str, float], magnitude: float) -> dict[str, float]:
     """The same shock applied to every currently-weighted ticker -- e.g.
     flat_shock(weights, -0.05) for "every position gaps down 5% overnight,"
     a convenient shorthand for stress_test's `shocks` argument when you don't

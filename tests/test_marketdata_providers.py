@@ -2,9 +2,8 @@ import gzip
 import os
 from datetime import date
 
-import pandas as pd
-import pyarrow.fs as fs
 import pytest
+from pyarrow import fs
 
 from tam.marketdata.providers import MassiveFlatFileProvider, MinuteBarProvider, _FlatFileS3Provider
 from tam.registry import Registry
@@ -78,7 +77,14 @@ def test_fetch_defaults_transactions_to_na_when_the_vendor_doesnt_provide_it(tmp
     )
     provider = _LocalFlatFileProvider(
         tmp_path,
-        column_map={"ticker": "symbol", "open": "open", "high": "high", "low": "low", "close": "close", "volume": "volume"},
+        column_map={
+            "ticker": "symbol",
+            "open": "open",
+            "high": "high",
+            "low": "low",
+            "close": "close",
+            "volume": "volume",
+        },
     )
 
     df = provider.fetch(date(2024, 1, 2))

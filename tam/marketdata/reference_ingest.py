@@ -19,11 +19,12 @@ run re-fetches the full current table; see
 tam.marketdata.reference_provider's fetch_ipos()/fetch_float() docstrings
 for why (mutable records / no date-range param on that endpoint at all).
 """
+
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
 
 from .reference_provider import MassiveReferenceProvider
 from .reference_store import _DATASET_GROUPS, _DATE_COLUMNS, ReferenceStore
@@ -66,7 +67,7 @@ class Manifest:
             return {}
         return json.loads(raw)
 
-    def cursor_for(self, dataset: str) -> Optional[str]:
+    def cursor_for(self, dataset: str) -> str | None:
         return self._data.get(f"{dataset}_cursor")
 
     def record(self, dataset: str, cursor: str) -> None:
@@ -83,8 +84,8 @@ class DatasetResult:
 
 
 def ingest_reference_data(
-    provider: MassiveReferenceProvider, store: ReferenceStore, *, log: Optional[Callable[[str], None]] = None
-) -> List[DatasetResult]:
+    provider: MassiveReferenceProvider, store: ReferenceStore, *, log: Callable[[str], None] | None = None
+) -> list[DatasetResult]:
     """Runs all six datasets once: the four append-only ones incrementally
     (only rows newer than each one's own stored cursor), the two
     full-refresh ones (ipos, float) wholesale every time. Safe to call
@@ -100,8 +101,8 @@ def ingest_reference_data(
     of pages, unlike the other four, which paginate internally inside the
     `massive` SDK with no per-page hook to report through."""
     log = log or (lambda _message: None)
-    results: List[DatasetResult] = []
-    manifests: Dict[str, Manifest] = {group: Manifest(store, group) for group in _MANIFEST_GROUPS}
+    results: list[DatasetResult] = []
+    manifests: dict[str, Manifest] = {group: Manifest(store, group) for group in _MANIFEST_GROUPS}
 
     for dataset in _APPEND_ONLY:
         manifest = manifests[_DATASET_GROUPS[dataset]]

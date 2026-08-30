@@ -3,6 +3,7 @@ build_tearsheet()'s layout switch. Small hand-built curves throughout, same
 style as tests/test_report.py/test_visualization.py -- no network, no real
 backtest involved.
 """
+
 from datetime import date, timedelta
 
 import numpy as np
@@ -40,7 +41,18 @@ def _series(values, start=date(2022, 1, 1)):
 
 
 def _report(n_portfolios=2):
-    values = [100.0, 101.0, 99.0, 103.0, 105.0, 104.0, 108.0, 110.0, 107.0, 112.0] * 30  # long enough for rolling windows
+    values = [
+        100.0,
+        101.0,
+        99.0,
+        103.0,
+        105.0,
+        104.0,
+        108.0,
+        110.0,
+        107.0,
+        112.0,
+    ] * 30  # long enough for rolling windows
     curves = {}
     for i in range(n_portfolios):
         drift = 1.0 + i * 0.002
@@ -534,7 +546,9 @@ def test_tearsheet_build_matches_build_tearsheet_with_the_same_args():
     report = _report(n_portfolios=1)
     ts = Tearsheet(charts=["cumulative_returns"], metrics=["sharpe"], title="Custom")
 
-    assert ts.build(report) == build_tearsheet(report, title="Custom", charts=["cumulative_returns"], metrics=["sharpe"])
+    assert ts.build(report) == build_tearsheet(
+        report, title="Custom", charts=["cumulative_returns"], metrics=["sharpe"]
+    )
 
 
 def test_tearsheet_show_and_write_reuse_the_same_configured_charts_and_metrics(tmp_path):
@@ -571,7 +585,6 @@ def test_max_drawdown_by_start_date_differs_from_the_underwater_plot():
     # started on date X" for every possible X -- genuinely different series,
     # not just a renamed duplicate.
     report = _report(n_portfolios=1)
-    portfolio_id = report.portfolio_ids()[0]
 
     underwater = DrawdownChart().render(report).data[0]
     by_start_date = MaxDrawdownByStartDateChart().render(report).data[0]
@@ -723,6 +736,7 @@ def test_worst_drawdown_periods_chart_shades_the_deepest_synthetic_crash():
 # are tested in tests/test_charting.py, decoupled from any backtest chart)
 # ---------------------------------------------------------------------------
 
+
 def _equity_series(name="strat"):
     values = [100.0, 101.0, 99.0, 103.0, 105.0, 104.0, 108.0, 110.0, 107.0, 112.0] * 30
     idx = [date(2022, 1, 1) + timedelta(days=i) for i in range(len(values))]
@@ -764,5 +778,3 @@ def test_chart_series_name_used_as_portfolio_id():
 
     trace_names = [t.name for t in fig.data]
     assert "my_strategy" in trace_names
-
-

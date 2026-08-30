@@ -35,11 +35,13 @@ correct, safe upsert granularity -- the same reasoning
 tam.marketdata.store's date-keyed upserts use, just keyed by CIK here
 since a partition spans many companies instead of many days.
 """
+
 from __future__ import annotations
 
 import io
 import time
-from typing import Callable, List, Optional, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 import pandas as pd
 
@@ -54,7 +56,7 @@ def _with_retries(func: Callable[[], _T], attempts: int = 5, base_delay: float =
     own copies of this -- duplicated rather than imported, small
     independent pieces per subpackage, matching this codebase's existing
     convention."""
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(attempts):
         try:
             return func()
@@ -82,7 +84,7 @@ class SecStore:
     not anything minute-bar-specific despite living in that module.
     """
 
-    def __init__(self, credentials: Optional[R2Credentials] = None, prefix: str = "sec", client=None):
+    def __init__(self, credentials: R2Credentials | None = None, prefix: str = "sec", client=None):
         self._credentials = credentials or resolve_r2_credentials()
         self._prefix = prefix.rstrip("/")
         # `client=` is a test-only seam (inject a fake S3 client instead of
@@ -121,10 +123,10 @@ class SecStore:
 
         return _with_retries(_head)
 
-    def _read_bytes(self, key: str) -> Optional[bytes]:
+    def _read_bytes(self, key: str) -> bytes | None:
         from botocore.exceptions import ClientError
 
-        def _get() -> Optional[bytes]:
+        def _get() -> bytes | None:
             try:
                 response = self._client.get_object(Bucket=self._credentials.bucket, Key=key)
                 return response["Body"].read()
@@ -141,7 +143,7 @@ class SecStore:
 
         _with_retries(_put)
 
-    def _read_parquet(self, key: str, columns: List[str]) -> pd.DataFrame:
+    def _read_parquet(self, key: str, columns: list[str]) -> pd.DataFrame:
         """Reads `key`, then backfills any of `columns` NOT present in the
         file as a null column, rather than raising -- a file written
         before a later addition to a *_COLUMNS list (see schema.py)
@@ -192,7 +194,7 @@ class SecStore:
         pq.write_table(table, buffer, row_group_size=row_group_size)
         self._write_bytes(key, buffer.getvalue())
 
-    def _upsert_by_cik(self, key: str, cik: int, new_rows: pd.DataFrame, columns: List[str]) -> None:
+    def _upsert_by_cik(self, key: str, cik: int, new_rows: pd.DataFrame, columns: list[str]) -> None:
         """Read `key`'s existing partition (if any), drop every row for
         `cik`, append `new_rows`, write back -- see module docstring for
         why this (not row-level content-hash dedup) is the correct upsert
@@ -226,13 +228,13 @@ class SecStore:
             return
         self._upsert_by_cik(self._submissions_key(fiscal_year), cik, df, schema.SUBMISSIONS_COLUMNS)
 
-    def list_submissions_partitions(self) -> List[int]:
+    def list_submissions_partitions(self) -> list[int]:
         """Every fiscal_year with an actual submissions object on R2 right
         now -- same reasoning as list_facts_partitions() below, used by
         scripts/reconcile_sec_parquet_schema.py."""
         prefix = f"{self._prefix}/submissions/"
 
-        def _list() -> List[int]:
+        def _list() -> list[int]:
             years = []
             paginator = self._client.get_paginator("list_objects_v2")
             for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=prefix):
@@ -257,14 +259,14 @@ class SecStore:
             return
         self._upsert_by_cik(self._facts_key(taxonomy, fiscal_year), cik, df, schema.FACTS_COLUMNS)
 
-    def list_facts_partitions(self) -> List["tuple[str, int]"]:
+    def list_facts_partitions(self) -> list[tuple[str, int]]:
         """Every (taxonomy, fiscal_year) pair with an actual object on R2
         right now -- scripts/rebuild_sec_financials.py uses this instead
         of guessing a fixed year range, since the real range depends on
         how far back the curated universe's backfill actually reached."""
         prefix = f"{self._prefix}/facts/"
 
-        def _list() -> List["tuple[str, int]"]:
+        def _list() -> list[tuple[str, int]]:
             partitions = []
             paginator = self._client.get_paginator("list_objects_v2")
             for page in paginator.paginate(Bucket=self._credentials.bucket, Prefix=prefix):
@@ -297,7 +299,7 @@ class SecStore:
     def filing_document_exists(self, accession_number: str, document: str) -> bool:
         return self._object_exists(self._filing_document_key(accession_number, document))
 
-    def read_filing_document(self, accession_number: str, document: str) -> Optional[bytes]:
+    def read_filing_document(self, accession_number: str, document: str) -> bytes | None:
         return self._read_bytes(self._filing_document_key(accession_number, document))
 
     def write_filing_document(self, accession_number: str, document: str, data: bytes) -> None:
@@ -308,7 +310,7 @@ class SecStore:
     def _manifest_key(self) -> str:
         return f"{self._prefix}/_manifest.json"
 
-    def read_manifest_bytes(self) -> Optional[bytes]:
+    def read_manifest_bytes(self) -> bytes | None:
         return self._read_bytes(self._manifest_key())
 
     def write_manifest_bytes(self, data: bytes) -> None:

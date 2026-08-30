@@ -40,12 +40,14 @@ Every input you have to pick a value for has a matching discovery method
 that returns the real, legal options as a dataframe:
 
 ```python
-Sec.companies(search="tesla")                       # find a ticker/CIK: cik, ticker, entity_name
-Sec.statements()                                     # valid statement= values
-Sec.line_items(tickers=["AAPL"], search="rev")       # valid line_items= values for THIS company, ranked by fact_count
-Sec.line_item_catalog(statement="balance_sheet")     # every line item we know how to normalize, whether or not AAPL reports it
-Sec.concepts("revenue", tickers=["AAPL"])            # which raw XBRL tags rolled up into "revenue", per company
-Sec.forms(tickers=["AAPL"])                          # valid forms= values for filings(), ranked by count
+Sec.companies(search="tesla")  # find a ticker/CIK: cik, ticker, entity_name
+Sec.statements()  # valid statement= values
+Sec.line_items(tickers=["AAPL"], search="rev")  # valid line_items= values for THIS company, ranked by fact_count
+Sec.line_item_catalog(
+    statement="balance_sheet"
+)  # every line item we know how to normalize, whether or not AAPL reports it
+Sec.concepts("revenue", tickers=["AAPL"])  # which raw XBRL tags rolled up into "revenue", per company
+Sec.forms(tickers=["AAPL"])  # valid forms= values for filings(), ranked by count
 ```
 
 `line_items` accepts any canonical line-item name our normalization layer
@@ -77,10 +79,10 @@ so the same macros work directly in raw SQL over either connection:
 
 ```python
 con.sql("SELECT * FROM sec_stmt('income_statement', 'AAPL') ORDER BY fiscal_year").df()
-con.sql("SELECT * FROM sec_stmt('income_statement') WHERE line_item = 'revenue'").df()   # every company at once
-con.sql("SELECT * FROM sec_facts('AAPL')").df()        # raw XBRL, full fidelity
-con.sql("SELECT * FROM sec_filings('AAPL')").df()      # filing metadata: accession number, form, filed date, ...
-con.sql("SELECT * FROM sec_companies() WHERE ticker = 'AAPL'").df()   # ticker/CIK/name reference table
+con.sql("SELECT * FROM sec_stmt('income_statement') WHERE line_item = 'revenue'").df()  # every company at once
+con.sql("SELECT * FROM sec_facts('AAPL')").df()  # raw XBRL, full fidelity
+con.sql("SELECT * FROM sec_filings('AAPL')").df()  # filing metadata: accession number, form, filed date, ...
+con.sql("SELECT * FROM sec_companies() WHERE ticker = 'AAPL'").df()  # ticker/CIK/name reference table
 ```
 
 ## Plotting a fundamentals trend
@@ -92,10 +94,18 @@ from tam.charting import timeseries
 
 financials = Sec.financials(tickers=["AAPL"], line_items=["revenue", "net_income", "operating_cash_flow"])
 
+
 def series_for(line_item: str, label: str, n: int = 32) -> pd.Series:
     rows = financials[financials["line_item"] == line_item].sort_values("end_date")
     return rows.set_index("end_date")["value"].tail(n).rename(label)
 
-timeseries([series_for("revenue", "Revenue"), series_for("net_income", "Net Income"),
-            series_for("operating_cash_flow", "Operating Cash Flow")], title="AAPL fundamentals")
+
+timeseries(
+    [
+        series_for("revenue", "Revenue"),
+        series_for("net_income", "Net Income"),
+        series_for("operating_cash_flow", "Operating Cash Flow"),
+    ],
+    title="AAPL fundamentals",
+)
 ```

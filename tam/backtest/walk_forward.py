@@ -12,21 +12,21 @@ arrives, rather than starting stone cold exactly at test_start.
 No engine change -- pure orchestration over runner._load()/BacktestHarness,
 same shape as runner.py's own _drive().
 """
+
 from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
-from typing import List, Tuple
 
 import pandas as pd
 
 from .report import Report
 from .runner import _load
 
-Window = Tuple[date, date, date, date]  # (train_start, train_end, test_start, test_end)
+Window = tuple[date, date, date, date]  # (train_start, train_end, test_start, test_end)
 
 
-def run_walk_forward(config_path: str | Path, windows: List[Window], starting_value: float = 100.0) -> Report:
+def run_walk_forward(config_path: str | Path, windows: list[Window], starting_value: float = 100.0) -> Report:
     """Runs `config_path` once per window (over [train_start, test_end], so
     the strategy has real history by test_start), keeps only each window's
     [test_start, test_end] slice of the resulting equity curve, and chains
@@ -62,7 +62,7 @@ def run_walk_forward(config_path: str | Path, windows: List[Window], starting_va
     return Report.from_curves(stitched)
 
 
-def _chain_returns(curves: List[pd.Series], starting_value: float) -> pd.Series:
+def _chain_returns(curves: list[pd.Series], starting_value: float) -> pd.Series:
     level = starting_value
     pieces = []
     for curve in curves:

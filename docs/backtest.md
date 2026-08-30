@@ -19,8 +19,8 @@ you want full control over strategies/portfolios without writing a YAML file.
 ```python
 from tam.backtest.runner import run, run_backtest
 
-run(config_path, mode="batch")                 # CLI-style: Rich progress bars, writes an HTML report
-report = run_backtest(config_path, live=False) # notebook-style: returns the Report, renders inline
+run(config_path, mode="batch")  # CLI-style: Rich progress bars, writes an HTML report
+report = run_backtest(config_path, live=False)  # notebook-style: returns the Report, renders inline
 ```
 
 See [Getting started](getting-started.md#config-shape) for the full config
@@ -33,7 +33,9 @@ a `Registry` lookup — the runner has zero strategy/provider-specific imports.
 class Presenter(ABC):
     def run_batch(self, harness, total_days, checkpoint_path, checkpoint_every) -> Report: ...
     def show_report(self, report, title, ticker_colors, prices) -> None: ...
-    def run_live(self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose) -> None: ...
+    def run_live(
+        self, harness, total_days, checkpoint_path, checkpoint_every, title, ticker_colors, prices, port, verbose
+    ) -> None: ...
 ```
 
 Ships with `"cli"` (Rich progress + static HTML), `"clear_output"`
@@ -47,10 +49,12 @@ from tam.backtest.presenter import Presenter
 from tam.backtest.runner import run_backtest
 from tam.registry import Registry
 
-@Registry.register(Presenter, "my_presenter")   # optional -- only needed for name-based selection
+
+@Registry.register(Presenter, "my_presenter")  # optional -- only needed for name-based selection
 class MyPresenter(Presenter): ...
 
-run_backtest(config_path, presenter=MyPresenter())   # or render_mode="my_presenter"
+
+run_backtest(config_path, presenter=MyPresenter())  # or render_mode="my_presenter"
 ```
 
 ## Live updates — redraw as new data arrives
@@ -59,8 +63,10 @@ run_backtest(config_path, presenter=MyPresenter())   # or render_mode="my_presen
 from tam.backtest.live import live_render
 from tam.backtest.report import Report
 
+
 def next_frame():
     return Report.from_curves({"my_strategy": running_series})  # or None: "nothing new yet"
+
 
 live_render(next_frame, poll_seconds=2.0, should_continue=lambda: still_running)
 ```
@@ -78,10 +84,18 @@ real Dash server/browser tab instead of a notebook cell.
 from datetime import date
 from tam.backtest.walk_forward import run_walk_forward
 
-report = run_walk_forward("config.yaml", windows=[
-    (date(2020, 1, 1), date(2020, 12, 31), date(2021, 1, 1), date(2021, 3, 31)),  # (train_start, train_end, test_start, test_end)
-    (date(2020, 4, 1), date(2021, 3, 31), date(2021, 4, 1), date(2021, 6, 30)),
-])
+report = run_walk_forward(
+    "config.yaml",
+    windows=[
+        (
+            date(2020, 1, 1),
+            date(2020, 12, 31),
+            date(2021, 1, 1),
+            date(2021, 3, 31),
+        ),  # (train_start, train_end, test_start, test_end)
+        (date(2020, 4, 1), date(2021, 3, 31), date(2021, 4, 1), date(2021, 6, 30)),
+    ],
+)
 report.summary_all()  # scored ONLY on each window's own test period, stitched together
 ```
 
@@ -98,8 +112,8 @@ scored on a period its own selection could have "seen" via the full history.
 ```python
 from tam.backtest.stress import stress_test, flat_shock
 
-stress_test(weights, {"NVDA": -0.50})              # hypothetical portfolio return if NVDA gaps -50% overnight
-stress_test(weights, flat_shock(weights, -0.05))    # every current position gaps -5%
+stress_test(weights, {"NVDA": -0.50})  # hypothetical portfolio return if NVDA gaps -50% overnight
+stress_test(weights, flat_shock(weights, -0.05))  # every current position gaps -5%
 ```
 
 Pure function, no `Report`/`Harness` needed — run directly against

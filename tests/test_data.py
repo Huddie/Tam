@@ -247,10 +247,13 @@ def test_repository_write_hands_every_symbols_full_history_to_the_writer(tmp_pat
     assert result == {"AAPL": 2, "MSFT": 3}
 
 
-@pytest.mark.parametrize("writer_cls,suffix,reader", [
-    (CsvRepoWriter, ".csv", pd.read_csv),
-    (ParquetRepoWriter, ".parquet", pd.read_parquet),
-])
+@pytest.mark.parametrize(
+    "writer_cls,suffix,reader",
+    [
+        (CsvRepoWriter, ".csv", pd.read_csv),
+        (ParquetRepoWriter, ".parquet", pd.read_parquet),
+    ],
+)
 def test_flat_file_repo_writers_write_one_file_per_symbol(tmp_path, writer_cls, suffix, reader):
     frame = _bars(["2024-01-02", "2024-01-03"], [100.0, 101.0])
     store = CsvStore(tmp_path / "cache")
