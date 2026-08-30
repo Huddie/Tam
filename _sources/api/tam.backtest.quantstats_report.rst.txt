@@ -1,0 +1,7 @@
+tam.backtest.quantstats\_report module
+======================================
+
+.. automodule:: tam.backtest.quantstats_report
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.strategy.moving\_average module
+===================================
+
+.. automodule:: tam.strategy.moving_average
+   :members:
+   :show-inheritance:
+   :undoc-members:

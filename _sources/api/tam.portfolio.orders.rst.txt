@@ -1,0 +1,7 @@
+tam.portfolio.orders module
+===========================
+
+.. automodule:: tam.portfolio.orders
+   :members:
+   :show-inheritance:
+   :undoc-members:

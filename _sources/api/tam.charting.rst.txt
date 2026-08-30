@@ -1,0 +1,7 @@
+tam.charting module
+===================
+
+.. automodule:: tam.charting
+   :members:
+   :show-inheritance:
+   :undoc-members:

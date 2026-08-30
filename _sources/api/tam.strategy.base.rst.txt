@@ -1,0 +1,7 @@
+tam.strategy.base module
+========================
+
+.. automodule:: tam.strategy.base
+   :members:
+   :show-inheritance:
+   :undoc-members:

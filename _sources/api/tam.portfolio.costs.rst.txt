@@ -1,0 +1,7 @@
+tam.portfolio.costs module
+==========================
+
+.. automodule:: tam.portfolio.costs
+   :members:
+   :show-inheritance:
+   :undoc-members:

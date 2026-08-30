@@ -1,0 +1,7 @@
+tam.marketdata.connection module
+================================
+
+.. automodule:: tam.marketdata.connection
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.strategy.ma\_crossover module
+=================================
+
+.. automodule:: tam.strategy.ma_crossover
+   :members:
+   :show-inheritance:
+   :undoc-members:

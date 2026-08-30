@@ -1,0 +1,7 @@
+tam.backtest.harness module
+===========================
+
+.. automodule:: tam.backtest.harness
+   :members:
+   :show-inheritance:
+   :undoc-members:

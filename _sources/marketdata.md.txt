@@ -1,5 +1,7 @@
 # Market data
 
+*Full generated reference: [`tam.marketdata`](api/tam.marketdata.rst).*
+
 A ~20-year historical dataset of 1-minute OHLCV bars for SPY and the
 point-in-time S&P 500 universe (no survivorship bias), plus corporate
 actions and positioning data (splits, dividends, IPOs, short volume,
@@ -50,10 +52,10 @@ one connection covers all lakes.
 from tam.marketdata.store import R2MinuteBarStore  # or LocalMinuteBarStore(root)
 
 store = R2MinuteBarStore()
-df = store.read("SPY")            # full history for one symbol
-store.write("SPY", df)            # upsert -- merges into whatever year(s) df's index spans
+df = store.read("SPY")  # full history for one symbol
+store.write("SPY", df)  # upsert -- merges into whatever year(s) df's index spans
 store.exists("SPY")
-store.list_symbols()              # every symbol currently in the bucket
+store.list_symbols()  # every symbol currently in the bucket
 ```
 
 ### From a personal token (no admin R2 credentials needed)
@@ -95,8 +97,8 @@ from tam.marketdata.reference_store import R2ReferenceStore  # or LocalReference
 from tam.marketdata.reference_provider import MassiveReferenceProvider
 
 store = R2ReferenceStore()
-df = store.read("splits")                          # every ticker
-df = store.read("short_volume", ticker="AAPL")     # per-ticker datasets accept an optional ticker=
+df = store.read("splits")  # every ticker
+df = store.read("short_volume", ticker="AAPL")  # per-ticker datasets accept an optional ticker=
 
 provider = MassiveReferenceProvider()  # needs MASSIVE_API_KEY
 fresh = provider.fetch_splits(since="2024-01-01")

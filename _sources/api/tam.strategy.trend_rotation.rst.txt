@@ -1,0 +1,7 @@
+tam.strategy.trend\_rotation module
+===================================
+
+.. automodule:: tam.strategy.trend_rotation
+   :members:
+   :show-inheritance:
+   :undoc-members:

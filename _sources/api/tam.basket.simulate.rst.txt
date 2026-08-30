@@ -1,0 +1,7 @@
+tam.basket.simulate module
+==========================
+
+.. automodule:: tam.basket.simulate
+   :members:
+   :show-inheritance:
+   :undoc-members:

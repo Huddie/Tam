@@ -1,0 +1,7 @@
+tam.backtest.live module
+========================
+
+.. automodule:: tam.backtest.live
+   :members:
+   :show-inheritance:
+   :undoc-members:

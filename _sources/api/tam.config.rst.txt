@@ -1,0 +1,7 @@
+tam.config module
+=================
+
+.. automodule:: tam.config
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.status module
+=================
+
+.. automodule:: tam.status
+   :members:
+   :show-inheritance:
+   :undoc-members:

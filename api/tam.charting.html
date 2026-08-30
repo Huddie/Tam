@@ -1,0 +1,921 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="tam.config module" href="tam.config.html"><link rel="prev" title="tam.cache module" href="tam.cache.html">
+
+    <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
+        <title>tam.charting module - tam</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">tam</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">tam</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks.html">Notebooks (Colab / Jupyter)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../symbol.html">Symbol — one ergonomic object per ticker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../strategy.html">Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../portfolio.html">Portfolio &amp; Trader</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../backtest.html">Backtest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reporting.html">Reporting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../charting.html">Charting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basket.html">Basket research</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../marketdata.html">Market data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research-fred.html">FRED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research-sec.html">SEC</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Generated API reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="modules.html">tam</a><input aria-label="Toggle navigation of tam" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="tam.html">tam package</a><input aria-label="Toggle navigation of tam package" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.backtest.html">tam.backtest package</a><input aria-label="Toggle navigation of tam.backtest package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.config.html">tam.backtest.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.harness.html">tam.backtest.harness module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.live.html">tam.backtest.live module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.presenter.html">tam.backtest.presenter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.quantstats_report.html">tam.backtest.quantstats_report module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.report.html">tam.backtest.report module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.runner.html">tam.backtest.runner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.stress.html">tam.backtest.stress module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.tearsheet.html">tam.backtest.tearsheet module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.visualization.html">tam.backtest.visualization module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.walk_forward.html">tam.backtest.walk_forward module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.basket.html">tam.basket package</a><input aria-label="Toggle navigation of tam.basket package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.factors.html">tam.basket.factors module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.matrix.html">tam.basket.matrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.selection.html">tam.basket.selection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.simulate.html">tam.basket.simulate module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.universe.html">tam.basket.universe module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.weighting.html">tam.basket.weighting module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.data.html">tam.data package</a><input aria-label="Toggle navigation of tam.data package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.completeness.html">tam.data.completeness module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.export.html">tam.data.export module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.format.html">tam.data.format module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.history.html">tam.data.history module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.providers.html">tam.data.providers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.repository.html">tam.data.repository module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.schema.html">tam.data.schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.storage.html">tam.data.storage module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.writer.html">tam.data.writer module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.discovery.html">tam.discovery package</a><input aria-label="Toggle navigation of tam.discovery package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.auth.html">tam.discovery.auth module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.cli.html">tam.discovery.cli module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.git_info.html">tam.discovery.git_info module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.http.html">tam.discovery.http module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.upload.html">tam.discovery.upload module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.events.html">tam.events package</a><input aria-label="Toggle navigation of tam.events package" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.events.bus.html">tam.events.bus module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.events.clock.html">tam.events.clock module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.events.types.html">tam.events.types module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.marketdata.html">tam.marketdata package</a><input aria-label="Toggle navigation of tam.marketdata package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.completeness.html">tam.marketdata.completeness module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.connection.html">tam.marketdata.connection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.credentials.html">tam.marketdata.credentials module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.datasets.html">tam.marketdata.datasets module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.duckdb_query.html">tam.marketdata.duckdb_query module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.explorer_client.html">tam.marketdata.explorer_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.filesystem.html">tam.marketdata.filesystem module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.ingest.html">tam.marketdata.ingest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.providers.html">tam.marketdata.providers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_ingest.html">tam.marketdata.reference_ingest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_provider.html">tam.marketdata.reference_provider module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_schema.html">tam.marketdata.reference_schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_store.html">tam.marketdata.reference_store module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.schema.html">tam.marketdata.schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.store.html">tam.marketdata.store module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.validate.html">tam.marketdata.validate module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.notebook.html">tam.notebook package</a><input aria-label="Toggle navigation of tam.notebook package" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.notebook.magic.html">tam.notebook.magic module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.portfolio.html">tam.portfolio package</a><input aria-label="Toggle navigation of tam.portfolio package" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.costs.html">tam.portfolio.costs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.orders.html">tam.portfolio.orders module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.portfolio.html">tam.portfolio.portfolio module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.registry.html">tam.portfolio.registry module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.research.html">tam.research package</a><input aria-label="Toggle navigation of tam.research package" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="tam.research.data.html">tam.research.data package</a><input aria-label="Toggle navigation of tam.research.data package" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5 has-children"><a class="reference internal" href="tam.research.data.sec.html">tam.research.data.sec package</a><input aria-label="Toggle navigation of tam.research.data.sec package" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.manifest.html">tam.research.data.sec.manifest module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.normalize.html">tam.research.data.sec.normalize module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.provider.html">tam.research.data.sec.provider module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.schema.html">tam.research.data.sec.schema module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.store.html">tam.research.data.sec.store module</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="tam.research.data.fred.html">tam.research.data.fred module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.strategy.html">tam.strategy package</a><input aria-label="Toggle navigation of tam.strategy package" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.base.html">tam.strategy.base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.basket_overnight.html">tam.strategy.basket_overnight module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.buy_and_hold.html">tam.strategy.buy_and_hold module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.indicators.html">tam.strategy.indicators module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.intraday_hold.html">tam.strategy.intraday_hold module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.llm_trading.html">tam.strategy.llm_trading module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.ma_crossover.html">tam.strategy.ma_crossover module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.ml_walk_forward.html">tam.strategy.ml_walk_forward module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.mlx_lora_client.html">tam.strategy.mlx_lora_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.moving_average.html">tam.strategy.moving_average module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.overnight_hold.html">tam.strategy.overnight_hold module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.signals.html">tam.strategy.signals module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.trend_rotation.html">tam.strategy.trend_rotation module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.trading.html">tam.trading package</a><input aria-label="Toggle navigation of tam.trading package" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.trading.gateway.html">tam.trading.gateway module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.trading.trader.html">tam.trading.trader module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">tam.charting module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.status.html">tam.status module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.symbol.html">tam.symbol module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data storage layout</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../storage-layout.html">Data storage layout</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; background</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture &amp; background</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Sites</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tam-discovery.html">Discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tam-data-explorer.html">tam-data-explorer</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/api/tam.charting.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-tam.charting">
+<span id="tam-charting-module"></span><h1>tam.charting module<a class="headerlink" href="#module-tam.charting" title="Link to this heading">¶</a></h1>
+<p>General-purpose composable charting: any Chart subclass is callable
+with data and returns a ChartCall that renders inline in a Jupyter cell
+(last-expression rich display) or via .show(); chain multiple with | to
+produce a single composite figure.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>class MyChart(Chart):</dt><dd><p>title = “My Chart”
+def render(self, data) -&gt; go.Figure: …   # <cite>data</cite> is whatever YOUR chart expects</p>
+</dd>
+</dl>
+<p>MyChart()(my_data)             # a ChartCall – auto-displays in Jupyter
+MyChart()(my_data).show()      # explicit .show()
+c1(data) | c2(data)            # a ChartPipeline – one composite figure</p>
+</div></blockquote>
+<p>Chart is deliberately NOT tied to tam.backtest.report.Report (or anything
+else) – <cite>render(self, data)</cite> takes whatever shape of <cite>data</cite> that
+PARTICULAR chart needs, decided entirely by the subclass. Report happens
+to be the right shape for tam.backtest.tearsheet’s own equity-curve
+charts (that module’s own concrete Chart subclasses take a Report and are
+driven directly by build_tearsheet(), never through __call__/ChartCall at
+all) – but a generic chart like TimeSeriesChart below has no reason to
+require one, and RectChart below has no curves at all (just date ranges),
+which wouldn’t fit into a Report’s “named curves” shape in the first
+place. ChartCall.render() passes <cite>data</cite> straight through to
+Chart.render(data), no conversion.</p>
+<p><cite>_SeriesInput</cite> (accepted by TimeSeriesChart, and any chart author who
+wants the same convenience) may be any of:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>pd.Series             (one named curve; .name used as its key)</p></li>
+<li><p>Dict[str, pd.Series]  (explicit {name: curve} mapping)</p></li>
+<li><p>pd.DataFrame          (one named curve per column)</p></li>
+<li><p>List[pd.Series]       (each item’s own .name used as its key)</p></li>
+</ul>
+</div></blockquote>
+<p>_to_curves() normalizes any of these into a plain {name: pd.Series} dict
+– the same shapes tam.backtest.report.Report.from_curves() itself
+accepts, but returned as a plain dict since nothing here needs a Report’s
+other machinery (drawdown_curve(), summary(), trade markers, …).</p>
+<p>timeseries() is the plot-anything entry point built on _to_curves(): raw
+series with NO return/drawdown normalization applied (unlike
+tam.backtest.tearsheet’s own equity-curve-semantic charts, which live in
+that module because they’re genuinely backtest-specific – this module
+holds only the generic composition/display machinery and a couple of
+generic charts, so a raw price series, an indicator overlay, or a FRED
+series can be plotted without importing anything backtest-related):</p>
+<blockquote>
+<div><p>from tam.charting import timeseries, rect
+timeseries([close, sma(close, 20), sma(close, 50)])
+timeseries(price_series, title=”Price”) | timeseries(rsi_series, title=”RSI”)
+timeseries(spy) | rect(divergence_blocks, title=”Divergence”) | timeseries(<a href="#id3"><span class="problematic" id="id4">yield_</span></a>)</p>
+</div></blockquote>
+<p>Every chart above renders under the current global theme (“light” by
+default, matching each one’s previous plain plotly_white styling) –
+set_theme(“dark”) switches every chart from then on for the rest of the
+process, or <cite>%load_ext tam.charting</cite> + <cite>%darkmode</cite>/<cite>%lightmode</cite>/
+<cite>%theme dark</cite> for the same thing as a notebook-cell magic instead of a
+Python call. Per-line coloring is separate: <cite>timeseries(series,
+color=”white”)</cite>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.Chart">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">Chart</span></span><a class="headerlink" href="#tam.charting.Chart" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>One chart panel – a standalone go.Figure built from whatever <cite>data</cite>
+shape THIS chart needs (see module docstring – deliberately not tied
+to Report or any other single shape). Every chart is directly
+callable: pass data and get back a ChartCall that renders inline in
+Jupyter or via .show(). Chain multiple calls with | to produce a
+single composite figure:</p>
+<blockquote>
+<div><p>timeseries(my_series) | rect(my_regions)</p>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.Chart.render">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.Chart.render" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tam.charting.Chart.title">
+<span class="sig-name descname"><span class="pre">title</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></span><a class="headerlink" href="#tam.charting.Chart.title" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.ChartCall">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">ChartCall</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chart</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#tam.charting.Chart" title="tam.charting.Chart"><span class="pre">Chart</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'left'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inverted</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.ChartCall" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A (chart, data) pair – the result of calling a Chart with data.
+Renders as a standalone Plotly figure via .show() or as a Jupyter rich
+display (last-expression in a cell). Chain with <cite>|</cite> to produce a
+ChartPipeline that renders all charts as one composite figure with one
+row each; chain with <cite>&amp;</cite> to produce a ChartOverlay that renders all
+charts into the SAME panel instead (see ChartOverlay).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartCall.invert">
+<span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#tam.charting.ChartCall" title="tam.charting.ChartCall"><span class="pre">ChartCall</span></a></span></span><a class="headerlink" href="#tam.charting.ChartCall.invert" title="Link to this definition">¶</a></dt>
+<dd><p>Toggles this chart’s own axis direction – chainable, and
+cancels out on repeat: <cite>.invert()</cite> flips it, <cite>.invert().invert()</cite>
+is back to normal, same as double negation. Returns a NEW
+ChartCall (this one is left untouched); applied generically in
+render() below, so it works on any Chart, not just TimeSeriesChart
+– ChartPipeline/ChartOverlay already copy whatever “yaxis”
+properties the rendered figure ends up with onto the shared axis,
+so this needs no separate plumbing in either of those.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartCall.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.ChartCall.render" title="Link to this definition">¶</a></dt>
+<dd><p>Build and return the Plotly figure for this chart.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartCall.show">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.charting.ChartCall.show" title="Link to this definition">¶</a></dt>
+<dd><p>Display the figure (calls fig.show(), works in notebooks + scripts).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="tam.charting.ChartCall.title">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">title</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#tam.charting.ChartCall.title" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartCall.to_html">
+<span class="sig-name descname"><span class="pre">to_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#tam.charting.ChartCall.to_html" title="Link to this definition">¶</a></dt>
+<dd><p>Passes through to the rendered go.Figure’s own to_html() – this
+is what makes <cite>tam.discovery.upload(timeseries(…), …)</cite> work
+without an explicit <cite>.render()</cite> first: upload() duck-types any
+object with a to_html() method as a Figure (hasattr(x, “to_html”)),
+and without this, a bare ChartCall/ChartPipeline would instead be
+(wrongly) treated as a file path.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.ChartOverlay">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">ChartOverlay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">calls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#tam.charting.ChartCall" title="tam.charting.ChartCall"><span class="pre">ChartCall</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.ChartOverlay" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Multiple ChartCalls sharing ONE panel instead of one row each –
+created by chaining with <cite>&amp;</cite> (as <cite>|</cite> creates a ChartPipeline):</p>
+<blockquote>
+<div><p>timeseries(spy) &amp; rect(divergence_blocks, axis=”left”, layer=-1)
+timeseries(spy) &amp; timeseries(<a href="#id5"><span class="problematic" id="id6">yield_</span></a>, axis=”right”)</p>
+</div></blockquote>
+<p><cite>axis</cite> picks which y-axis a member’s traces attach to (“left”/”right”
+– “right” pulls in a secondary axis overlaying the left one, same
+convention as a hand-built dual-axis go.Figure). <cite>layer</cite> is a sort
+key controlling draw order among members SHARING an axis side (lower
+= added first = drawn further back) – for a trace-bearing chart
+(e.g. timeseries) this gives true, arbitrary-depth ordering; for a
+shape-only chart (e.g. rect, which has no traces at all) Plotly can
+only express “below ALL traces” or “above ALL traces”, not a precise
+position among them – so a rect with <cite>layer</cite> below every trace-
+bearing member in the group renders as <cite>layer=”below”</cite>, otherwise
+<cite>layer=”above”</cite>. Leave <cite>layer</cite> unset (the default on timeseries()/
+rect()/any Chart.__call__) to have it auto-assigned by <cite>&amp;</cite>’s own
+left-to-right order instead – <cite>a &amp; b &amp; c</cite> puts them at layers 0, 1, 2
+with no manual numbering; pass <cite>layer=</cite> explicitly only to override
+that for one member (e.g. rect’s own <cite>layer=-1</cite> to force it behind
+everything regardless of where it sits in the <cite>&amp;</cite> chain). Composes
+further with <cite>|</cite>/<cite>&amp;</cite> exactly like ChartCall (an overlay is one
+row-item, just like a single chart is).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartOverlay.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.ChartOverlay.render" title="Link to this definition">¶</a></dt>
+<dd><p>Merge every member’s own rendered figure into ONE panel,
+ordered by <cite>layer</cite> (ties broken by original order), each attached
+to its own <cite>axis</cite> side.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartOverlay.show">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.charting.ChartOverlay.show" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="tam.charting.ChartOverlay.title">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">title</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#tam.charting.ChartOverlay.title" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartOverlay.to_html">
+<span class="sig-name descname"><span class="pre">to_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#tam.charting.ChartOverlay.to_html" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.ChartPipeline">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">ChartPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">calls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#tam.charting.ChartCall" title="tam.charting.ChartCall"><span class="pre">ChartCall</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#tam.charting.ChartOverlay" title="tam.charting.ChartOverlay"><span class="pre">ChartOverlay</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.ChartPipeline" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>An ordered sequence of ChartCalls rendered as one composite Plotly
+figure (one subplot row per chart). Created by chaining ChartCalls with <a href="#id1"><span class="problematic" id="id2">|</span></a>:</p>
+<blockquote>
+<div><p>c1(series) | c2(series) | c3(series)</p>
+</div></blockquote>
+<p>Each chart’s own traces AND shapes (add_vrect()/add_hrect() bands –
+RectChart has no traces at all, only shapes) are copied into the
+composite figure at its own row, so every layout knob (yaxis title,
+yaxis type, etc.) is preserved per-panel. Charts that already use
+Heatmap/Bar/Table traces copy faithfully – only axis <em>domain</em> keys in
+the per-trace layout are rewritten; the traces themselves are
+untouched. A chart with its OWN secondary y-axis (a dual-axis overlay
+built with <cite>yaxis2</cite> on its traces, e.g. price vs. an inverted rate)
+keeps that secondary axis in its own row too – detected per-row from
+whether that row’s source figure declares a <cite>yaxis2</cite> at all. Each
+row-item may be a plain ChartCall (one chart, one row) or a
+ChartOverlay (several charts sharing that one row, see ChartOverlay)
+– both expose the same <cite>.render()</cite>/<cite>.title</cite> contract, so this class
+doesn’t need to know or care which it’s holding.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartPipeline.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.ChartPipeline.render" title="Link to this definition">¶</a></dt>
+<dd><p>Build a single composite figure with one subplot row per chart.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartPipeline.show">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.charting.ChartPipeline.show" title="Link to this definition">¶</a></dt>
+<dd><p>Display the composite figure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ChartPipeline.to_html">
+<span class="sig-name descname"><span class="pre">to_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#tam.charting.ChartPipeline.to_html" title="Link to this definition">¶</a></dt>
+<dd><p>Same reasoning as ChartCall.to_html() – lets a composed
+pipeline (c1(series) | c2(series)) go straight into
+tam.discovery.upload() too, not just a single ChartCall.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.DivergenceAlg">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">DivergenceAlg</span></span><a class="headerlink" href="#tam.charting.DivergenceAlg" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Interface: given two aligned series, find the date ranges where
+they’ve diverged “heavily” from each other – see find_divergence(),
+the standalone entry point most callers should use instead of calling
+a DivergenceAlg directly.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.DivergenceAlg.find">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#tam.charting.DivergenceAlg.find" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.RectChart">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">RectChart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'red'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.RectChart" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tam.charting.Chart" title="tam.charting.Chart"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chart</span></code></a></p>
+<p>A thin panel of shaded vertical bands ONLY, no curves – for
+composing alongside timeseries() panels via <cite>|</cite> (its own row) or <cite>&amp;</cite>
+(shaded directly behind/in-front-of another chart in the SAME row,
+see ChartOverlay). <cite>rect()</cite> below is the ergonomic standalone entry
+point most callers should use instead of constructing this directly.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.RectChart.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">regions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.RectChart.render" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.TimeSeriesChart">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">TimeSeriesChart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Time</span> <span class="pre">Series'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis_title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.TimeSeriesChart" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tam.charting.Chart" title="tam.charting.Chart"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chart</span></code></a></p>
+<p>Plots each named series RAW – no return/drawdown normalization.
+<cite>timeseries()</cite> below is the ergonomic standalone entry point most
+callers should use instead of constructing this directly.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.TimeSeriesChart.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Series</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Series</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.TimeSeriesChart.render" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.ZScoreDivergence">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">ZScoreDivergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">252</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.ZScoreDivergence" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tam.charting.DivergenceAlg" title="tam.charting.DivergenceAlg"><code class="xref py py-class docutils literal notranslate"><span class="pre">DivergenceAlg</span></code></a></p>
+<p><cite>a</cite>/<cite>b</cite> are assumed to normally move OPPOSITE each other – the same
+assumption baked into displaying one of them on an inverted secondary
+axis (e.g. SPY vs. bond yields: higher yields usually coincide with
+lower valuations). Flags ranges where their rolling z-scores instead
+move the SAME direction by more than <cite>threshold</cite> standard deviations,
+over a <cite>window</cite>-day rolling lookback. Raise <cite>threshold</cite> for fewer/
+more-extreme-only ranges, lower it for more/smaller ones; <cite>window</cite>
+controls how local the normalization is (shorter = more sensitive to
+recent moves).</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tam.charting.ZScoreDivergence.default">
+<span class="sig-name descname"><span class="pre">default</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;tam.charting.ZScoreDivergence</span> <span class="pre">object&gt;</span></span><a class="headerlink" href="#tam.charting.ZScoreDivergence.default" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.ZScoreDivergence.find">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#tam.charting.ZScoreDivergence.find" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tam.charting.find_divergence">
+<span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">find_divergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">series_a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">series_b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#tam.charting.DivergenceAlg" title="tam.charting.DivergenceAlg"><span class="pre">DivergenceAlg</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#tam.charting.find_divergence" title="Link to this definition">¶</a></dt>
+<dd><p>Date ranges where <cite>series_a</cite>/<cite>series_b</cite> diverge “heavily” from each
+other, per <cite>alg</cite> (default: ZScoreDivergence.default) – ready to feed
+straight into rect():</p>
+<blockquote>
+<div><p>rect(find_divergence(spy, <a href="#id7"><span class="problematic" id="id8">yield_</span></a>))
+rect(find_divergence(spy, <a href="#id9"><span class="problematic" id="id10">yield_</span></a>, ZScoreDivergence(threshold=1.5)))</p>
+</div></blockquote>
+<p><cite>alg</cite> is any DivergenceAlg – swap in a different registered
+implementation (<cite>Registry.get(DivergenceAlg, “…”)</cite>) or your own
+subclass; “zscore” (ZScoreDivergence) is the only one built in.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tam.charting.load_ipython_extension">
+<span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">load_ipython_extension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipython</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.charting.load_ipython_extension" title="Link to this definition">¶</a></dt>
+<dd><p><cite>%load_ext tam.charting</cite> – registers <cite>%theme &lt;name&gt;</cite>, <cite>%darkmode</cite>,
+<cite>%lightmode</cite> as line magics (notebook-cell sugar over set_theme()):</p>
+<blockquote>
+<div><p>%load_ext tam.charting
+%darkmode                  # same as set_theme(“dark”)
+%lightmode                 # same as set_theme(“light”)
+%theme dark                # same as set_theme(“dark”) – line magics are</p>
+<blockquote>
+<div><p># space-separated (“%theme dark”), not “%theme=dark”</p>
+</div></blockquote>
+</div></blockquote>
+<p>Deliberately does NOT import IPython at module scope – same reasoning
+as tam.notebook.magic’s own load_ipython_extension (see that module’s
+docstring): this only ever runs from INSIDE IPython’s own %load_ext
+machinery, which always passes a live <cite>ipython</cite> shell object in, so
+there’s nothing to import here – <cite>import tam.charting</cite> itself stays
+safe even where IPython isn’t installed.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tam.charting.rect">
+<span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">rect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">regions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'red'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'left'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#tam.charting.ChartCall" title="tam.charting.ChartCall"><span class="pre">ChartCall</span></a></span></span><a class="headerlink" href="#tam.charting.rect" title="Link to this definition">¶</a></dt>
+<dd><p>A composable shaded-region panel – date ranges (divergence
+episodes, regimes, recessions, …) to mark on a chart:</p>
+<blockquote>
+<div><p>timeseries(spy) | rect(divergence_blocks, title=”Divergence”) | timeseries(<a href="#id11"><span class="problematic" id="id12">yield_</span></a>)   # own row
+timeseries(spy) &amp; rect(divergence_blocks, layer=-1)                                  # shaded BEHIND spy’s own lines</p>
+</div></blockquote>
+<p><cite>regions</cite> is a list of (start, end) tuples – anything Plotly accepts
+as an x-axis value (dates, timestamps, numbers). Piped with <cite>|</cite> this
+gets its OWN row; combined with <cite>&amp;</cite> instead, it shares a row with
+whatever else is in that ChartOverlay (typically what you want for
+“shade behind these specific lines” rather than a separate strip).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tam.charting.set_theme">
+<span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">set_theme</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.charting.set_theme" title="Link to this definition">¶</a></dt>
+<dd><p>Sets the theme EVERY chart in this process renders with from now on
+(until changed again, or the process restarts) – “light” (the
+default; matches every chart’s previous plain plotly_white styling)
+or “dark”. Global and process-wide on purpose, not a per-call
+<cite>theme=</cite> kwarg: set once at the top of a notebook rather than passing
+it to every timeseries()/rect() call for the rest of the session.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tam.charting.timeseries">
+<span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">timeseries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Series</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Series</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Time</span> <span class="pre">Series'</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'left'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis_title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#tam.charting.ChartCall" title="tam.charting.ChartCall"><span class="pre">ChartCall</span></a></span></span><a class="headerlink" href="#tam.charting.timeseries" title="Link to this definition">¶</a></dt>
+<dd><p>The standalone/composable entry point for plotting raw series
+together – same call/compose contract as every Chart here (this
+module’s own docstring above covers the general pattern):</p>
+<blockquote>
+<div><p>timeseries(close)                                     # one line, uses close.name
+timeseries([close, sma(close, 20), sma(close, 50)])    # several, each using its own .name
+timeseries({“SPY”: close, “SMA 20”: sma_20})           # explicit names
+timeseries(price_series, title=”Price”) | timeseries(rsi_series, title=”RSI”)  # two rows, one figure
+timeseries(spy) &amp; timeseries(<a href="#id13"><span class="problematic" id="id14">yield_</span></a>, axis=”right”).invert()     # ONE row, dual y-axis overlay, yield axis flipped
+timeseries(spy, color=”white”, axis_title=”Points”)   # explicit line color + this axis’ own title</p>
+</div></blockquote>
+<p>Different scales (e.g. price vs. a 0-100 RSI) can go on SEPARATE rows
+chained with <cite>|</cite>, or on the SAME row via <cite>&amp;</cite> with <cite>axis=”right”</cite> for
+one of them (a dual-axis overlay) – <cite>axis</cite>/<cite>layer</cite>/<cite>axis_title</cite> only
+matter for the latter; see ChartOverlay for what <cite>axis</cite>/<cite>layer</cite>
+control. To flip a series’ own axis direction (e.g. a yield you want
+displayed as visually “inverted” against a price), chain <cite>.invert()</cite>
+onto the returned ChartCall rather than passing a kwarg here –
+<cite>timeseries(yield_).invert()</cite>; it toggles, so <cite>.invert().invert()</cite>
+cancels back to normal, and it works the same way on ANY chart, not
+just this one. <cite>axis_title</cite> labels whichever axis (left or right)
+this call ends up on – set it once per side, on any ONE of the calls
+sharing that side; the LAST one applied wins if more than one sets it.
+<cite>color</cite> sets every curve THIS call plots to the same explicit color
+(omit it to keep Plotly’s own auto-cycling palette); for per-curve
+colors within one multi-series call, set them on the returned figure
+directly instead (<cite>fig = timeseries(df).render(); …</cite>). For a global
+dark/light look across every chart instead of per-line colors, see
+<cite>set_theme()</cite>.</p>
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="tam.config.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">tam.config module</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="tam.cache.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">tam.cache module</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Ehud Adler
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">tam.charting module</a><ul>
+<li><a class="reference internal" href="#tam.charting.Chart"><code class="docutils literal notranslate"><span class="pre">Chart</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.Chart.render"><code class="docutils literal notranslate"><span class="pre">Chart.render()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.Chart.title"><code class="docutils literal notranslate"><span class="pre">Chart.title</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.ChartCall"><code class="docutils literal notranslate"><span class="pre">ChartCall</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.ChartCall.invert"><code class="docutils literal notranslate"><span class="pre">ChartCall.invert()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartCall.render"><code class="docutils literal notranslate"><span class="pre">ChartCall.render()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartCall.show"><code class="docutils literal notranslate"><span class="pre">ChartCall.show()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartCall.title"><code class="docutils literal notranslate"><span class="pre">ChartCall.title</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartCall.to_html"><code class="docutils literal notranslate"><span class="pre">ChartCall.to_html()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.ChartOverlay"><code class="docutils literal notranslate"><span class="pre">ChartOverlay</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.ChartOverlay.render"><code class="docutils literal notranslate"><span class="pre">ChartOverlay.render()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartOverlay.show"><code class="docutils literal notranslate"><span class="pre">ChartOverlay.show()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartOverlay.title"><code class="docutils literal notranslate"><span class="pre">ChartOverlay.title</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartOverlay.to_html"><code class="docutils literal notranslate"><span class="pre">ChartOverlay.to_html()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.ChartPipeline"><code class="docutils literal notranslate"><span class="pre">ChartPipeline</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.ChartPipeline.render"><code class="docutils literal notranslate"><span class="pre">ChartPipeline.render()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartPipeline.show"><code class="docutils literal notranslate"><span class="pre">ChartPipeline.show()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ChartPipeline.to_html"><code class="docutils literal notranslate"><span class="pre">ChartPipeline.to_html()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.DivergenceAlg"><code class="docutils literal notranslate"><span class="pre">DivergenceAlg</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.DivergenceAlg.find"><code class="docutils literal notranslate"><span class="pre">DivergenceAlg.find()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.RectChart"><code class="docutils literal notranslate"><span class="pre">RectChart</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.RectChart.render"><code class="docutils literal notranslate"><span class="pre">RectChart.render()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.TimeSeriesChart"><code class="docutils literal notranslate"><span class="pre">TimeSeriesChart</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.TimeSeriesChart.render"><code class="docutils literal notranslate"><span class="pre">TimeSeriesChart.render()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.ZScoreDivergence"><code class="docutils literal notranslate"><span class="pre">ZScoreDivergence</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.ZScoreDivergence.default"><code class="docutils literal notranslate"><span class="pre">ZScoreDivergence.default</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.ZScoreDivergence.find"><code class="docutils literal notranslate"><span class="pre">ZScoreDivergence.find()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.find_divergence"><code class="docutils literal notranslate"><span class="pre">find_divergence()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.load_ipython_extension"><code class="docutils literal notranslate"><span class="pre">load_ipython_extension()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.rect"><code class="docutils literal notranslate"><span class="pre">rect()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.set_theme"><code class="docutils literal notranslate"><span class="pre">set_theme()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.timeseries"><code class="docutils literal notranslate"><span class="pre">timeseries()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

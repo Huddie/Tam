@@ -1,0 +1,7 @@
+tam.portfolio.portfolio module
+==============================
+
+.. automodule:: tam.portfolio.portfolio
+   :members:
+   :show-inheritance:
+   :undoc-members:

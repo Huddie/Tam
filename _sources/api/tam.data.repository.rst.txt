@@ -1,0 +1,7 @@
+tam.data.repository module
+==========================
+
+.. automodule:: tam.data.repository
+   :members:
+   :show-inheritance:
+   :undoc-members:

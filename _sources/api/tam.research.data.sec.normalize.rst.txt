@@ -1,0 +1,7 @@
+tam.research.data.sec.normalize module
+======================================
+
+.. automodule:: tam.research.data.sec.normalize
+   :members:
+   :show-inheritance:
+   :undoc-members:

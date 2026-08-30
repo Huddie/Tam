@@ -1,0 +1,7 @@
+tam.data.history module
+=======================
+
+.. automodule:: tam.data.history
+   :members:
+   :show-inheritance:
+   :undoc-members:

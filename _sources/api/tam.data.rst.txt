@@ -1,0 +1,23 @@
+tam.data package
+================
+
+.. automodule:: tam.data
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.data.completeness
+   tam.data.export
+   tam.data.format
+   tam.data.history
+   tam.data.providers
+   tam.data.repository
+   tam.data.schema
+   tam.data.storage
+   tam.data.writer

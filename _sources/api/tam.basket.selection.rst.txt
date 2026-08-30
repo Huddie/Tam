@@ -1,0 +1,7 @@
+tam.basket.selection module
+===========================
+
+.. automodule:: tam.basket.selection
+   :members:
+   :show-inheritance:
+   :undoc-members:

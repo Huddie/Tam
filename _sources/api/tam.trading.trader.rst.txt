@@ -1,0 +1,7 @@
+tam.trading.trader module
+=========================
+
+.. automodule:: tam.trading.trader
+   :members:
+   :show-inheritance:
+   :undoc-members:

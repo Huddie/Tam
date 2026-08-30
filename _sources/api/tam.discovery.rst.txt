@@ -1,0 +1,19 @@
+tam.discovery package
+=====================
+
+.. automodule:: tam.discovery
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.discovery.auth
+   tam.discovery.cli
+   tam.discovery.git_info
+   tam.discovery.http
+   tam.discovery.upload

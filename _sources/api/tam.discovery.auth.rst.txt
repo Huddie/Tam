@@ -1,0 +1,7 @@
+tam.discovery.auth module
+=========================
+
+.. automodule:: tam.discovery.auth
+   :members:
+   :show-inheritance:
+   :undoc-members:

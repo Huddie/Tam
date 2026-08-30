@@ -1,0 +1,7 @@
+tam.backtest.stress module
+==========================
+
+.. automodule:: tam.backtest.stress
+   :members:
+   :show-inheritance:
+   :undoc-members:

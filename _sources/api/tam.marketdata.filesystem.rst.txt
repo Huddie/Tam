@@ -1,0 +1,7 @@
+tam.marketdata.filesystem module
+================================
+
+.. automodule:: tam.marketdata.filesystem
+   :members:
+   :show-inheritance:
+   :undoc-members:

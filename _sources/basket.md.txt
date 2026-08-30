@@ -1,5 +1,7 @@
 # Basket research
 
+*Full generated reference: [`tam.basket`](api/tam.basket.rst).*
+
 For screening a universe and building a diversified basket (e.g. "own
 stocks with a persistent overnight edge, decorrelated from each other") —
 a research *toolkit*, not one fixed strategy: pull each piece you need,

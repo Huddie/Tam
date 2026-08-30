@@ -1,0 +1,7 @@
+tam.symbol module
+=================
+
+.. automodule:: tam.symbol
+   :members:
+   :show-inheritance:
+   :undoc-members:

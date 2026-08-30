@@ -1,0 +1,7 @@
+tam.data.schema module
+======================
+
+.. automodule:: tam.data.schema
+   :members:
+   :show-inheritance:
+   :undoc-members:

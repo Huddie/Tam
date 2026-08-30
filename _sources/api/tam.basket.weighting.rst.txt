@@ -1,0 +1,7 @@
+tam.basket.weighting module
+===========================
+
+.. automodule:: tam.basket.weighting
+   :members:
+   :show-inheritance:
+   :undoc-members:

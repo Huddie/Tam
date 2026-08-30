@@ -1,0 +1,7 @@
+tam.marketdata.reference\_provider module
+=========================================
+
+.. automodule:: tam.marketdata.reference_provider
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.marketdata.ingest module
+============================
+
+.. automodule:: tam.marketdata.ingest
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.strategy.signals module
+===========================
+
+.. automodule:: tam.strategy.signals
+   :members:
+   :show-inheritance:
+   :undoc-members:

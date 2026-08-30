@@ -1,0 +1,7 @@
+tam.data.providers module
+=========================
+
+.. automodule:: tam.data.providers
+   :members:
+   :show-inheritance:
+   :undoc-members:

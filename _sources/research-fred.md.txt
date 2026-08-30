@@ -1,5 +1,7 @@
 # FRED
 
+*Full generated reference: [`tam.research.data.fred`](api/tam.research.data.fred.rst).*
+
 Macro/economic series (Treasury yields, Fed Funds rate, CPI, unemployment,
 ...) via [FRED](https://fred.stlouisfed.org). A thin wrapper around
 `fredapi.Fred`, exposed at the top level as `tam.Fred`:

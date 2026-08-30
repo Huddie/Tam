@@ -1,0 +1,7 @@
+tam.notebook.magic module
+=========================
+
+.. automodule:: tam.notebook.magic
+   :members:
+   :show-inheritance:
+   :undoc-members:

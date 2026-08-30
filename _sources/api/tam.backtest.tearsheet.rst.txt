@@ -1,0 +1,7 @@
+tam.backtest.tearsheet module
+=============================
+
+.. automodule:: tam.backtest.tearsheet
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,23 @@
+tam.research.data package
+=========================
+
+.. automodule:: tam.research.data
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.research.data.sec
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.research.data.fred

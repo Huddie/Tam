@@ -1,5 +1,7 @@
 # Strategy
 
+*Full generated reference: [`tam.strategy`](api/tam.strategy.rst).*
+
 Your trading logic. A `Strategy` reacts to clock events and submits orders
 through a bound `TradeGateway`:
 

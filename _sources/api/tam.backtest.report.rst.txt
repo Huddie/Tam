@@ -1,0 +1,7 @@
+tam.backtest.report module
+==========================
+
+.. automodule:: tam.backtest.report
+   :members:
+   :show-inheritance:
+   :undoc-members:

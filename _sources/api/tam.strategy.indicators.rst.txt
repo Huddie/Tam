@@ -1,0 +1,7 @@
+tam.strategy.indicators module
+==============================
+
+.. automodule:: tam.strategy.indicators
+   :members:
+   :show-inheritance:
+   :undoc-members:

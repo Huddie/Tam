@@ -1,0 +1,7 @@
+tam.registry module
+===================
+
+.. automodule:: tam.registry
+   :members:
+   :show-inheritance:
+   :undoc-members:

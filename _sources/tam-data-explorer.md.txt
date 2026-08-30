@@ -1,5 +1,7 @@
 # tam-data-explorer
 
+*Full generated reference: [`tam.marketdata.explorer_client`](api/tam.marketdata.explorer_client.rst).*
+
 Browse and export the OHLC minute-bar Parquet lake in R2 (the same bucket
 `tam.marketdata` writes to) from a browser or a script — a paginated table
 view, a folder/symbol-year browser, export as Parquet or combined CSV, and

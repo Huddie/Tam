@@ -1,0 +1,25 @@
+tam.backtest package
+====================
+
+.. automodule:: tam.backtest
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.backtest.config
+   tam.backtest.harness
+   tam.backtest.live
+   tam.backtest.presenter
+   tam.backtest.quantstats_report
+   tam.backtest.report
+   tam.backtest.runner
+   tam.backtest.stress
+   tam.backtest.tearsheet
+   tam.backtest.visualization
+   tam.backtest.walk_forward

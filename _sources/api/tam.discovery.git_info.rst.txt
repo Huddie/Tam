@@ -1,0 +1,7 @@
+tam.discovery.git\_info module
+==============================
+
+.. automodule:: tam.discovery.git_info
+   :members:
+   :show-inheritance:
+   :undoc-members:

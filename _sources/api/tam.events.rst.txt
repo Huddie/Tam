@@ -1,0 +1,17 @@
+tam.events package
+==================
+
+.. automodule:: tam.events
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.events.bus
+   tam.events.clock
+   tam.events.types

@@ -1,0 +1,7 @@
+tam.strategy.overnight\_hold module
+===================================
+
+.. automodule:: tam.strategy.overnight_hold
+   :members:
+   :show-inheritance:
+   :undoc-members:

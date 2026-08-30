@@ -1,0 +1,7 @@
+tam.discovery.http module
+=========================
+
+.. automodule:: tam.discovery.http
+   :members:
+   :show-inheritance:
+   :undoc-members:

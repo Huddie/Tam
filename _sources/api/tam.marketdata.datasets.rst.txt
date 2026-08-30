@@ -1,0 +1,7 @@
+tam.marketdata.datasets module
+==============================
+
+.. automodule:: tam.marketdata.datasets
+   :members:
+   :show-inheritance:
+   :undoc-members:

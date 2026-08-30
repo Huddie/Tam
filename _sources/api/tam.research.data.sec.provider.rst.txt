@@ -1,0 +1,7 @@
+tam.research.data.sec.provider module
+=====================================
+
+.. automodule:: tam.research.data.sec.provider
+   :members:
+   :show-inheritance:
+   :undoc-members:

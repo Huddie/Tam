@@ -1,0 +1,7 @@
+tam.events.clock module
+=======================
+
+.. automodule:: tam.events.clock
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.backtest.walk\_forward module
+=================================
+
+.. automodule:: tam.backtest.walk_forward
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.trading.gateway module
+==========================
+
+.. automodule:: tam.trading.gateway
+   :members:
+   :show-inheritance:
+   :undoc-members:

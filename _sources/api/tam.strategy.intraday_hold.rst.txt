@@ -1,0 +1,7 @@
+tam.strategy.intraday\_hold module
+==================================
+
+.. automodule:: tam.strategy.intraday_hold
+   :members:
+   :show-inheritance:
+   :undoc-members:

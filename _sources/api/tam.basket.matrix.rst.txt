@@ -1,0 +1,7 @@
+tam.basket.matrix module
+========================
+
+.. automodule:: tam.basket.matrix
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,507 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="tam.events.bus module" href="tam.events.bus.html"><link rel="prev" title="tam.discovery.upload module" href="tam.discovery.upload.html">
+
+    <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
+        <title>tam.events package - tam</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">tam</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">tam</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Get started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks.html">Notebooks (Colab / Jupyter)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../symbol.html">Symbol — one ergonomic object per ticker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../strategy.html">Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../portfolio.html">Portfolio &amp; Trader</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../backtest.html">Backtest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reporting.html">Reporting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../charting.html">Charting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basket.html">Basket research</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../marketdata.html">Market data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research-fred.html">FRED</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research-sec.html">SEC</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Generated API reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="modules.html">tam</a><input aria-label="Toggle navigation of tam" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="tam.html">tam package</a><input aria-label="Toggle navigation of tam package" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.backtest.html">tam.backtest package</a><input aria-label="Toggle navigation of tam.backtest package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.config.html">tam.backtest.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.harness.html">tam.backtest.harness module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.live.html">tam.backtest.live module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.presenter.html">tam.backtest.presenter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.quantstats_report.html">tam.backtest.quantstats_report module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.report.html">tam.backtest.report module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.runner.html">tam.backtest.runner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.stress.html">tam.backtest.stress module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.tearsheet.html">tam.backtest.tearsheet module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.visualization.html">tam.backtest.visualization module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.backtest.walk_forward.html">tam.backtest.walk_forward module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.basket.html">tam.basket package</a><input aria-label="Toggle navigation of tam.basket package" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.factors.html">tam.basket.factors module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.matrix.html">tam.basket.matrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.selection.html">tam.basket.selection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.simulate.html">tam.basket.simulate module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.universe.html">tam.basket.universe module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.basket.weighting.html">tam.basket.weighting module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.data.html">tam.data package</a><input aria-label="Toggle navigation of tam.data package" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.completeness.html">tam.data.completeness module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.export.html">tam.data.export module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.format.html">tam.data.format module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.history.html">tam.data.history module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.providers.html">tam.data.providers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.repository.html">tam.data.repository module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.schema.html">tam.data.schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.storage.html">tam.data.storage module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.data.writer.html">tam.data.writer module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.discovery.html">tam.discovery package</a><input aria-label="Toggle navigation of tam.discovery package" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.auth.html">tam.discovery.auth module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.cli.html">tam.discovery.cli module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.git_info.html">tam.discovery.git_info module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.http.html">tam.discovery.http module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.discovery.upload.html">tam.discovery.upload module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current has-children current-page"><a class="current reference internal" href="#">tam.events package</a><input aria-label="Toggle navigation of tam.events package" checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.events.bus.html">tam.events.bus module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.events.clock.html">tam.events.clock module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.events.types.html">tam.events.types module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.marketdata.html">tam.marketdata package</a><input aria-label="Toggle navigation of tam.marketdata package" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.completeness.html">tam.marketdata.completeness module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.connection.html">tam.marketdata.connection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.credentials.html">tam.marketdata.credentials module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.datasets.html">tam.marketdata.datasets module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.duckdb_query.html">tam.marketdata.duckdb_query module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.explorer_client.html">tam.marketdata.explorer_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.filesystem.html">tam.marketdata.filesystem module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.ingest.html">tam.marketdata.ingest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.providers.html">tam.marketdata.providers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_ingest.html">tam.marketdata.reference_ingest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_provider.html">tam.marketdata.reference_provider module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_schema.html">tam.marketdata.reference_schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.reference_store.html">tam.marketdata.reference_store module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.schema.html">tam.marketdata.schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.store.html">tam.marketdata.store module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.marketdata.validate.html">tam.marketdata.validate module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.notebook.html">tam.notebook package</a><input aria-label="Toggle navigation of tam.notebook package" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.notebook.magic.html">tam.notebook.magic module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.portfolio.html">tam.portfolio package</a><input aria-label="Toggle navigation of tam.portfolio package" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.costs.html">tam.portfolio.costs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.orders.html">tam.portfolio.orders module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.portfolio.html">tam.portfolio.portfolio module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.portfolio.registry.html">tam.portfolio.registry module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.research.html">tam.research package</a><input aria-label="Toggle navigation of tam.research package" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="tam.research.data.html">tam.research.data package</a><input aria-label="Toggle navigation of tam.research.data package" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5 has-children"><a class="reference internal" href="tam.research.data.sec.html">tam.research.data.sec package</a><input aria-label="Toggle navigation of tam.research.data.sec package" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.manifest.html">tam.research.data.sec.manifest module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.normalize.html">tam.research.data.sec.normalize module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.provider.html">tam.research.data.sec.provider module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.schema.html">tam.research.data.sec.schema module</a></li>
+<li class="toctree-l6"><a class="reference internal" href="tam.research.data.sec.store.html">tam.research.data.sec.store module</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="tam.research.data.fred.html">tam.research.data.fred module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.strategy.html">tam.strategy package</a><input aria-label="Toggle navigation of tam.strategy package" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.base.html">tam.strategy.base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.basket_overnight.html">tam.strategy.basket_overnight module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.buy_and_hold.html">tam.strategy.buy_and_hold module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.indicators.html">tam.strategy.indicators module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.intraday_hold.html">tam.strategy.intraday_hold module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.llm_trading.html">tam.strategy.llm_trading module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.ma_crossover.html">tam.strategy.ma_crossover module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.ml_walk_forward.html">tam.strategy.ml_walk_forward module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.mlx_lora_client.html">tam.strategy.mlx_lora_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.moving_average.html">tam.strategy.moving_average module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.overnight_hold.html">tam.strategy.overnight_hold module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.signals.html">tam.strategy.signals module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.trend_rotation.html">tam.strategy.trend_rotation module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.trading.html">tam.trading package</a><input aria-label="Toggle navigation of tam.trading package" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="tam.trading.gateway.html">tam.trading.gateway module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.trading.trader.html">tam.trading.trader module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.status.html">tam.status module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.symbol.html">tam.symbol module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data storage layout</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../storage-layout.html">Data storage layout</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; background</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture &amp; background</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Sites</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tam-discovery.html">Discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tam-data-explorer.html">tam-data-explorer</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/api/tam.events.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-tam.events">
+<span id="tam-events-package"></span><h1>tam.events package<a class="headerlink" href="#module-tam.events" title="Link to this heading">¶</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tam.events.bus.html">tam.events.bus module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tam.events.bus.html#tam.events.bus.EventBus"><code class="docutils literal notranslate"><span class="pre">EventBus</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.bus.html#tam.events.bus.EventBus.publish"><code class="docutils literal notranslate"><span class="pre">EventBus.publish()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.bus.html#tam.events.bus.EventBus.subscribe"><code class="docutils literal notranslate"><span class="pre">EventBus.subscribe()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tam.events.clock.html">tam.events.clock module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tam.events.clock.html#tam.events.clock.Clock"><code class="docutils literal notranslate"><span class="pre">Clock</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.clock.html#tam.events.clock.Clock.tick"><code class="docutils literal notranslate"><span class="pre">Clock.tick()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tam.events.types.html">tam.events.types module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tam.events.types.html#tam.events.types.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.types.html#tam.events.types.Event.payload"><code class="docutils literal notranslate"><span class="pre">Event.payload</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.types.html#tam.events.types.Event.type"><code class="docutils literal notranslate"><span class="pre">Event.type</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.events.types.html#tam.events.types.State"><code class="docutils literal notranslate"><span class="pre">State</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.types.html#tam.events.types.State.END"><code class="docutils literal notranslate"><span class="pre">State.END</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.types.html#tam.events.types.State.RUNNING"><code class="docutils literal notranslate"><span class="pre">State.RUNNING</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.events.types.html#tam.events.types.State.START"><code class="docutils literal notranslate"><span class="pre">State.START</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="tam.events.bus.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">tam.events.bus module</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="tam.discovery.upload.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">tam.discovery.upload module</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Ehud Adler
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">tam.events package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

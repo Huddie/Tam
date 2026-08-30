@@ -1,0 +1,30 @@
+tam.marketdata package
+======================
+
+.. automodule:: tam.marketdata
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.marketdata.completeness
+   tam.marketdata.connection
+   tam.marketdata.credentials
+   tam.marketdata.datasets
+   tam.marketdata.duckdb_query
+   tam.marketdata.explorer_client
+   tam.marketdata.filesystem
+   tam.marketdata.ingest
+   tam.marketdata.providers
+   tam.marketdata.reference_ingest
+   tam.marketdata.reference_provider
+   tam.marketdata.reference_schema
+   tam.marketdata.reference_store
+   tam.marketdata.schema
+   tam.marketdata.store
+   tam.marketdata.validate

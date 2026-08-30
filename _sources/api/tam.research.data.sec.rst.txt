@@ -1,0 +1,19 @@
+tam.research.data.sec package
+=============================
+
+.. automodule:: tam.research.data.sec
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.research.data.sec.manifest
+   tam.research.data.sec.normalize
+   tam.research.data.sec.provider
+   tam.research.data.sec.schema
+   tam.research.data.sec.store

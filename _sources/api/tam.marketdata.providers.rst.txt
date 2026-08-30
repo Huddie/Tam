@@ -1,0 +1,7 @@
+tam.marketdata.providers module
+===============================
+
+.. automodule:: tam.marketdata.providers
+   :members:
+   :show-inheritance:
+   :undoc-members:

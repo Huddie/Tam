@@ -1,0 +1,7 @@
+tam.data.writer module
+======================
+
+.. automodule:: tam.data.writer
+   :members:
+   :show-inheritance:
+   :undoc-members:

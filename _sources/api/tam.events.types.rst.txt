@@ -1,0 +1,7 @@
+tam.events.types module
+=======================
+
+.. automodule:: tam.events.types
+   :members:
+   :show-inheritance:
+   :undoc-members:

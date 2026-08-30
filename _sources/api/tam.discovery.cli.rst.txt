@@ -1,0 +1,7 @@
+tam.discovery.cli module
+========================
+
+.. automodule:: tam.discovery.cli
+   :members:
+   :show-inheritance:
+   :undoc-members:

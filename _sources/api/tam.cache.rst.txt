@@ -1,0 +1,7 @@
+tam.cache module
+================
+
+.. automodule:: tam.cache
+   :members:
+   :show-inheritance:
+   :undoc-members:

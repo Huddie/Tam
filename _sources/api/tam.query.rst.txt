@@ -1,0 +1,7 @@
+tam.query module
+================
+
+.. automodule:: tam.query
+   :members:
+   :show-inheritance:
+   :undoc-members:

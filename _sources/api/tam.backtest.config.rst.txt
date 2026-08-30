@@ -1,0 +1,7 @@
+tam.backtest.config module
+==========================
+
+.. automodule:: tam.backtest.config
+   :members:
+   :show-inheritance:
+   :undoc-members:

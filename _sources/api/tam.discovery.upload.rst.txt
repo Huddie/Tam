@@ -1,0 +1,7 @@
+tam.discovery.upload module
+===========================
+
+.. automodule:: tam.discovery.upload
+   :members:
+   :show-inheritance:
+   :undoc-members:

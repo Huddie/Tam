@@ -1,0 +1,7 @@
+tam.events.bus module
+=====================
+
+.. automodule:: tam.events.bus
+   :members:
+   :show-inheritance:
+   :undoc-members:

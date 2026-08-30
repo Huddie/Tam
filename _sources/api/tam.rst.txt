@@ -1,0 +1,40 @@
+tam package
+===========
+
+.. automodule:: tam
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.backtest
+   tam.basket
+   tam.data
+   tam.discovery
+   tam.events
+   tam.marketdata
+   tam.notebook
+   tam.portfolio
+   tam.research
+   tam.strategy
+   tam.trading
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.cache
+   tam.charting
+   tam.config
+   tam.query
+   tam.registry
+   tam.secrets
+   tam.status
+   tam.symbol

@@ -1,0 +1,7 @@
+tam.strategy.buy\_and\_hold module
+==================================
+
+.. automodule:: tam.strategy.buy_and_hold
+   :members:
+   :show-inheritance:
+   :undoc-members:

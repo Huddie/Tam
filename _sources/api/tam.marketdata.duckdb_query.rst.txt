@@ -1,0 +1,7 @@
+tam.marketdata.duckdb\_query module
+===================================
+
+.. automodule:: tam.marketdata.duckdb_query
+   :members:
+   :show-inheritance:
+   :undoc-members:

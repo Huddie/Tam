@@ -1,0 +1,7 @@
+tam.backtest.presenter module
+=============================
+
+.. automodule:: tam.backtest.presenter
+   :members:
+   :show-inheritance:
+   :undoc-members:

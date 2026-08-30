@@ -1,0 +1,7 @@
+tam.marketdata.completeness module
+==================================
+
+.. automodule:: tam.marketdata.completeness
+   :members:
+   :show-inheritance:
+   :undoc-members:

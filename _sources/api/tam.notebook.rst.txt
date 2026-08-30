@@ -1,0 +1,15 @@
+tam.notebook package
+====================
+
+.. automodule:: tam.notebook
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.notebook.magic

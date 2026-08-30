@@ -1,0 +1,16 @@
+tam.trading package
+===================
+
+.. automodule:: tam.trading
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.trading.gateway
+   tam.trading.trader

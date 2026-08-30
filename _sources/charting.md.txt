@@ -1,5 +1,7 @@
 # Charting
 
+*Full generated reference: [`tam.charting`](api/tam.charting.rst).*
+
 `tam.charting` is general-purpose, composable plotting: any `Chart` is
 callable with data and returns a `ChartCall` that renders inline in a
 Jupyter cell or via `.show()`. Chain multiple with `|` to combine them into

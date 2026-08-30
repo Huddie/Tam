@@ -1,0 +1,7 @@
+tam.marketdata.schema module
+============================
+
+.. automodule:: tam.marketdata.schema
+   :members:
+   :show-inheritance:
+   :undoc-members:

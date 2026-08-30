@@ -1,0 +1,7 @@
+tam.strategy.ml\_walk\_forward module
+=====================================
+
+.. automodule:: tam.strategy.ml_walk_forward
+   :members:
+   :show-inheritance:
+   :undoc-members:

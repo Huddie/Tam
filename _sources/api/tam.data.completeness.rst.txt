@@ -1,0 +1,7 @@
+tam.data.completeness module
+============================
+
+.. automodule:: tam.data.completeness
+   :members:
+   :show-inheritance:
+   :undoc-members:

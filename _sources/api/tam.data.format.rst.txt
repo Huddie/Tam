@@ -1,0 +1,7 @@
+tam.data.format module
+======================
+
+.. automodule:: tam.data.format
+   :members:
+   :show-inheritance:
+   :undoc-members:

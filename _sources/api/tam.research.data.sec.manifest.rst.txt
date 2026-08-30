@@ -1,0 +1,7 @@
+tam.research.data.sec.manifest module
+=====================================
+
+.. automodule:: tam.research.data.sec.manifest
+   :members:
+   :show-inheritance:
+   :undoc-members:

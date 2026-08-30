@@ -1,0 +1,7 @@
+tam.basket.factors module
+=========================
+
+.. automodule:: tam.basket.factors
+   :members:
+   :show-inheritance:
+   :undoc-members:

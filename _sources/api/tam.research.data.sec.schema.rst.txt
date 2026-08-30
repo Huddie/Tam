@@ -1,0 +1,7 @@
+tam.research.data.sec.schema module
+===================================
+
+.. automodule:: tam.research.data.sec.schema
+   :members:
+   :show-inheritance:
+   :undoc-members:

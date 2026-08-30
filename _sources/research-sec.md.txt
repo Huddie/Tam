@@ -1,5 +1,7 @@
 # SEC
 
+*Full generated reference: [`tam.research.data.sec`](api/tam.research.data.sec.rst).*
+
 `tam.research.data.sec` is its own small R2-backed data lake — raw XBRL
 facts (full fidelity: taxonomy, unit, accession number, filed date, ...)
 and a derived, normalized `financials` layer (long format: one row per

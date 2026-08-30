@@ -1,0 +1,20 @@
+tam.basket package
+==================
+
+.. automodule:: tam.basket
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.basket.factors
+   tam.basket.matrix
+   tam.basket.selection
+   tam.basket.simulate
+   tam.basket.universe
+   tam.basket.weighting

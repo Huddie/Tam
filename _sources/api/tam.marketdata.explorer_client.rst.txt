@@ -1,0 +1,7 @@
+tam.marketdata.explorer\_client module
+======================================
+
+.. automodule:: tam.marketdata.explorer_client
+   :members:
+   :show-inheritance:
+   :undoc-members:

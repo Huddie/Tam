@@ -1,0 +1,7 @@
+tam.data.storage module
+=======================
+
+.. automodule:: tam.data.storage
+   :members:
+   :show-inheritance:
+   :undoc-members:

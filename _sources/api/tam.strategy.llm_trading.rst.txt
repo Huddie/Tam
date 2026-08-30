@@ -1,0 +1,7 @@
+tam.strategy.llm\_trading module
+================================
+
+.. automodule:: tam.strategy.llm_trading
+   :members:
+   :show-inheritance:
+   :undoc-members:

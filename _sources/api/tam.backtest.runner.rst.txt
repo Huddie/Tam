@@ -1,0 +1,7 @@
+tam.backtest.runner module
+==========================
+
+.. automodule:: tam.backtest.runner
+   :members:
+   :show-inheritance:
+   :undoc-members:

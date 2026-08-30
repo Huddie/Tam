@@ -1,0 +1,7 @@
+tam.backtest.visualization module
+=================================
+
+.. automodule:: tam.backtest.visualization
+   :members:
+   :show-inheritance:
+   :undoc-members:

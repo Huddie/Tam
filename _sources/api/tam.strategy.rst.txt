@@ -1,0 +1,27 @@
+tam.strategy package
+====================
+
+.. automodule:: tam.strategy
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   tam.strategy.base
+   tam.strategy.basket_overnight
+   tam.strategy.buy_and_hold
+   tam.strategy.indicators
+   tam.strategy.intraday_hold
+   tam.strategy.llm_trading
+   tam.strategy.ma_crossover
+   tam.strategy.ml_walk_forward
+   tam.strategy.mlx_lora_client
+   tam.strategy.moving_average
+   tam.strategy.overnight_hold
+   tam.strategy.signals
+   tam.strategy.trend_rotation

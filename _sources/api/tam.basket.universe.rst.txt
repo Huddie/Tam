@@ -1,0 +1,7 @@
+tam.basket.universe module
+==========================
+
+.. automodule:: tam.basket.universe
+   :members:
+   :show-inheritance:
+   :undoc-members:
