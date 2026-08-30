@@ -346,12 +346,15 @@ function BrowseTab({ prefix, onNavigate }: { prefix: string; onNavigate: (prefix
           <small>{hiddenCount} hidden -- toggle "Show hidden" in Options to see them.</small>
         </p>
       )}
+      <p className="muted">{result.total.toLocaleString()} items total</p>
       {(pageIndex > 0 || result.cursor) && (
         <div className="pagination">
           <button className="pager-btn" disabled={pageIndex === 0} onClick={() => setCursorStack((stack) => stack.slice(0, -1))}>
             &larr; Previous
           </button>
-          <span className="muted">Page {pageIndex + 1}</span>
+          <span className="muted">
+            Page {pageIndex + 1} / {Math.max(1, Math.ceil(result.total / result.pageSize))}
+          </span>
           <button
             className="pager-btn"
             disabled={!result.cursor}

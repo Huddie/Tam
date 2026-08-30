@@ -2,6 +2,8 @@ export interface BrowseResult {
   prefixes: string[];
   objects: Array<{ key: string; size: number; uploaded: string }>;
   cursor: string | null;
+  total: number;
+  pageSize: number;
 }
 
 export interface DatasetStats {

@@ -4,6 +4,16 @@ tokens, exactly like tam.discovery.auth's own publishing tokens) gets you
 either a single file as a DataFrame (fetch_dataframe(), no SQL engine setup
 at all), or a full SQL connection over the whole lake (connect()).
 
+For most notebook use, `tam.Symbol`/`tam.query()` (tam/symbol.py, tam/query.py)
+are the better entry point -- they call connect() for you (this module's
+own resolve_token()-backed resolution chain is what tam.marketdata.
+connection.resolve_connection() falls back to when no explicit
+local_root=/R2 override is given) and add caching, a ticker-scoped API,
+and optional polars output on top. Reach for fetch_dataframe()/connect()
+directly only when you specifically want ONE file over plain HTTP with no
+DuckDB involved at all (fetch_dataframe), or full manual control over the
+raw connection object (connect).
+
 connect() works by minting a short-lived, READ-ONLY, real R2 S3 credential
 scoped to just the tam-data bucket (Cloudflare's own R2 temporary-credentials
 scheme, see /tam-data-explorer/src/worker/lib/r2-credentials.ts) -- your

@@ -7,3 +7,4 @@ __pycache__/
 examples/output/
 .DS_Store
 docs/_build/
+docs/api/

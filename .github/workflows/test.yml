@@ -22,6 +22,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: uv sync --extra dev --extra live --extra notebook --extra quantstats --extra pitindex --extra marketdata
+      - run: uv sync --extra dev --extra live --extra notebook --extra quantstats --extra pitindex --extra marketdata --extra sec
 
       - run: uv run pytest tests/ -q -W ignore::UserWarning

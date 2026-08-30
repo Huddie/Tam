@@ -46,6 +46,7 @@ from typing import Any
 
 import pandas as pd
 
+from ....marketdata.connection import default_connection, is_missing_glob_error, resolve_connection
 from . import schema
 from .manifest import Manifest
 from .normalize import _synonyms, normalize_facts
@@ -53,21 +54,6 @@ from .provider import SecProvider
 from .store import SecStore
 
 __all__ = ["Manifest", "Sec", "SecProvider", "SecStore", "normalize_facts"]
-
-
-def _is_missing_glob_error(exc: Exception, *path_hints: str) -> bool:
-    """True if `exc` is DuckDB's own "IO Error: No files found that match
-    the pattern ..." -- confirmed live (this session) as the exact,
-    consistent wording for a Parquet glob matching zero files, e.g.
-    before a given layer's first backfill. If `path_hints` are given,
-    they must ALL also appear in the message -- e.g. "reference", to
-    distinguish "the reference table itself is missing" (a real
-    configuration problem) from "this OTHER layer just has no rows yet"
-    (a legitimate, expected state that should return empty, not raise)."""
-    message = str(exc)
-    if "No files found that match the pattern" not in message:
-        return False
-    return all(hint in message for hint in path_hints)
 
 
 class _default_or_bound:
@@ -97,6 +83,21 @@ class _default_or_bound:
         if instance is None:
             instance = owner._default()
         return self._func.__get__(instance, owner)
+
+    def __call__(self, *args, **kwargs):
+        # Never hit through normal attribute access (that always goes
+        # through __get__ above first) -- only by static introspection
+        # tools that deliberately bypass the descriptor protocol (e.g.
+        # Sphinx's autodoc, via inspect.getattr_static(), so reading a
+        # docstring/signature for documentation never triggers _default()'s
+        # own side effect of lazily building a real connection). Without
+        # this, autodoc sees a plain, uncallable object here and renders
+        # every one of these methods with an empty, wrong `()` signature --
+        # confirmed live. update_wrapper() above already set __wrapped__ to
+        # `func`, which is what actually lets inspect.signature() recover
+        # the real parameter list once this makes the object callable at
+        # all.
+        return self._func(*args, **kwargs)
 
 
 class Sec:
@@ -128,6 +129,7 @@ class Sec:
         api_url: str | None = None,
         ttl_seconds: int | None = None,
         local_root: str | None = None,
+        con: Any = None,
         **open_duckdb_kwargs: Any,
     ):
         self._token = token
@@ -135,7 +137,11 @@ class Sec:
         self._ttl_seconds = ttl_seconds
         self._local_root = local_root
         self._open_duckdb_kwargs = open_duckdb_kwargs
-        self._con = None
+        # `con=` (e.g. tam.Symbol handing this instance its OWN
+        # already-resolved connection, so a `Symbol.financials()` call
+        # doesn't mint/resolve a second one) skips _connect()'s own
+        # resolution entirely -- it's just returned as-is.
+        self._con = con
         # A PER-INSTANCE cache (built here, not a @lru_cache on the method
         # itself) -- decorating the method directly would share ONE cache
         # across every Sec instance ever created, keyed on (self, ticker),
@@ -154,53 +160,28 @@ class Sec:
         `Sec.query(...)` use when called directly on the class -- built
         once, on first such use, then reused (same "connect once, cache,
         reuse" contract any Sec instance already gives you, not a fresh
-        connection per call). Uses the plain default resolution chain
-        (TAM_PAT token, same as `Sec()` with no arguments) -- construct
-        your own instance instead (`Sec(local_root=...)`, `Sec(bucket=...)`,
-        `Sec(token=...)`) for anything else; that instance's own
-        connection is completely separate from this shared one."""
+        connection per call). Shares tam.marketdata.connection's own
+        process-wide default_connection() -- the SAME connection (and,
+        over the TAM_PAT path, the SAME minted temporary R2 credential)
+        a default-configured `tam.Symbol`/`tam.query()` call in this
+        process would also use, rather than each maintaining its own.
+        Construct your own instance instead (`Sec(local_root=...)`,
+        `Sec(bucket=...)`, `Sec(token=...)`) for anything else; that
+        instance's own connection is completely separate from this
+        shared one."""
         if cls._shared_default is None:
-            cls._shared_default = cls()
+            cls._shared_default = cls(con=default_connection())
         return cls._shared_default
 
     def _connect(self):
         if self._con is None:
-            if self._local_root is not None or self._open_duckdb_kwargs:
-                # Explicit local_root (tests, local dev) or raw R2
-                # credentials/bucket override requested -- wins outright,
-                # same as tam.marketdata.duckdb_query's own module
-                # docstring recommends for ingestion scripts.
-                from ....marketdata.duckdb_query import open_duckdb
-
-                self._con = open_duckdb(local_root=self._local_root, **self._open_duckdb_kwargs)
-            else:
-                # Default: the same self-service TAM_PAT token path
-                # NOTEBOOK.md recommends for daily_bars/eod_bars -- mints a
-                # short-lived, read-only R2 credential behind the scenes,
-                # no raw R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/... needed. Only
-                # tam.marketdata.explorer_client's own SqlConnection
-                # actually knows how to refresh that credential as it
-                # nears expiry, which is why this delegates to it instead
-                # of duplicating that logic here. No further fallback --
-                # silently reading whatever happens to be in a local
-                # `data/` directory if the token isn't configured would be
-                # more likely to confuse (stale/unrelated local fixtures)
-                # than help; better to fail clearly right here.
-                from ....marketdata.explorer_client import connect, resolve_token
-
-                token = resolve_token(self._token, required=False)
-                if token is None:
-                    raise RuntimeError(
-                        "No TAM_PAT personal token found (checked an explicit token=, the TAM_PAT "
-                        "environment variable/.env file, a Colab secret, and "
-                        "~/.config/tam-data-explorer/token). Pick one:\n"
-                        "  1. Pass token=... directly, or set the TAM_PAT environment variable "
-                        "(create one at https://data.tamquant.com/settings/tokens).\n"
-                        "  2. Pass local_root=... pointing at a local Parquet tree (containing sec/).\n"
-                        "  3. Pass bucket=... plus R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY "
-                        "env vars for raw R2 admin access."
-                    )
-                self._con = connect(token=token, api_url=self._api_url, ttl_seconds=self._ttl_seconds)
+            self._con = resolve_connection(
+                token=self._token,
+                api_url=self._api_url,
+                ttl_seconds=self._ttl_seconds,
+                local_root=self._local_root,
+                **self._open_duckdb_kwargs,
+            )
         return self._con
 
     def _resolve_cik_uncached(self, ticker: str) -> int:
@@ -230,7 +211,7 @@ class Sec:
         try:
             row = self._connect().execute("SELECT sec_cik(?)", [ticker]).fetchone()
         except Exception as exc:
-            if _is_missing_glob_error(exc, "reference"):
+            if is_missing_glob_error(exc, "reference"):
                 raise RuntimeError(
                     "No sec/reference/company_tickers.parquet found -- nothing has been "
                     "backfilled yet, or --refresh-reference has never been run (see "
@@ -256,7 +237,7 @@ class Sec:
         try:
             return self._connect().execute(sql, params).df()
         except Exception as exc:
-            if _is_missing_glob_error(exc):
+            if is_missing_glob_error(exc):
                 return pd.DataFrame(columns=columns)
             raise
 

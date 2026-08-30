@@ -1,5 +1,7 @@
 # Data
 
+*Full generated reference: [`tam.data`](api/tam.data.rst).*
+
 Fetch and cache OHLCV-or-whatever history. Three small interfaces, each
 independently pluggable via the [registry](getting-started.md#the-registry-pattern):
 

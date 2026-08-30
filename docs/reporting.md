@@ -1,5 +1,9 @@
 # Reporting
 
+*Full generated reference: [`tam.backtest`](api/tam.backtest.rst) (`Report`,
+`Tearsheet`, and the chart/metric registries all live under
+`tam.backtest.*`).*
+
 ## Report — the data object (no plotly dependency)
 
 ```python

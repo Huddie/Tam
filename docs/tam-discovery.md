@@ -1,5 +1,7 @@
 # Discovery
 
+*Full generated reference: [`tam.discovery`](api/tam.discovery.rst).*
+
 A private, GitHub-authenticated catalog for publishing and browsing static
 HTML research artifacts — backtest dashboards by default, or any
 self-contained `.html` file. Publishing is immutable: every upload creates

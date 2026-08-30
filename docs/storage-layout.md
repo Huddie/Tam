@@ -126,6 +126,7 @@ SELECT * FROM splits('AAPL') ORDER BY execution_date;
 ```
 ```python
 from tam.marketdata.reference_store import R2ReferenceStore
+
 df = R2ReferenceStore().read("splits")
 ```
 
@@ -283,6 +284,7 @@ SELECT * FROM sec_companies();
 ```
 ```python
 from tam.research.data.sec import Sec
+
 df = Sec().companies()
 ```
 

@@ -193,7 +193,8 @@ left sidebar). Same code works locally and in Colab.
 
 ## Querying the market-data lakes
 
-See [Market data](marketdata.md) for the full architecture; from a
+See [Symbol](symbol.md) for the full ergonomic API, and
+[Market data](marketdata.md) for the underlying architecture; from a
 notebook, the self-service path needs no admin credentials at all:
 
 ```bash
@@ -205,18 +206,21 @@ Create a personal token at `https://data.tamquant.com/settings/tokens`
 [Discovery](tam-discovery.md) publishing uses), then:
 
 ```python
-from tam.marketdata.explorer_client import fetch_dataframe, connect
+from tam import Symbol, ManualCache
 
-df = fetch_dataframe("AAPL", 2024)  # one symbol-year as a DataFrame, plain HTTP
-
-con = connect()  # full SQL access over minute bars + EOD + SEC lakes
-con.sql("SELECT * FROM daily_bars('AAPL') ORDER BY day").df()
-con.sql("SELECT * FROM eod_bars('AAPL') ORDER BY date").df()
+cache = ManualCache()  # construct once -- re-running a cell reuses it instead of re-fetching
+aapl = Symbol("AAPL", cache=cache)
+aapl.minute_bars(start="2024-01-01")
+aapl.eod_bars()
+aapl.splits()
 ```
 
-`connect()` mints a short-lived, read-only R2 credential behind the
-scenes and refreshes it automatically as it approaches expiry — see
-[Data Explorer](tam-data-explorer.md) for the full client API.
+`Symbol` resolves the SAME short-lived, read-only R2 credential
+`tam.marketdata.explorer_client.connect()` mints (refreshed automatically
+as it nears expiry) — construct your own `con=connect()`/`con=open_duckdb(...)`
+and pass it to `Symbol(..., con=...)` for anything more specific, or use
+[Data Explorer](tam-data-explorer.md) directly for a plain one-file
+download with no DuckDB involved at all.
 
 ## Persisting data and reports across a Colab session
 

@@ -465,9 +465,7 @@ export function FileViewPage() {
 
           {data && (
             <>
-              <p className="muted">
-                {data.totalRows.toLocaleString()} rows total -- showing page {data.page} of {totalPages}
-              </p>
+              <p className="muted">{data.totalRows.toLocaleString()} rows total</p>
               <div className="pagination">
                 <button className="pager-btn" disabled={page <= 1} onClick={() => goToPage(page - 1)}>
                   &lsaquo; Prev

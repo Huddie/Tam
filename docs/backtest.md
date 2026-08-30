@@ -1,5 +1,7 @@
 # Backtest
 
+*Full generated reference: [`tam.backtest`](api/tam.backtest.rst).*
+
 ## BacktestHarness — running a simulation without any config at all
 
 ```python

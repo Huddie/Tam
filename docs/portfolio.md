@@ -1,5 +1,7 @@
 # Portfolio & Trader
 
+*Full generated reference: [`tam.portfolio`](api/tam.portfolio.rst).*
+
 The book your strategy trades against.
 
 ```python

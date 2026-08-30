@@ -21,6 +21,7 @@ notebooks
 :caption: API reference
 :maxdepth: 1
 
+symbol
 data
 strategy
 portfolio
@@ -31,6 +32,13 @@ basket
 marketdata
 research-fred
 research-sec
+```
+
+```{toctree}
+:caption: Generated API reference
+:maxdepth: 1
+
+api/modules
 ```
 
 ```{toctree}

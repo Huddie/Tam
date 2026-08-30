@@ -5,6 +5,8 @@ export interface BrowseEntry {
   prefixes: string[];
   objects: Array<{ key: string; size: number; uploaded: string }>;
   cursor: string | null;
+  total: number;
+  pageSize: number;
 }
 
 export type Dataset = "minute" | "eod";
@@ -47,16 +49,60 @@ const FETCH_BATCH_SIZE = 1000; // R2's own per-call max -- only used by the two 
  * Filtered post-fetch (R2's own .list() has no "exclude this" option), so
  * an individual page can occasionally come back with fewer than
  * BROWSE_PAGE_SIZE visible entries -- harmless, cursor-based pagination
- * still works correctly either way. */
+ * still works correctly either way.
+ *
+ * Also returns `total`/`pageSize` -- the total item count at this exact
+ * level (folders + files combined, same filtering as above) and the page
+ * size used to produce it, so the UI can show "N items" and "page X of Y"
+ * without a second request. `total` comes from folderItemCount() below,
+ * which is its own full walk of every list() page under `prefix` (R2 has
+ * no cheaper way to get a count) -- cached per-prefix, same reasoning as
+ * bucketStats()'s cache further down this file. */
 export async function browse(env: Env, prefix: string, cursor?: string): Promise<BrowseEntry> {
-  const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: BROWSE_PAGE_SIZE });
+  const [page, total] = await Promise.all([
+    env.DATA.list({ prefix, delimiter: "/", cursor, limit: BROWSE_PAGE_SIZE }),
+    folderItemCount(env, prefix),
+  ]);
   return {
     prefixes: page.delimitedPrefixes,
     objects: page.objects
       .filter((object) => !object.key.endsWith(".completeness.json"))
       .map((object) => ({ key: object.key, size: object.size, uploaded: object.uploaded.toISOString() })),
     cursor: page.truncated ? page.cursor : null,
+    total,
+    pageSize: BROWSE_PAGE_SIZE,
   };
+}
+
+const FOLDER_COUNT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes -- same tolerance as bucketStats() below
+const FOLDER_COUNT_CACHE_MAX_ENTRIES = 200; // bounded FIFO -- isolate-local, not meant to hold every prefix ever browsed
+
+// Isolate-local cache, same reasoning as bucketStats()'s own cache below --
+// keyed per-prefix since "how many items total" needs its own walk of every
+// R2 list() page under THIS prefix (delimiter-scoped, one level deep, same
+// as what browse() itself shows) and R2 has no cheaper way to get a count.
+const folderCountCache = new Map<string, { value: number; expiresAt: number }>();
+
+async function folderItemCount(env: Env, prefix: string): Promise<number> {
+  const now = Date.now();
+  const cached = folderCountCache.get(prefix);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  let count = 0;
+  let cursor: string | undefined;
+  do {
+    const page = await env.DATA.list({ prefix, delimiter: "/", cursor, limit: FETCH_BATCH_SIZE });
+    count += page.delimitedPrefixes.length;
+    count += page.objects.filter((object) => !object.key.endsWith(".completeness.json")).length;
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+
+  if (folderCountCache.size >= FOLDER_COUNT_CACHE_MAX_ENTRIES) {
+    const oldestKey = folderCountCache.keys().next().value;
+    if (oldestKey !== undefined) folderCountCache.delete(oldestKey);
+  }
+  folderCountCache.set(prefix, { value: count, expiresAt: now + FOLDER_COUNT_CACHE_TTL_MS });
+  return count;
 }
 
 /** GET /api/symbols?dataset=minute|eod -- every symbol under that dataset's

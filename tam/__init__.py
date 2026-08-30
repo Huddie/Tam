@@ -27,15 +27,46 @@ fred = _FredApi(api_key=tam.Secrets["FRED_API_KEY"])
 # Or skip fredapi entirely -- tam.Fred wraps it, resolving the API key
 # via tam.Secrets internally:
 dgs10 = tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)
+
+# One object per ticker (or several), backed by the market-data/reference-
+# data/SEC lakes at once -- see tam.symbol's own docstring:
+from tam import Symbol
+aapl = Symbol("AAPL")
+aapl.minute_bars(start="2024-01-01")
+aapl.splits()
+
+# Raw SQL, no ticker object needed -- the lower-level tier Symbol itself
+# is built on:
+tam.query("SELECT * FROM daily_bars('AAPL') ORDER BY day")
+
+# Optional caching (opt-in everywhere -- omit `cache=` to always hit the
+# connection, exactly like before this existed) -- construct once, reuse
+# across notebook cells so a re-run doesn't re-fetch:
+cache = tam.ManualCache()
+Symbol("AAPL", cache=cache).minute_bars()
 """
 
 from __future__ import annotations
 
+from .cache import Cache, LRUCache, ManualCache, TTLCache
+from .query import query
 from .registry import Registry
 from .research.data.fred import Fred
 from .secrets import Secrets
+from .symbol import Symbol
 
-__all__ = ["Fred", "Registry", "Secrets", "get"]
+__all__ = [
+    "Cache",
+    "Fred",
+    "LRUCache",
+    "ManualCache",
+    "Registry",
+    "Secrets",
+    "Symbol",
+    "TTLCache",
+    "get",
+    "query",
+]
 
 
 def get(base_type, name: str | None = None):
