@@ -12,7 +12,7 @@ function yourself means you're reading quantstats' own docs/signature for
 whichever one you pick, not this module's guess at a common shape.
 
 Needs the `quantstats` extra (`pip install "tam-quant[quantstats]"`) for
-anything beyond importing this module, which always works.
+anything beyond importing this module, which always works::
 
     from tam.backtest.quantstats_report import returns_for, resolve_benchmark
     import quantstats as qs

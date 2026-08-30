@@ -9,7 +9,7 @@ again by default, even if nothing about the underlying data changed --
 mildly wasteful locally, actually slow against a real R2-backed
 connection. Construct ONE cache object at the top of a notebook and pass
 it to every `Symbol(...)`/`tam.query(...)` call for the rest of the
-session:
+session::
 
     from tam import Symbol, ManualCache
 

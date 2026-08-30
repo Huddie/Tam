@@ -69,7 +69,7 @@ connection at all -- caught live by this project's own pre-existing
 marketdata test suite the first time these macros shipped.
 
 All three lakes live in the same bucket under different prefixes
-("minute/"/"eod/"/"sec/"), so one open_duckdb() call queries all of them.
+("minute/"/"eod/"/"sec/"), so one open_duckdb() call queries all of them::
 
     from tam.marketdata.duckdb_query import open_duckdb
 

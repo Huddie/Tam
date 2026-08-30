@@ -6,7 +6,7 @@ duckdb = pytest.importorskip("duckdb")
 from tam.marketdata.reference_store import LocalReferenceStore  # noqa: E402
 from tam.marketdata.schema import ADJ_CLOSE, CLOSE, HIGH, LOW, OPEN, SYMBOL, TRANSACTIONS, VOLUME  # noqa: E402
 from tam.marketdata.store import LocalMinuteBarStore  # noqa: E402
-from tam.symbol import Symbol  # noqa: E402
+from tam.symbol import CIK, Symbol  # noqa: E402
 
 
 def _short_row(ticker: str, date: str, short_volume: float = 100.0) -> dict:
@@ -74,7 +74,23 @@ def local_root(tmp_path):
         "short_volume",
         pd.DataFrame([_short_row("AAPL", "2024-01-02", 100.0), _short_row("MSFT", "2024-01-02", 200.0)]),
     )
+    _write_sec_reference(tmp_path, [(320193, "AAPL", "Apple Inc.")])
     return tmp_path
+
+
+def _write_sec_reference(root, rows) -> None:
+    """SecStore is R2-only (no local variant), so a local sec/reference/
+    company_tickers.parquet for tests is written directly here, matching
+    the real schema -- just enough for sec_companies()/sec_cik() to work
+    against a local_root=, no boto3/R2 involved."""
+    import os
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    os.makedirs(f"{root}/sec/reference", exist_ok=True)
+    df = pd.DataFrame(rows, columns=["cik", "ticker", "entity_name"])
+    pq.write_table(pa.Table.from_pandas(df, preserve_index=False), f"{root}/sec/reference/company_tickers.parquet")
 
 
 class _CountingConnection:
@@ -263,3 +279,94 @@ def test_filings_delegates_per_ticker_and_concatenates(local_root, fake_sec):
 
     assert len(df) == 2  # one fake row per ticker
     assert [call[0] for call in fake_sec.instances[0].filings_calls] == ["AAPL", "MSFT"]
+
+
+def test_bare_int_is_rejected_with_a_clear_type_error(local_root):
+    with pytest.raises(TypeError, match="ticker string or CIK"):
+        Symbol(320193, local_root=str(local_root))
+
+
+def test_cik_resolves_to_the_real_ticker_for_bar_and_reference_macros(local_root):
+    sym = Symbol(CIK(320193), local_root=str(local_root))
+
+    df = sym.splits()
+
+    assert len(df) == 1
+    assert df["ticker"].iloc[0] == "AAPL"
+
+
+def test_cik_and_ticker_mix_freely_in_one_symbol(local_root):
+    sym = Symbol("MSFT", CIK(320193), local_root=str(local_root))
+
+    df = sym.short_volume()
+
+    assert set(df["ticker"]) == {"AAPL", "MSFT"}
+
+
+def test_cik_with_no_matching_company_raises_a_clear_error(local_root):
+    sym = Symbol(CIK(999999999), local_root=str(local_root))
+
+    with pytest.raises(RuntimeError, match="No ticker on record for CIK 999999999"):
+        sym.splits()
+
+
+def test_cik_repr_and_construction_from_a_string():
+    assert repr(CIK(320193)) == "CIK(320193)"
+    assert CIK("320193").value == 320193
+
+
+def test_cik_passed_through_directly_to_sec_for_financials(local_root, fake_sec):
+    sym = Symbol(CIK(320193), local_root=str(local_root))
+
+    sym.financials()
+
+    assert fake_sec.instances[0].financials_calls[0][0] == [320193]  # the raw CIK int, no resolution needed
+
+
+def test_columns_selects_a_subset(local_root):
+    sym = Symbol("AAPL", local_root=str(local_root))
+
+    df = sym.splits(columns=["ticker", "execution_date"])
+
+    assert list(df.columns) == ["ticker", "execution_date"]
+
+
+def test_columns_rejects_an_unknown_name_with_a_clear_error(local_root):
+    sym = Symbol("AAPL", local_root=str(local_root))
+
+    with pytest.raises(ValueError, match="Unknown column"):
+        sym.splits(columns=["not_a_real_column"])
+
+
+def test_columns_also_works_for_multi_ticker_scan_all_queries(local_root):
+    sym = Symbol("AAPL", "MSFT", local_root=str(local_root))
+
+    df = sym.short_volume(columns=["ticker", "short_volume"])
+
+    assert list(df.columns) == ["ticker", "short_volume"]
+    assert set(df["ticker"]) == {"AAPL", "MSFT"}
+
+
+def test_daily_bars_now_supports_start_end_like_the_other_bar_methods(local_root):
+    sym = Symbol("AAPL", local_root=str(local_root))
+
+    in_range = sym.daily_bars(start="2024-01-02", end="2024-01-02")
+    out_of_range = sym.daily_bars(start="2024-06-01", end="2024-06-30")
+
+    assert len(in_range) == 1
+    assert out_of_range.empty
+
+
+def test_engine_enum_is_equivalent_to_the_plain_string(local_root):
+    pytest.importorskip("polars")
+    import polars as pl
+
+    from tam.engine import Engine
+
+    sym = Symbol("AAPL", local_root=str(local_root))
+
+    by_enum = sym.splits(engine=Engine.POLARS)
+    by_string = sym.splits(engine="polars")
+
+    assert isinstance(by_enum, pl.DataFrame)
+    assert by_enum.equals(by_string)

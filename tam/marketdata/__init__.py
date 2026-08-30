@@ -12,7 +12,7 @@ validation together into a resumable backfill.
 Query access does not go through this package at all once data is in R2 --
 DuckDB's own httpfs extension reads the Parquet lake directly (see
 tam.marketdata.duckdb_query.open_duckdb()), from a local machine, Colab, or
-anywhere else, with no API service in between.
+anywhere else, with no API service in between::
 
     from tam.marketdata.credentials import resolve_r2_credentials
     from tam.marketdata.duckdb_query import open_duckdb

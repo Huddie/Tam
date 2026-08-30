@@ -1,9 +1,9 @@
 """tam.query() -- raw SQL over every macro at once, no ticker object
-needed. The low-level tier of tam's data-access layer: `tam.Symbol`/
-`tam.Symbols` are the ergonomic per-ticker layer built on top of exactly
-this; reach for `query()` directly for anything that doesn't fit a single
-ticker or a fixed list of them (a cross-ticker join, an aggregation over
-the whole universe, ...).
+needed. The low-level tier of tam's data-access layer: `tam.Symbol` is the
+ergonomic per-ticker layer built on top of exactly this; reach for
+`query()` directly for anything that doesn't fit a single ticker or a
+fixed list of them (a cross-ticker join, an aggregation over the whole
+universe, ...)::
 
     import tam
 
@@ -17,28 +17,30 @@ the whole universe, ...).
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from .cache import Cache
+from .engine import Engine
 from .marketdata.connection import default_connection, resolve_connection
 
 
 def query(
     sql: str,
     *,
-    engine: str = "pandas",
+    engine: Union[str, Engine] = Engine.PANDAS,
     cache: Optional[Cache] = None,
     con: Any = None,
     **connection_kwargs: Any,
 ) -> Any:
-    """Runs `sql` and returns pandas (`engine="pandas"`, the default) or
-    polars (`engine="polars"`, DuckDB's own native `.pl()` -- no `tam`
-    dependency on polars itself, install it yourself if you want this).
-    `con=`/`local_root=`/any other `open_duckdb()` kwarg overrides the
-    connection outright (same resolution chain as `tam.Symbol`/`Sec`);
-    omit all of them to share the one lazily-built default connection
-    every default-configured caller in the process reuses. `cache=` (a
-    `tam.Cache`) is opt-in, keyed on the exact `(sql, engine)` pair."""
+    """Runs `sql` and returns pandas (`engine=Engine.PANDAS`/`"pandas"`,
+    the default) or polars (`engine=Engine.POLARS`/`"polars"`, DuckDB's
+    own native `.pl()` -- no `tam` dependency on polars itself, install
+    it yourself if you want this). `con=`/`local_root=`/any other
+    `open_duckdb()` kwarg overrides the connection outright (same
+    resolution chain as `tam.Symbol`/`Sec`); omit all of them to share
+    the one lazily-built default connection every default-configured
+    caller in the process reuses. `cache=` (a `tam.Cache`) is opt-in,
+    keyed on the exact `(sql, engine)` pair."""
     if con is not None:
         active_con = con
     elif connection_kwargs:
@@ -53,7 +55,7 @@ def query(
             return cached
 
     relation = active_con.sql(sql)
-    result = relation.pl() if engine == "polars" else relation.df()
+    result = relation.pl() if engine == Engine.POLARS else relation.df()
 
     if cache is not None:
         cache.set(key, result)

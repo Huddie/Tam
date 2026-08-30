@@ -13,7 +13,7 @@ extra sources exist for credentials THIS PACKAGE itself issues and manages
 end-to-end (a publishing token you get via `upload-discovery login`, R2
 access via `save_r2_credentials()`); Secrets is for arbitrary third-party
 keys with no such flow, where "env var, or a Colab secret" already covers
-every place you'd realistically run a notebook.
+every place you'd realistically run a notebook::
 
     from tam import Secrets
     from fredapi import Fred

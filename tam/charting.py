@@ -1,7 +1,7 @@
 """General-purpose composable charting: any Chart subclass is callable
 with data and returns a ChartCall that renders inline in a Jupyter cell
 (last-expression rich display) or via .show(); chain multiple with | to
-produce a single composite figure.
+produce a single composite figure::
 
     class MyChart(Chart):
         title = "My Chart"

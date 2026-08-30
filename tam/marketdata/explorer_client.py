@@ -28,7 +28,7 @@ tam.marketdata.duckdb_query.open_duckdb() (identical macros -- daily_bars,
 rollup_bars, rolling_volatility, ...), just without ever handling the real,
 permanent R2 account credentials yourself. What's actually running the
 queries (DuckDB, today) is an implementation detail, not part of this
-module's public API.
+module's public API::
 
     from tam.marketdata.explorer_client import fetch_dataframe, connect
 

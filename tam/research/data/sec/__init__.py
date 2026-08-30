@@ -2,7 +2,7 @@
 cache, SEC's own JSON APIs are the source of truth, EdgarTools' concept-
 standardization table does the raw-concept-name-to-line-item mapping (see
 normalize.py's own docstring for why, and why NOT its heavier per-filing
-XBRL-parsing path for the raw facts themselves).
+XBRL-parsing path for the raw facts themselves)::
 
     from tam.research.data.sec import Sec
 

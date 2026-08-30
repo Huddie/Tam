@@ -7,7 +7,7 @@ harness. Not tied to any particular column shape -- whatever a DataProvider
 returns for a symbol (OHLCV today; anything else a future/custom DataProvider
 returns tomorrow) passes straight through to `transform` and the output file
 untouched. Nothing here assumes "OHLC" specifically -- see `tam/data/
-providers.py` if you want a provider with a different shape.
+providers.py` if you want a provider with a different shape::
 
     from datetime import date
     from tam.data.export import export_history

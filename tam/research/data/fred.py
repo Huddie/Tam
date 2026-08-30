@@ -2,7 +2,7 @@
 tam.Secrets["FRED_API_KEY"] internally (nothing to construct/pass yourself),
 adds a small human-readable-name lookup on top of fredapi's raw
 get_series(), and a Datasets enum of commonly-used series ids so you don't
-need to look up "DGS10" from memory/docs every time.
+need to look up "DGS10" from memory/docs every time::
 
     from tam import Fred
 

@@ -3,7 +3,7 @@ dashboard from tam.backtest.tearsheet/visualization, or any other
 self-contained .html) to Discovery, a private GitHub-authenticated catalog
 (see /tam-discovery for the Cloudflare Worker this talks to). Publishing is
 immutable by default -- every call creates a new version; pass the same
-`name` twice to have a stable URL that always resolves to the latest one.
+`name` twice to have a stable URL that always resolves to the latest one::
 
     from tam.discovery import upload
 
@@ -12,7 +12,7 @@ immutable by default -- every call creates a new version; pass the same
 
 Also accepts anything satisfying the Uploadable protocol (a Plotly Figure,
 or a tam.charting ChartCall/ChartPipeline -- see Uploadable's own
-docstring) directly, no need to render to a file first:
+docstring) directly, no need to render to a file first::
 
     from tam.charting import timeseries
     upload(timeseries(my_series), title="...")
