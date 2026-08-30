@@ -28,6 +28,15 @@ DuckDB's CREATE MACRO doesn't support that (confirmed live:
 `CatalogException: already exists` on a second same-name macro even with
 a different arity) -- one signature with a default covers both shapes.
 
+Also registers six Massive/Polygon reference-data macros -- `splits`,
+`dividends`, `ipos` over `tam.marketdata.reference_store`'s
+`corporate_actions/` prefix, and `short_volume`, `short_interest`,
+`float_data` over its `positioning/` prefix (see that module's own
+docstring for why grouped this way, and reference_ingest.py for how they
+get there). Every one takes an OPTIONAL `sym` (a plain ticker string, no
+CIK resolution needed -- these datasets store ticker as a plain column,
+not by CIK): omit it for every ticker at once, or pass it to scope to one.
+
 Every one of those macros' read_parquet() calls appends a `substr(coalesce(
 try_cast(ticker_or_cik AS VARCHAR), ''), 1, 0)` (always an empty string) to
 the glob path -- NOT dead code. Confirmed live: DuckDB eagerly resolves
@@ -152,6 +161,48 @@ CREATE OR REPLACE MACRO sec_companies(noop := NULL) AS TABLE
         getvariable('sec_root') || '/reference/company_tickers.parquet'
         || substr(coalesce(try_cast(noop AS VARCHAR), ''), 1, 0)
     );
+
+CREATE OR REPLACE MACRO splits(sym := NULL) AS TABLE
+    SELECT * FROM read_parquet(
+        getvariable('corporate_actions_root') || '/splits/*.parquet'
+        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
+    )
+    WHERE sym IS NULL OR ticker = upper(sym);
+
+CREATE OR REPLACE MACRO dividends(sym := NULL) AS TABLE
+    SELECT * FROM read_parquet(
+        getvariable('corporate_actions_root') || '/dividends/*.parquet'
+        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
+    )
+    WHERE sym IS NULL OR ticker = upper(sym);
+
+CREATE OR REPLACE MACRO ipos(sym := NULL) AS TABLE
+    SELECT * FROM read_parquet(
+        getvariable('corporate_actions_root') || '/ipos/all.parquet'
+        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
+    )
+    WHERE sym IS NULL OR ticker = upper(sym);
+
+CREATE OR REPLACE MACRO short_volume(sym := NULL) AS TABLE
+    SELECT * FROM read_parquet(
+        getvariable('positioning_root') || '/short_volume/*.parquet'
+        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
+    )
+    WHERE sym IS NULL OR ticker = upper(sym);
+
+CREATE OR REPLACE MACRO short_interest(sym := NULL) AS TABLE
+    SELECT * FROM read_parquet(
+        getvariable('positioning_root') || '/short_interest/*.parquet'
+        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
+    )
+    WHERE sym IS NULL OR ticker = upper(sym);
+
+CREATE OR REPLACE MACRO float_data(sym := NULL) AS TABLE
+    SELECT * FROM read_parquet(
+        getvariable('positioning_root') || '/float/all.parquet'
+        || substr(coalesce(try_cast(sym AS VARCHAR), ''), 1, 0)
+    )
+    WHERE sym IS NULL OR ticker = upper(sym);
 """
 
 
@@ -189,11 +240,16 @@ def open_duckdb(
     minute_prefix: str = "minute",
     eod_prefix: str = "eod",
     sec_prefix: str = "sec",
+    corporate_actions_prefix: str = "corporate_actions",
+    positioning_prefix: str = "positioning",
 ) -> "duckdb.DuckDBPyConnection":
-    """A fresh DuckDB connection ready to query all three Parquet lakes --
+    """A fresh DuckDB connection ready to query all five Parquet lakes --
     the minute-bar lake (minute_bars(sym) and its rollup macros), tam.data's
-    end-of-day lake (eod_bars(sym)), and tam.research.data.sec's XBRL/
-    filings lake (sec_facts/sec_financials/sec_stmt/sec_filings/sec_companies).
+    end-of-day lake (eod_bars(sym)), tam.research.data.sec's XBRL/filings
+    lake (sec_facts/sec_financials/sec_stmt/sec_filings/sec_companies), and
+    the Massive/Polygon reference-data lakes: corporate actions
+    (splits/dividends/ipos) and positioning (short_volume/short_interest/
+    float_data).
 
     Reads from R2 by default -- `credentials` resolves the usual way
     (tam.marketdata.credentials.resolve_r2_credentials: kwarg -> env var ->
@@ -202,12 +258,13 @@ def open_duckdb(
     bucket without touching the rest of your saved/env credentials).
 
     Pass `local_root` instead (a plain local directory containing
-    `<root>/<minute_prefix>/...`, `<root>/<eod_prefix>/...`, and/or
-    `<root>/<sec_prefix>/...`) to query local Parquet with no R2/network
-    involved at all -- what tests and local dev use. Querying a lake that
-    doesn't actually exist under `local_root` is fine as long as you don't
-    SELECT from its macro -- read_parquet() only globs the path when the
-    macro is actually invoked.
+    `<root>/<minute_prefix>/...`, `<root>/<eod_prefix>/...`,
+    `<root>/<sec_prefix>/...`, `<root>/<corporate_actions_prefix>/...`,
+    and/or `<root>/<positioning_prefix>/...`) to query local Parquet with
+    no R2/network involved at all -- what tests and local dev use.
+    Querying a lake that doesn't actually exist under `local_root` is fine
+    as long as you don't SELECT from its macro -- read_parquet() only
+    globs the path when the macro is actually invoked.
     """
     import duckdb
 
@@ -217,6 +274,8 @@ def open_duckdb(
         minute_root = f"{root}/{minute_prefix}"
         eod_root = f"{root}/{eod_prefix}"
         sec_root = f"{root}/{sec_prefix}"
+        corporate_actions_root = f"{root}/{corporate_actions_prefix}"
+        positioning_root = f"{root}/{positioning_prefix}"
     else:
         resolved = credentials or resolve_r2_credentials()
         if bucket is not None:
@@ -230,10 +289,14 @@ def open_duckdb(
         minute_root = r2_uri(resolved, minute_prefix)
         eod_root = r2_uri(resolved, eod_prefix)
         sec_root = r2_uri(resolved, sec_prefix)
+        corporate_actions_root = r2_uri(resolved, corporate_actions_prefix)
+        positioning_root = r2_uri(resolved, positioning_prefix)
 
     con.sql(f"SET VARIABLE minute_root = '{minute_root}'")
     con.sql(f"SET VARIABLE eod_root = '{eod_root}'")
     con.sql(f"SET VARIABLE sec_root = '{sec_root}'")
+    con.sql(f"SET VARIABLE corporate_actions_root = '{corporate_actions_root}'")
+    con.sql(f"SET VARIABLE positioning_root = '{positioning_root}'")
     _configure_connection(con)
     return con
 
