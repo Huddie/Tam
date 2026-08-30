@@ -258,12 +258,12 @@
 <p>Your trading logic. A <code class="docutils literal notranslate"><span class="pre">Strategy</span></code> reacts to clock events and submits orders
 through a bound <code class="docutils literal notranslate"><span class="pre">TradeGateway</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Strategy</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">state_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>   <span class="c1"># START / RUNNING / END</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">state_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>  <span class="c1"># START / RUNNING / END</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">subscribe_to</span><span class="p">(</span><span class="n">topic</span><span class="p">)</span>          <span class="c1"># e.g. OPEN_TOPIC, EOD_TOPIC (tam.events.clock)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">trade</span><span class="o">.</span><span class="n">stocks</span><span class="p">([</span><span class="n">Order</span><span class="p">(</span><span class="o">...</span><span class="p">)])</span>   <span class="c1"># submit orders via the bound TradeGateway</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">"note"</span><span class="p">)</span>             <span class="c1"># marks a vertical line on the eventual chart</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">subscribe_to</span><span class="p">(</span><span class="n">topic</span><span class="p">)</span>  <span class="c1"># e.g. OPEN_TOPIC, EOD_TOPIC (tam.events.clock)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">trade</span><span class="o">.</span><span class="n">stocks</span><span class="p">([</span><span class="n">Order</span><span class="p">(</span><span class="o">...</span><span class="p">)])</span>  <span class="c1"># submit orders via the bound TradeGateway</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">"note"</span><span class="p">)</span>  <span class="c1"># marks a vertical line on the eventual chart</span>
 </pre></div>
 </div>
 <p>An <code class="docutils literal notranslate"><span class="pre">Order</span></code> is <code class="docutils literal notranslate"><span class="pre">Order(ticker,</span> <span class="pre">side,</span> <span class="pre">qty,</span> <span class="pre">portfolio,</span> <span class="pre">price_basis=PriceBasis.CLOSE)</span></code>;
@@ -276,6 +276,7 @@ see <code class="docutils literal notranslate"><span class="pre">tam/portfolio/o
 imports a strategy directly, only looks it up by this name:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tam.strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Strategy</span>
+
 
 <span class="nd">@Registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Strategy</span><span class="p">,</span> <span class="s2">"buy_and_hold"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">build_buy_and_hold</span><span class="p">(</span><span class="n">repository</span><span class="p">,</span> <span class="n">portfolio_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cash</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Strategy</span><span class="p">:</span>
@@ -340,8 +341,8 @@ built from — plain functions over a <code class="docutils literal notranslate"
 <code class="docutils literal notranslate"><span class="pre">timeseries()</span></code>/plotting (see <a class="reference internal" href="charting.html"><span class="std std-doc">Charting</span></a>):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.strategy.indicators</span><span class="w"> </span><span class="kn">import</span> <span class="n">sma</span><span class="p">,</span> <span class="n">rsi</span>
 
-<span class="n">sma_20</span> <span class="o">=</span> <span class="n">sma</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>   <span class="c1"># .name == "sma_20"</span>
-<span class="n">rsi_14</span> <span class="o">=</span> <span class="n">rsi</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">14</span><span class="p">)</span>   <span class="c1"># .name == "rsi_14"</span>
+<span class="n">sma_20</span> <span class="o">=</span> <span class="n">sma</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>  <span class="c1"># .name == "sma_20"</span>
+<span class="n">rsi_14</span> <span class="o">=</span> <span class="n">rsi</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">14</span><span class="p">)</span>  <span class="c1"># .name == "rsi_14"</span>
 </pre></div>
 </div>
 </section>

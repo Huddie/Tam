@@ -272,8 +272,8 @@ you want full control over strategies/portfolios without writing a YAML file.</p
 <h2>Config-driven runner — the batteries-included path<a class="headerlink" href="#config-driven-runner-the-batteries-included-path" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">run</span><span class="p">,</span> <span class="n">run_backtest</span>
 
-<span class="n">run</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"batch"</span><span class="p">)</span>                 <span class="c1"># CLI-style: Rich progress bars, writes an HTML report</span>
-<span class="n">report</span> <span class="o">=</span> <span class="n">run_backtest</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># notebook-style: returns the Report, renders inline</span>
+<span class="n">run</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"batch"</span><span class="p">)</span>  <span class="c1"># CLI-style: Rich progress bars, writes an HTML report</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">run_backtest</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># notebook-style: returns the Report, renders inline</span>
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="getting-started.html#config-shape"><span class="std std-ref">Getting started</span></a> for the full config
@@ -285,7 +285,9 @@ a <code class="docutils literal notranslate"><span class="pre">Registry</span></
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Presenter</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">run_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">harness</span><span class="p">,</span> <span class="n">total_days</span><span class="p">,</span> <span class="n">checkpoint_path</span><span class="p">,</span> <span class="n">checkpoint_every</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Report</span><span class="p">:</span> <span class="o">...</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">show_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">ticker_colors</span><span class="p">,</span> <span class="n">prices</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run_live</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">harness</span><span class="p">,</span> <span class="n">total_days</span><span class="p">,</span> <span class="n">checkpoint_path</span><span class="p">,</span> <span class="n">checkpoint_every</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">ticker_colors</span><span class="p">,</span> <span class="n">prices</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_live</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">harness</span><span class="p">,</span> <span class="n">total_days</span><span class="p">,</span> <span class="n">checkpoint_path</span><span class="p">,</span> <span class="n">checkpoint_every</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">ticker_colors</span><span class="p">,</span> <span class="n">prices</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">verbose</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
 </pre></div>
 </div>
 <p>Ships with <code class="docutils literal notranslate"><span class="pre">&quot;cli&quot;</span></code> (Rich progress + static HTML), <code class="docutils literal notranslate"><span class="pre">&quot;clear_output&quot;</span></code>
@@ -297,10 +299,12 @@ or hand in your own instance directly — no registration required:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tam.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_backtest</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tam.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
 
-<span class="nd">@Registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Presenter</span><span class="p">,</span> <span class="s2">"my_presenter"</span><span class="p">)</span>   <span class="c1"># optional -- only needed for name-based selection</span>
+
+<span class="nd">@Registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Presenter</span><span class="p">,</span> <span class="s2">"my_presenter"</span><span class="p">)</span>  <span class="c1"># optional -- only needed for name-based selection</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MyPresenter</span><span class="p">(</span><span class="n">Presenter</span><span class="p">):</span> <span class="o">...</span>
 
-<span class="n">run_backtest</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">presenter</span><span class="o">=</span><span class="n">MyPresenter</span><span class="p">())</span>   <span class="c1"># or render_mode="my_presenter"</span>
+
+<span class="n">run_backtest</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">presenter</span><span class="o">=</span><span class="n">MyPresenter</span><span class="p">())</span>  <span class="c1"># or render_mode="my_presenter"</span>
 </pre></div>
 </div>
 </section>
@@ -309,8 +313,10 @@ or hand in your own instance directly — no registration required:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.backtest.live</span><span class="w"> </span><span class="kn">import</span> <span class="n">live_render</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tam.backtest.report</span><span class="w"> </span><span class="kn">import</span> <span class="n">Report</span>
 
+
 <span class="k">def</span><span class="w"> </span><span class="nf">next_frame</span><span class="p">():</span>
     <span class="k">return</span> <span class="n">Report</span><span class="o">.</span><span class="n">from_curves</span><span class="p">({</span><span class="s2">"my_strategy"</span><span class="p">:</span> <span class="n">running_series</span><span class="p">})</span>  <span class="c1"># or None: "nothing new yet"</span>
+
 
 <span class="n">live_render</span><span class="p">(</span><span class="n">next_frame</span><span class="p">,</span> <span class="n">poll_seconds</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">should_continue</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">still_running</span><span class="p">)</span>
 </pre></div>
@@ -327,10 +333,18 @@ real Dash server/browser tab instead of a notebook cell.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tam.backtest.walk_forward</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_walk_forward</span>
 
-<span class="n">report</span> <span class="o">=</span> <span class="n">run_walk_forward</span><span class="p">(</span><span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">windows</span><span class="o">=</span><span class="p">[</span>
-    <span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">31</span><span class="p">)),</span>  <span class="c1"># (train_start, train_end, test_start, test_end)</span>
-    <span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
-<span class="p">])</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">run_walk_forward</span><span class="p">(</span>
+    <span class="s2">"config.yaml"</span><span class="p">,</span>
+    <span class="n">windows</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">(</span>
+            <span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span>
+            <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span>
+        <span class="p">),</span>  <span class="c1"># (train_start, train_end, test_start, test_end)</span>
+        <span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2021</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
+    <span class="p">],</span>
+<span class="p">)</span>
 <span class="n">report</span><span class="o">.</span><span class="n">summary_all</span><span class="p">()</span>  <span class="c1"># scored ONLY on each window's own test period, stitched together</span>
 </pre></div>
 </div>
@@ -346,8 +360,8 @@ scored on a period its own selection could have “seen” via the full history.
 <h2>Stress testing<a class="headerlink" href="#stress-testing" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.backtest.stress</span><span class="w"> </span><span class="kn">import</span> <span class="n">stress_test</span><span class="p">,</span> <span class="n">flat_shock</span>
 
-<span class="n">stress_test</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="p">{</span><span class="s2">"NVDA"</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.50</span><span class="p">})</span>              <span class="c1"># hypothetical portfolio return if NVDA gaps -50% overnight</span>
-<span class="n">stress_test</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">flat_shock</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">))</span>    <span class="c1"># every current position gaps -5%</span>
+<span class="n">stress_test</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="p">{</span><span class="s2">"NVDA"</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.50</span><span class="p">})</span>  <span class="c1"># hypothetical portfolio return if NVDA gaps -50% overnight</span>
+<span class="n">stress_test</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">flat_shock</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">))</span>  <span class="c1"># every current position gaps -5%</span>
 </pre></div>
 </div>
 <p>Pure function, no <code class="docutils literal notranslate"><span class="pre">Report</span></code>/<code class="docutils literal notranslate"><span class="pre">Harness</span></code> needed — run directly against

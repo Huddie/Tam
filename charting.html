@@ -266,9 +266,9 @@ which is built on the exact same <code class="docutils literal notranslate"><spa
 <h2><code class="docutils literal notranslate"><span class="pre">timeseries()</span></code> — plot any series, raw<a class="headerlink" href="#timeseries-plot-any-series-raw" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">timeseries</span>
 
-<span class="n">timeseries</span><span class="p">(</span><span class="n">close</span><span class="p">)</span>                                     <span class="c1"># one line, uses close.name</span>
-<span class="n">timeseries</span><span class="p">([</span><span class="n">close</span><span class="p">,</span> <span class="n">sma</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span> <span class="n">sma</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">50</span><span class="p">)])</span>    <span class="c1"># several, each using its own .name</span>
-<span class="n">timeseries</span><span class="p">({</span><span class="s2">"SPY"</span><span class="p">:</span> <span class="n">close</span><span class="p">,</span> <span class="s2">"SMA 20"</span><span class="p">:</span> <span class="n">sma_20</span><span class="p">})</span>           <span class="c1"># explicit names</span>
+<span class="n">timeseries</span><span class="p">(</span><span class="n">close</span><span class="p">)</span>  <span class="c1"># one line, uses close.name</span>
+<span class="n">timeseries</span><span class="p">([</span><span class="n">close</span><span class="p">,</span> <span class="n">sma</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span> <span class="n">sma</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="mi">50</span><span class="p">)])</span>  <span class="c1"># several, each using its own .name</span>
+<span class="n">timeseries</span><span class="p">({</span><span class="s2">"SPY"</span><span class="p">:</span> <span class="n">close</span><span class="p">,</span> <span class="s2">"SMA 20"</span><span class="p">:</span> <span class="n">sma_20</span><span class="p">})</span>  <span class="c1"># explicit names</span>
 </pre></div>
 </div>
 <p>Accepts a single <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code>, a plain <code class="docutils literal notranslate"><span class="pre">list</span></code> of them (each one’s own
@@ -289,7 +289,10 @@ instead — use that when the series genuinely belong on the same scale
 (e.g. price and its own moving averages).</p>
 <p>FRED series plot the same way, no special-casing needed:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tam</span>
-<span class="n">timeseries</span><span class="p">([</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_2Y</span><span class="p">),</span> <span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_10Y</span><span class="p">)],</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Treasury Yields"</span><span class="p">)</span>
+
+<span class="n">timeseries</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_2Y</span><span class="p">),</span> <span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_10Y</span><span class="p">)],</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Treasury Yields"</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -315,13 +318,16 @@ directly behind a specific chart’s own traces in the same panel, call
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">Chart</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
+
 <span class="k">class</span><span class="w"> </span><span class="nc">MyChart</span><span class="p">(</span><span class="n">Chart</span><span class="p">):</span>
     <span class="n">title</span> <span class="o">=</span> <span class="s2">"My Chart"</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span> <span class="o">...</span>   <span class="c1"># `data` is whatever shape YOUR chart expects</span>
 
-<span class="n">MyChart</span><span class="p">()(</span><span class="n">my_data</span><span class="p">)</span>             <span class="c1"># a ChartCall -- auto-displays in Jupyter</span>
-<span class="n">MyChart</span><span class="p">()(</span><span class="n">my_data</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>      <span class="c1"># explicit .show()</span>
-<span class="n">c1</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">|</span> <span class="n">c2</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>            <span class="c1"># a ChartPipeline -- one composite figure</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span> <span class="o">...</span>  <span class="c1"># `data` is whatever shape YOUR chart expects</span>
+
+
+<span class="n">MyChart</span><span class="p">()(</span><span class="n">my_data</span><span class="p">)</span>  <span class="c1"># a ChartCall -- auto-displays in Jupyter</span>
+<span class="n">MyChart</span><span class="p">()(</span><span class="n">my_data</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># explicit .show()</span>
+<span class="n">c1</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">|</span> <span class="n">c2</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>  <span class="c1"># a ChartPipeline -- one composite figure</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Chart</span></code> is deliberately not tied to <code class="docutils literal notranslate"><span class="pre">Report</span></code> or any other single shape —

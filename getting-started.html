@@ -288,7 +288,8 @@ and universe providers are all pluggable through one shared mechanism:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@Registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">BaseType</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MyImpl</span><span class="p">(</span><span class="n">BaseType</span><span class="p">):</span> <span class="o">...</span>
 
-<span class="n">instance</span> <span class="o">=</span> <span class="n">Registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">BaseType</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">)</span>            <span class="c1"># cached singleton, no-arg</span>
+
+<span class="n">instance</span> <span class="o">=</span> <span class="n">Registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">BaseType</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">)</span>  <span class="c1"># cached singleton, no-arg</span>
 <span class="n">instance</span> <span class="o">=</span> <span class="n">Registry</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">BaseType</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>  <span class="c1"># fresh instance, args passed through</span>
 </pre></div>
 </div>

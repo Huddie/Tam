@@ -277,17 +277,21 @@ below.</p>
 <span class="c1">#    stays the same:</span>
 <span class="n">opens</span> <span class="o">=</span> <span class="n">price_matrix</span><span class="p">(</span><span class="n">repository</span><span class="p">,</span> <span class="n">tickers</span><span class="p">,</span> <span class="n">date</span><span class="p">(</span><span class="mi">2015</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">column</span><span class="o">=</span><span class="n">OPEN</span><span class="p">)</span>
 <span class="n">closes</span> <span class="o">=</span> <span class="n">price_matrix</span><span class="p">(</span><span class="n">repository</span><span class="p">,</span> <span class="n">tickers</span><span class="p">,</span> <span class="n">date</span><span class="p">(</span><span class="mi">2015</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">column</span><span class="o">=</span><span class="n">CLOSE</span><span class="p">)</span>
-<span class="n">returns</span> <span class="o">=</span> <span class="n">opens</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">closes</span> <span class="o">-</span> <span class="mi">1</span>   <span class="c1"># BCSO: buy close, sell next open</span>
+<span class="n">returns</span> <span class="o">=</span> <span class="n">opens</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">closes</span> <span class="o">-</span> <span class="mi">1</span>  <span class="c1"># BCSO: buy close, sell next open</span>
 <span class="c1"># returns = closes.pct_change()          # ...or the classic close-to-close daily return</span>
 <span class="c1"># returns = closes / opens - 1           # ...or intraday (buy open, sell same close)</span>
 
 <span class="c1"># 2. rolling, point-in-time-safe factors (only ever see data on/before as_of)</span>
 <span class="n">as_of</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="n">factors</span> <span class="o">=</span> <span class="n">compute_factors</span><span class="p">(</span><span class="n">returns</span><span class="p">,</span> <span class="n">as_of</span><span class="p">,</span> <span class="p">{</span>
-    <span class="s2">"sharpe_3y"</span><span class="p">:</span> <span class="n">RollingSharpe</span><span class="p">(</span><span class="n">window_days</span><span class="o">=</span><span class="mi">756</span><span class="p">),</span>
-    <span class="s2">"persistence"</span><span class="p">:</span> <span class="n">Persistence</span><span class="p">(</span><span class="n">period_days</span><span class="o">=</span><span class="mi">252</span><span class="p">),</span>
-    <span class="s2">"alpha"</span><span class="p">:</span> <span class="n">OvernightAlpha</span><span class="p">(</span><span class="n">window_days</span><span class="o">=</span><span class="mi">756</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="s2">"SPY"</span><span class="p">),</span>
-<span class="p">})</span>
+<span class="n">factors</span> <span class="o">=</span> <span class="n">compute_factors</span><span class="p">(</span>
+    <span class="n">returns</span><span class="p">,</span>
+    <span class="n">as_of</span><span class="p">,</span>
+    <span class="p">{</span>
+        <span class="s2">"sharpe_3y"</span><span class="p">:</span> <span class="n">RollingSharpe</span><span class="p">(</span><span class="n">window_days</span><span class="o">=</span><span class="mi">756</span><span class="p">),</span>
+        <span class="s2">"persistence"</span><span class="p">:</span> <span class="n">Persistence</span><span class="p">(</span><span class="n">period_days</span><span class="o">=</span><span class="mi">252</span><span class="p">),</span>
+        <span class="s2">"alpha"</span><span class="p">:</span> <span class="n">OvernightAlpha</span><span class="p">(</span><span class="n">window_days</span><span class="o">=</span><span class="mi">756</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="s2">"SPY"</span><span class="p">),</span>
+    <span class="p">},</span>
+<span class="p">)</span>
 <span class="n">scores</span> <span class="o">=</span> <span class="n">score</span><span class="p">(</span><span class="n">factors</span><span class="p">,</span> <span class="p">{</span><span class="s2">"sharpe_3y"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">"persistence"</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">"alpha"</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">})</span>
 
 <span class="c1"># 3. don't just take the top-N -- diversify across correlation clusters first</span>
@@ -345,7 +349,7 @@ fixed list, a point-in-time membership file, a live Wikipedia fetch, or the
 <span class="c1"># `pitindex` extra (Python &gt;=3.11: `pip install "tam-quant[pitindex]"`).</span>
 <span class="c1"># Covers "sp500" (default), "sp400", "sp600", or the composite "sp1500".</span>
 <span class="n">universe</span> <span class="o">=</span> <span class="n">PitIndexUniverse</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">"sp500"</span><span class="p">)</span>
-<span class="n">universe</span><span class="o">.</span><span class="n">constituents</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2018</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>   <span class="c1"># who was actually in the S&amp;P 500 back then</span>
+<span class="n">universe</span><span class="o">.</span><span class="n">constituents</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2018</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># who was actually in the S&amp;P 500 back then</span>
 
 <span class="c1"># or resolve it by name, e.g. straight from config:</span>
 <span class="n">universe</span> <span class="o">=</span> <span class="n">Registry</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">UniverseProvider</span><span class="p">,</span> <span class="s2">"pitindex"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s2">"sp600"</span><span class="p">)</span>
@@ -353,7 +357,7 @@ fixed list, a point-in-time membership file, a live Wikipedia fetch, or the
 </div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.basket.universe</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_sp500_from_wikipedia</span><span class="p">,</span> <span class="n">fetch_sp500_membership</span><span class="p">,</span> <span class="n">CsvUniverse</span><span class="p">,</span> <span class="n">WikipediaUniverse</span>
 
-<span class="n">current_tickers</span><span class="p">,</span> <span class="n">_changes</span> <span class="o">=</span> <span class="n">fetch_sp500_from_wikipedia</span><span class="p">()</span>   <span class="c1"># just today's list, no history</span>
+<span class="n">current_tickers</span><span class="p">,</span> <span class="n">_changes</span> <span class="o">=</span> <span class="n">fetch_sp500_from_wikipedia</span><span class="p">()</span>  <span class="c1"># just today's list, no history</span>
 
 <span class="c1"># WikipediaUniverse fetches once at construction (needs network then;</span>
 <span class="c1"># constituents(as_of) itself doesn't hit the network again) -- or persist it</span>

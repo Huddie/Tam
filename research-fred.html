@@ -263,8 +263,8 @@
 </div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tam</span>
 
-<span class="n">dgs10</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_10Y</span><span class="p">)</span>   <span class="c1"># or tam.Fred.get("DGS10") -- same series</span>
-<span class="n">dgs10</span><span class="o">.</span><span class="n">name</span>    <span class="c1"># "10-Year Treasury Yield", not the raw "DGS10" code</span>
+<span class="n">dgs10</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_10Y</span><span class="p">)</span>  <span class="c1"># or tam.Fred.get("DGS10") -- same series</span>
+<span class="n">dgs10</span><span class="o">.</span><span class="n">name</span>  <span class="c1"># "10-Year Treasury Yield", not the raw "DGS10" code</span>
 <span class="n">dgs10</span><span class="o">.</span><span class="n">tail</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -274,12 +274,12 @@ aid (<code class="docutils literal notranslate"><span class="pre">TREASURY_3MO</
 <code class="docutils literal notranslate"><span class="pre">UNEMPLOYMENT_RATE</span></code>, <code class="docutils literal notranslate"><span class="pre">YIELD_CURVE_10Y_2Y</span></code>) — FRED has tens of thousands of
 series total, so pass any other raw series id (a plain string) straight to
 <code class="docutils literal notranslate"><span class="pre">.get()</span></code> just the same:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"DGS2"</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="s2">"2015-01-01"</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"2024-01-01"</span><span class="p">)</span>   <span class="c1"># start/end optional; omit either for full history</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"DGS2"</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="s2">"2015-01-01"</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"2024-01-01"</span><span class="p">)</span>  <span class="c1"># start/end optional; omit either for full history</span>
 </pre></div>
 </div>
 <section id="authentication">
 <h2>Authentication<a class="headerlink" href="#authentication" title="Link to this heading">¶</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fred_key</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Secrets</span><span class="p">[</span><span class="s2">"FRED_API_KEY"</span><span class="p">]</span>      <span class="c1"># raises a clear error if not set anywhere</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fred_key</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Secrets</span><span class="p">[</span><span class="s2">"FRED_API_KEY"</span><span class="p">]</span>  <span class="c1"># raises a clear error if not set anywhere</span>
 <span class="n">fred_key</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Secrets</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"FRED_API_KEY"</span><span class="p">)</span>  <span class="c1"># None instead of raising</span>
 </pre></div>
 </div>
@@ -295,7 +295,9 @@ requires a key to be configured.</p>
 with no special-casing via <a class="reference internal" href="charting.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">timeseries()</span></code></span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">timeseries</span>
 
-<span class="n">timeseries</span><span class="p">([</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_2Y</span><span class="p">),</span> <span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_10Y</span><span class="p">)],</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Treasury Yields"</span><span class="p">)</span>
+<span class="n">timeseries</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_2Y</span><span class="p">),</span> <span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_10Y</span><span class="p">)],</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Treasury Yields"</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </section>

@@ -5,12 +5,12 @@ through a bound `TradeGateway`:
 
 ```python
 class Strategy(ABC):
-    def state_change(self, state: State) -> None: ...   # START / RUNNING / END
+    def state_change(self, state: State) -> None: ...  # START / RUNNING / END
     def on_event(self, event: Event) -> None: ...
 
-    self.subscribe_to(topic)          # e.g. OPEN_TOPIC, EOD_TOPIC (tam.events.clock)
-    self.trade.stocks([Order(...)])   # submit orders via the bound TradeGateway
-    self.annotate("note")             # marks a vertical line on the eventual chart
+    self.subscribe_to(topic)  # e.g. OPEN_TOPIC, EOD_TOPIC (tam.events.clock)
+    self.trade.stocks([Order(...)])  # submit orders via the bound TradeGateway
+    self.annotate("note")  # marks a vertical line on the eventual chart
 ```
 
 An `Order` is `Order(ticker, side, qty, portfolio, price_basis=PriceBasis.CLOSE)`;
@@ -26,6 +26,7 @@ imports a strategy directly, only looks it up by this name:
 ```python
 from tam.registry import Registry
 from tam.strategy import Strategy
+
 
 @Registry.register(Strategy, "buy_and_hold")
 def build_buy_and_hold(repository, portfolio_id: str, params: dict, cash: float) -> Strategy:
@@ -66,6 +67,6 @@ built from — plain functions over a `pd.Series`, already named for
 ```python
 from tam.strategy.indicators import sma, rsi
 
-sma_20 = sma(close, 20)   # .name == "sma_20"
-rsi_14 = rsi(close, 14)   # .name == "rsi_14"
+sma_20 = sma(close, 20)  # .name == "sma_20"
+rsi_14 = rsi(close, 14)  # .name == "rsi_14"
 ```

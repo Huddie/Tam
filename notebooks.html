@@ -297,9 +297,9 @@ the finished <code class="docutils literal notranslate"><span class="pre">Report
 above, rather than leaving the call as a cell’s bare last expression —
 otherwise the notebook also auto-echoes the <code class="docutils literal notranslate"><span class="pre">Report</span></code>’s <code class="docutils literal notranslate"><span class="pre">repr()</span></code> underneath
 the chart.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">report</span><span class="o">.</span><span class="n">summary_all</span><span class="p">()</span>                    <span class="c1"># CAGR, Sharpe, max drawdown, etc. per portfolio</span>
-<span class="n">report</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>                        <span class="c1"># daily snapshots as a DataFrame</span>
-<span class="n">report</span><span class="o">.</span><span class="n">trades_for</span><span class="p">(</span><span class="s2">"moving_average"</span><span class="p">)</span>      <span class="c1"># that portfolio's trade log</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">report</span><span class="o">.</span><span class="n">summary_all</span><span class="p">()</span>  <span class="c1"># CAGR, Sharpe, max drawdown, etc. per portfolio</span>
+<span class="n">report</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>  <span class="c1"># daily snapshots as a DataFrame</span>
+<span class="n">report</span><span class="o">.</span><span class="n">trades_for</span><span class="p">(</span><span class="s2">"moving_average"</span><span class="p">)</span>  <span class="c1"># that portfolio's trade log</span>
 </pre></div>
 </div>
 <p>Same config format, same strategies, same underlying engine as the CLI’s
@@ -334,8 +334,8 @@ kernel itself):</p>
 <h3>Choosing a different live-rendering mode<a class="headerlink" href="#choosing-a-different-live-rendering-mode" title="Link to this heading">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">render_mode</span></code> picks which <a class="reference internal" href="backtest.html#presenter-how-a-report-live-loop-actually-gets-shown"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">Presenter</span></code></span></a>
 drives the live view, by name:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">run_backtest</span><span class="p">(</span><span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">render_mode</span><span class="o">=</span><span class="s2">"clear_output"</span><span class="p">)</span>   <span class="c1"># default, described above</span>
-<span class="n">run_backtest</span><span class="p">(</span><span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">render_mode</span><span class="o">=</span><span class="s2">"native_dash"</span><span class="p">)</span>    <span class="c1"># real Dash server, jupyter_mode="inline"</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">run_backtest</span><span class="p">(</span><span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">render_mode</span><span class="o">=</span><span class="s2">"clear_output"</span><span class="p">)</span>  <span class="c1"># default, described above</span>
+<span class="n">run_backtest</span><span class="p">(</span><span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">render_mode</span><span class="o">=</span><span class="s2">"native_dash"</span><span class="p">)</span>  <span class="c1"># real Dash server, jupyter_mode="inline"</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">&quot;native_dash&quot;</span></code> is the mode that doesn’t work reliably in Colab (see
@@ -343,7 +343,9 @@ above) — kept available for classic Jupyter/JupyterLab, where Dash’s own
 docs describe this as fully supported.</p>
 <p><code class="docutils literal notranslate"><span class="pre">presenter_kwargs</span></code> passes through to whichever mode you picked:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">run_backtest</span><span class="p">(</span><span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">presenter_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">"poll_seconds"</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">})</span>
-<span class="n">run_backtest</span><span class="p">(</span><span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">render_mode</span><span class="o">=</span><span class="s2">"native_dash"</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8060</span><span class="p">,</span> <span class="n">presenter_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">"jupyter_mode"</span><span class="p">:</span> <span class="s2">"external"</span><span class="p">})</span>
+<span class="n">run_backtest</span><span class="p">(</span>
+    <span class="s2">"config.yaml"</span><span class="p">,</span> <span class="n">live</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">render_mode</span><span class="o">=</span><span class="s2">"native_dash"</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8060</span><span class="p">,</span> <span class="n">presenter_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">"jupyter_mode"</span><span class="p">:</span> <span class="s2">"external"</span><span class="p">}</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">show_trades_default=False</span></code> starts the equity chart’s trade markers hidden
@@ -443,7 +445,7 @@ instead) — only the local self-fine-tuning path needs <code class="docutils li
 goes through <code class="docutils literal notranslate"><span class="pre">tam.Secrets</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tam</span>
 
-<span class="n">fred_key</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Secrets</span><span class="p">[</span><span class="s2">"FRED_API_KEY"</span><span class="p">]</span>      <span class="c1"># raises a clear error if not set anywhere</span>
+<span class="n">fred_key</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Secrets</span><span class="p">[</span><span class="s2">"FRED_API_KEY"</span><span class="p">]</span>  <span class="c1"># raises a clear error if not set anywhere</span>
 <span class="n">fred_key</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">Secrets</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"FRED_API_KEY"</span><span class="p">)</span>  <span class="c1"># None instead of raising</span>
 </pre></div>
 </div>
@@ -463,9 +465,9 @@ notebook, the self-service path needs no admin credentials at all:</p>
 <a class="reference internal" href="tam-discovery.html"><span class="std std-doc">Discovery</span></a> publishing uses), then:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.explorer_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_dataframe</span><span class="p">,</span> <span class="n">connect</span>
 
-<span class="n">df</span> <span class="o">=</span> <span class="n">fetch_dataframe</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>      <span class="c1"># one symbol-year as a DataFrame, plain HTTP</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">fetch_dataframe</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>  <span class="c1"># one symbol-year as a DataFrame, plain HTTP</span>
 
-<span class="n">con</span> <span class="o">=</span> <span class="n">connect</span><span class="p">()</span>                          <span class="c1"># full SQL access over minute bars + EOD + SEC lakes</span>
+<span class="n">con</span> <span class="o">=</span> <span class="n">connect</span><span class="p">()</span>  <span class="c1"># full SQL access over minute bars + EOD + SEC lakes</span>
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM daily_bars('AAPL') ORDER BY day"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM eod_bars('AAPL') ORDER BY date"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
 </pre></div>
@@ -480,6 +482,7 @@ scenes and refreshes it automatically as it approaches expiry — see
 and point <code class="docutils literal notranslate"><span class="pre">data.root</span></code>/<code class="docutils literal notranslate"><span class="pre">backtest.report_path</span></code> at it if you need artifacts
 to survive across sessions:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">google.colab</span><span class="w"> </span><span class="kn">import</span> <span class="n">drive</span>
+
 <span class="n">drive</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">"/content/drive"</span><span class="p">)</span>
 </pre></div>
 </div>

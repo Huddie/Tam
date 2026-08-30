@@ -13,9 +13,9 @@ which is built on the exact same `Chart`/`ChartCall`/`ChartPipeline` API.
 ```python
 from tam.charting import timeseries
 
-timeseries(close)                                     # one line, uses close.name
-timeseries([close, sma(close, 20), sma(close, 50)])    # several, each using its own .name
-timeseries({"SPY": close, "SMA 20": sma_20})           # explicit names
+timeseries(close)  # one line, uses close.name
+timeseries([close, sma(close, 20), sma(close, 50)])  # several, each using its own .name
+timeseries({"SPY": close, "SMA 20": sma_20})  # explicit names
 ```
 
 Accepts a single `pd.Series`, a plain `list` of them (each one's own
@@ -41,7 +41,10 @@ FRED series plot the same way, no special-casing needed:
 
 ```python
 import tam
-timeseries([tam.Fred.get(tam.Fred.Datasets.TREASURY_2Y), tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)], title="Treasury Yields")
+
+timeseries(
+    [tam.Fred.get(tam.Fred.Datasets.TREASURY_2Y), tam.Fred.get(tam.Fred.Datasets.TREASURY_10Y)], title="Treasury Yields"
+)
 ```
 
 ## Shaded regions with `rect()`
@@ -69,13 +72,16 @@ directly behind a specific chart's own traces in the same panel, call
 from tam.charting import Chart
 import plotly.graph_objects as go
 
+
 class MyChart(Chart):
     title = "My Chart"
-    def render(self, data) -> go.Figure: ...   # `data` is whatever shape YOUR chart expects
 
-MyChart()(my_data)             # a ChartCall -- auto-displays in Jupyter
-MyChart()(my_data).show()      # explicit .show()
-c1(data) | c2(data)            # a ChartPipeline -- one composite figure
+    def render(self, data) -> go.Figure: ...  # `data` is whatever shape YOUR chart expects
+
+
+MyChart()(my_data)  # a ChartCall -- auto-displays in Jupyter
+MyChart()(my_data).show()  # explicit .show()
+c1(data) | c2(data)  # a ChartPipeline -- one composite figure
 ```
 
 `Chart` is deliberately not tied to `Report` or any other single shape —

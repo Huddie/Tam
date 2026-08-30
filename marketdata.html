@@ -299,17 +299,17 @@ works identically from a local machine, Colab, or CI.</p></li>
 <h2>Querying<a class="headerlink" href="#querying" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.duckdb_query</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_duckdb</span>
 
-<span class="n">con</span> <span class="o">=</span> <span class="n">open_duckdb</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="s2">"tam-data"</span><span class="p">)</span>           <span class="c1"># reads from R2 directly</span>
+<span class="n">con</span> <span class="o">=</span> <span class="n">open_duckdb</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="s2">"tam-data"</span><span class="p">)</span>  <span class="c1"># reads from R2 directly</span>
 <span class="c1"># con = open_duckdb(local_root="data/minute")  # or: plain local Parquet, no R2/network</span>
 
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM minute_bars('SPY') WHERE ts &gt;= '2020-03-01' ORDER BY ts"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM daily_bars('SPY') ORDER BY day"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM weekly_bars('SPY') ORDER BY week"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM monthly_bars('SPY') ORDER BY month"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
-<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM rollup_bars('SPY', 5) ORDER BY bucket"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>       <span class="c1"># any N-minute bars</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM rollup_bars('SPY', 5) ORDER BY bucket"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>  <span class="c1"># any N-minute bars</span>
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM daily_returns('SPY') ORDER BY day"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
 <span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM rolling_volatility('SPY', 21) ORDER BY day"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>  <span class="c1"># 21-day annualized vol</span>
-<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM eod_bars('AAPL') ORDER BY date"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>              <span class="c1"># true EOD (tam.data's lake), adj_close included</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM eod_bars('AAPL') ORDER BY date"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>  <span class="c1"># true EOD (tam.data's lake), adj_close included</span>
 </pre></div>
 </div>
 <p>Every one of these is a DuckDB SQL macro over the raw 1-minute Parquet
@@ -344,9 +344,8 @@ Massive dashboard (NOT a regular REST <code class="docutils literal notranslate"
 <p>No boto3 dependency for this lake: reads/writes go through
 <code class="docutils literal notranslate"><span class="pre">pyarrow.fs.S3FileSystem</span></code>; interactive querying goes through DuckDB’s own
 <code class="docutils literal notranslate"><span class="pre">httpfs</span></code> extension.</p>
-</section>
-<section id="backfilling-data">
-<h2>Backfilling data<a class="headerlink" href="#backfilling-data" title="Link to this heading">¶</a></h2>
+<details>
+<summary>Backfilling / ingesting new data (maintainers only — not needed to query the lake)</summary>
 <p>Validate against a small range/universe locally first (no R2/Massive
 credentials needed):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>examples.ingest_minute_bars<span class="w"> </span>examples/ingest_minute_bars_config.yaml
@@ -361,8 +360,7 @@ already-completed days (a manifest tracks progress by content hash).</p>
 <p><code class="docutils literal notranslate"><span class="pre">flush_every_days</span></code> (default 20, also settable via <code class="docutils literal notranslate"><span class="pre">marketdata:</span> <span class="pre">flush_every_days:</span></code>) batches store writes rather than writing after every
 single day — <code class="docutils literal notranslate"><span class="pre">MinuteBarStore.write()</span></code> reads/merges/rewrites a symbol’s
 entire year-partition file per call.</p>
-<section id="backfilling-completeness-sidecars-for-already-ingested-data">
-<h3>Backfilling completeness sidecars for already-ingested data<a class="headerlink" href="#backfilling-completeness-sidecars-for-already-ingested-data" title="Link to this heading">¶</a></h3>
+<p><strong>Backfilling completeness sidecars for already-ingested data:</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/backfill_completeness.py<span class="w">            </span><span class="c1"># every symbol currently in the bucket</span>
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/backfill_completeness.py<span class="w"> </span>--symbol<span class="w"> </span>AAPL<span class="w"> </span>--symbol<span class="w"> </span>MSFT
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/backfill_completeness.py<span class="w"> </span>--force<span class="w">     </span><span class="c1"># recompute even where a sidecar already exists</span>
@@ -371,13 +369,102 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 </div>
 <p>Safe to re-run: without <code class="docutils literal notranslate"><span class="pre">--force</span></code> it skips any symbol-year that already
 has a sidecar.</p>
+<p><strong>Ongoing daily ingestion:</strong> two scheduled GitHub Actions workflows,
+gated on the test suite passing first: <code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_minute_bars.yml</span></code>
+and <code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_eod_bars.yml</span></code>. Both run daily via
+<code class="docutils literal notranslate"><span class="pre">schedule:</span></code>, plus <code class="docutils literal notranslate"><span class="pre">workflow_dispatch</span></code> for an on-demand run.</p>
+</details>
 </section>
-<section id="ongoing-daily-ingestion">
-<h3>Ongoing daily ingestion<a class="headerlink" href="#ongoing-daily-ingestion" title="Link to this heading">¶</a></h3>
-<p>Two scheduled GitHub Actions workflows, gated on the test suite passing
-first: <code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_minute_bars.yml</span></code> and
-<code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_eod_bars.yml</span></code>. Both run daily via <code class="docutils literal notranslate"><span class="pre">schedule:</span></code>,
-plus <code class="docutils literal notranslate"><span class="pre">workflow_dispatch</span></code> for an on-demand run.</p>
+<section id="reference-data-splits-dividends-ipos-short-interest-volume-float">
+<h2>Reference data — splits, dividends, IPOs, short interest/volume, float<a class="headerlink" href="#reference-data-splits-dividends-ipos-short-interest-volume-float" title="Link to this heading">¶</a></h2>
+<p>Corporate actions and positioning data for every US-listed ticker, from
+the same vendor (Massive, formerly Polygon.io) as the minute bars above,
+ingested into the same R2 bucket so it stays queryable even after
+subscription access to the vendor lapses. Same <code class="docutils literal notranslate"><span class="pre">open_duckdb()</span></code>/DuckDB-
+macro pattern as <code class="docutils literal notranslate"><span class="pre">minute_bars</span></code>/<code class="docutils literal notranslate"><span class="pre">eod_bars</span></code> — no Python wrapper class.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"tam-quant[marketdata]"</span><span class="w">   </span><span class="c1"># same extra as minute bars — adds the `massive` SDK</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.duckdb_query</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_duckdb</span>
+
+<span class="n">con</span> <span class="o">=</span> <span class="n">open_duckdb</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="s2">"tam-data"</span><span class="p">)</span>
+
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM splits('AAPL') ORDER BY execution_date"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM dividends('AAPL') ORDER BY ex_dividend_date"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM ipos() ORDER BY listing_date DESC"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>  <span class="c1"># every ticker, no arg needed</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM short_volume('AAPL') ORDER BY date"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM short_interest('AAPL') ORDER BY settlement_date"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM float_data('AAPL')"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Every macro takes an <strong>optional</strong> ticker (<code class="docutils literal notranslate"><span class="pre">splits()</span></code> with no argument
+returns every ticker’s rows at once) — pass one to scope to a single
+company.</p>
+<section id="r2-layout">
+<h3>R2 layout<a class="headerlink" href="#r2-layout" title="Link to this heading">¶</a></h3>
+<p>Grouped under two top-level prefixes by what the data represents, not by
+which vendor call fetched it: <code class="docutils literal notranslate"><span class="pre">corporate_actions/</span></code> (things a company
+actively does) and <code class="docutils literal notranslate"><span class="pre">positioning/</span></code> (things about how its shares are held
+or traded).</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Dataset</p></th>
+<th class="head"><p>R2 path</p></th>
+<th class="head"><p>Partitioning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Splits</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">corporate_actions/splits/&lt;year&gt;.parquet</span></code></p></td>
+<td><p>year, append-only</p></td>
+</tr>
+<tr class="row-odd"><td><p>Dividends</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">corporate_actions/dividends/&lt;year&gt;.parquet</span></code></p></td>
+<td><p>year, append-only</p></td>
+</tr>
+<tr class="row-even"><td><p>IPOs</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">corporate_actions/ipos/all.parquet</span></code></p></td>
+<td><p>single file, full refresh every run</p></td>
+</tr>
+<tr class="row-odd"><td><p>Short volume</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">positioning/short_volume/&lt;TICKER&gt;/&lt;year&gt;.parquet</span></code></p></td>
+<td><p><strong>ticker + year</strong>, append-only</p></td>
+</tr>
+<tr class="row-even"><td><p>Short interest</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">positioning/short_interest/&lt;TICKER&gt;/&lt;year&gt;.parquet</span></code></p></td>
+<td><p><strong>ticker + year</strong>, append-only</p></td>
+</tr>
+<tr class="row-odd"><td><p>Float</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">positioning/float/all.parquet</span></code></p></td>
+<td><p>single file, full refresh every run</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Short volume and short interest are the two datasets partitioned
+per-ticker (<code class="docutils literal notranslate"><span class="pre">positioning/short_volume/AAPL/2025.parquet</span></code>, same layout as
+minute bars’ <code class="docutils literal notranslate"><span class="pre">minute/&lt;SYMBOL&gt;/&lt;year&gt;.parquet</span></code>) — every other dataset here
+is small enough market-wide that a single global year (or all-time) file
+is fine. Short volume in particular is a daily figure for every US
+ticker; a single global year file for it runs into the millions of rows.</p>
+<p>Each group also has its own manifest tracking incremental-ingest
+cursors: <code class="docutils literal notranslate"><span class="pre">corporate_actions/_manifest.json</span></code>, <code class="docutils literal notranslate"><span class="pre">positioning/_manifest.json</span></code>.</p>
+<details>
+<summary>Ingesting new reference data (maintainers only — not needed to query the lake)</summary>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>examples.ingest_reference_data<span class="w"> </span>--local-root<span class="w"> </span>data<span class="w">   </span><span class="c1"># local dry-run, no R2/vendor credentials needed</span>
+python<span class="w"> </span>-m<span class="w"> </span>examples.ingest_reference_data<span class="w">                      </span><span class="c1"># real R2 + MASSIVE_API_KEY</span>
+</pre></div>
+</div>
+<p>Needs <code class="docutils literal notranslate"><span class="pre">MASSIVE_API_KEY</span></code> — the vendor’s REST bearer token, a <strong>different</strong>
+credential from the <code class="docutils literal notranslate"><span class="pre">MASSIVE_S3_ACCESS_KEY_ID</span></code>/<code class="docutils literal notranslate"><span class="pre">MASSIVE_S3_SECRET_ACCESS_KEY</span></code>
+flat-file keys minute bars use. Splits/dividends/short volume/short
+interest resume from their own stored cursor automatically; IPOs/float
+have no incremental concept and re-fetch their full current table every
+run. Scheduled daily via <code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_reference_data.yml</span></code>
+(same gated-on-tests, <code class="docutils literal notranslate"><span class="pre">schedule:</span></code> + <code class="docutils literal notranslate"><span class="pre">workflow_dispatch</span></code> shape as the
+other ingestion workflows).</p>
+</details>
 </section>
 </section>
 <section id="data-model-notes-things-that-can-silently-break-a-backtest">
@@ -469,9 +556,8 @@ gap to backfill. Don’t forward-fill past a symbol’s last real bar.</p></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#r2-setup">R2 setup</a></li>
-<li><a class="reference internal" href="#backfilling-data">Backfilling data</a><ul>
-<li><a class="reference internal" href="#backfilling-completeness-sidecars-for-already-ingested-data">Backfilling completeness sidecars for already-ingested data</a></li>
-<li><a class="reference internal" href="#ongoing-daily-ingestion">Ongoing daily ingestion</a></li>
+<li><a class="reference internal" href="#reference-data-splits-dividends-ipos-short-interest-volume-float">Reference data — splits, dividends, IPOs, short interest/volume, float</a><ul>
+<li><a class="reference internal" href="#r2-layout">R2 layout</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#data-model-notes-things-that-can-silently-break-a-backtest">Data model notes — things that can silently break a backtest</a></li>

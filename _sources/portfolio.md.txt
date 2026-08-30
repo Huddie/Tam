@@ -6,8 +6,8 @@ The book your strategy trades against.
 from tam.portfolio.portfolio import Portfolio
 from tam.trading.trader import Trader
 
-portfolio = Portfolio(portfolio_id, cash=10_000.0)   # tracks cash, positions, trade history
-trader = Trader(name, strategy, portfolio)           # just pairs the two together
+portfolio = Portfolio(portfolio_id, cash=10_000.0)  # tracks cash, positions, trade history
+trader = Trader(name, strategy, portfolio)  # just pairs the two together
 ```
 
 You rarely touch `TradeGateway` directly — it's what `self.trade.stocks(...)`

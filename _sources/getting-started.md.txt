@@ -40,7 +40,8 @@ and universe providers are all pluggable through one shared mechanism:
 @Registry.register(BaseType, "name")
 class MyImpl(BaseType): ...
 
-instance = Registry.get(BaseType, "name")            # cached singleton, no-arg
+
+instance = Registry.get(BaseType, "name")  # cached singleton, no-arg
 instance = Registry.create(BaseType, "name", *args)  # fresh instance, args passed through
 ```
 

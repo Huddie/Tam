@@ -7,6 +7,7 @@ independently pluggable via the [registry](getting-started.md#the-registry-patte
 class DataProvider(ABC):
     def fetch_eod(self, symbol: str, start: date, end: date) -> pd.DataFrame: ...
 
+
 class DataStore(ABC):
     def exists(self, symbol: str) -> bool: ...
     def read(self, symbol: str) -> pd.DataFrame: ...
@@ -28,7 +29,7 @@ repo = DataRepository(
     Registry.create(DataStore, "parquet", "data/eod"),
 )
 repo.ingest(["AAPL", "MSFT"], date(2020, 1, 1), date(2024, 1, 1))  # only fetches missing sub-ranges
-df = repo.query("AAPL", date(2023, 1, 1), date(2023, 6, 1))         # cached in-memory after first read
+df = repo.query("AAPL", date(2023, 1, 1), date(2023, 6, 1))  # cached in-memory after first read
 ```
 
 Ships with `"yfinance"`/`"fmp"` providers and `"csv"`/`"parquet"` stores
@@ -61,9 +62,12 @@ from datetime import date
 from tam.data.export import export_history
 
 export_history(
-    "MU", date(2020, 1, 1), date(2024, 1, 1), "mu.csv",
-    provider="yfinance",                                            # any registered DataProvider
-    transform=lambda df: df.assign(ret=df["close"].pct_change()),   # any DataFrame -> DataFrame callable
+    "MU",
+    date(2020, 1, 1),
+    date(2024, 1, 1),
+    "mu.csv",
+    provider="yfinance",  # any registered DataProvider
+    transform=lambda df: df.assign(ret=df["close"].pct_change()),  # any DataFrame -> DataFrame callable
 )
 ```
 
