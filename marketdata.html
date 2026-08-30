@@ -195,8 +195,8 @@
 <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notebooks.html">Notebooks (Colab / Jupyter)</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Core library</span></p>
-<ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="strategy.html">Strategy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio &amp; Trader</a></li>
@@ -204,12 +204,17 @@
 <li class="toctree-l1"><a class="reference internal" href="reporting.html">Reporting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="charting.html">Charting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basket.html">Basket research</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Data &amp; research</span></p>
-<ul class="current">
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Market data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="research-fred.html">FRED</a></li>
 <li class="toctree-l1"><a class="reference internal" href="research-sec.html">SEC</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data storage layout</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="storage-layout.html">Data storage layout</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; background</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture &amp; background</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Sites</span></p>
 <ul>
@@ -256,45 +261,20 @@
           <section id="market-data">
 <h1>Market data<a class="headerlink" href="#market-data" title="Link to this heading">¶</a></h1>
 <p>A ~20-year historical dataset of 1-minute OHLCV bars for SPY and the
-point-in-time S&amp;P 500 universe (no survivorship bias), stored as Parquet
+point-in-time S&amp;P 500 universe (no survivorship bias), plus corporate
+actions and positioning data (splits, dividends, IPOs, short volume,
+short interest, float) for every US-listed ticker — all stored as Parquet
 in Cloudflare R2 and queried directly with DuckDB. Daily/weekly/monthly/
 N-minute rollups, returns, and volatility are <strong>derived on demand</strong> from
 the 1-minute data at query time, not precomputed.</p>
 <p>This is a separate concern from <code class="docutils literal notranslate"><span class="pre">tam.data</span></code>’s own end-of-day cache (used by
-backtests) — same conventions (the <code class="docutils literal notranslate"><span class="pre">Registry</span></code> pattern, symbol/year Parquet
-partitioning), different code; see each module’s own docstring for why.</p>
+backtests) — see <a class="reference internal" href="data.html"><span class="std std-doc">Data</span></a>.</p>
+<p>For <em>how</em> this gets ingested/backfilled and <em>why</em> it’s laid out this way,
+see <a class="reference internal" href="architecture.html#market-data-minute-bars-reference-data"><span class="std std-ref">Architecture &amp; background</span></a>.
+For the exact on-disk paths/schemas, see <a class="reference internal" href="storage-layout.html#equity-market-data"><span class="std std-ref">Data storage layout</span></a>.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"tam-quant[marketdata]"</span>
 </pre></div>
 </div>
-<section id="architecture-at-a-glance">
-<h2>Architecture at a glance<a class="headerlink" href="#architecture-at-a-glance" title="Link to this heading">¶</a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Massive</span> <span class="n">flat</span> <span class="n">files</span>  <span class="o">--&gt;</span>  <span class="nb">filter</span> <span class="n">to</span> <span class="n">universe</span>  <span class="o">--&gt;</span>  <span class="n">validate</span>  <span class="o">--&gt;</span>  <span class="n">R2</span> <span class="p">(</span><span class="n">Parquet</span><span class="p">)</span>
-  <span class="p">(</span><span class="n">MinuteBarProvider</span><span class="p">)</span>   <span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">basket</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>  <span class="p">(</span><span class="n">tam</span><span class="o">.</span><span class="n">marketdata</span><span class="o">.</span><span class="n">validate</span><span class="p">)</span>  <span class="p">(</span><span class="n">MinuteBarStore</span><span class="p">)</span>
-</pre></div>
-</div>
-<ul class="simple">
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">tam.marketdata.providers.MinuteBarProvider</span></code></strong> — fetches one vendor’s
-full-market flat file for one day. <code class="docutils literal notranslate"><span class="pre">MassiveFlatFileProvider</span></code> ships built
-in; any other “one flat file per day” vendor needs no new code either,
-just <code class="docutils literal notranslate"><span class="pre">Registry.create(MinuteBarProvider,</span> <span class="pre">&quot;flatfile_s3&quot;,</span> <span class="pre">endpoint=...,</span> <span class="pre">bucket=...,</span> <span class="pre">key_template=...,</span> <span class="pre">column_map={...},</span> <span class="pre">...)</span></code>.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">tam.basket.universe.UniverseProvider</span></code></strong> — reused as-is for
-point-in-time S&amp;P 500 membership (see <a class="reference internal" href="basket.html#universe-membership"><span class="std std-ref">Basket research</span></a>).</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">tam.marketdata.validate</span></code></strong> — OHLC integrity + trading-session-coverage
-checks, run before anything is written.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">tam.marketdata.store.MinuteBarStore</span></code></strong> — year-partitioned Parquet,
-<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/&lt;SYMBOL&gt;/&lt;year&gt;.parquet</span></code>, over any <code class="docutils literal notranslate"><span class="pre">pyarrow.fs.FileSystem</span></code> —
-<code class="docutils literal notranslate"><span class="pre">local_parquet</span></code> (plain disk) and <code class="docutils literal notranslate"><span class="pre">r2_parquet</span></code> (Cloudflare R2) are the
-same class, just pointed at a different filesystem. Every write also
-(re)computes a completeness sidecar (<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/&lt;SYMBOL&gt;/&lt;year&gt;.completeness.json</span></code>,
-actual-vs-expected trading-session minutes per day/month/year, from the
-NYSE calendar) — <a class="reference internal" href="tam-data-explorer.html"><span class="std std-doc">tam-data-explorer</span></a> reads this
-back verbatim to drive its completeness badge.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">tam.marketdata.ingest</span></code></strong> — wires the above into a resumable,
-idempotent backfill (a JSON manifest tracks which days are already done).</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">tam.marketdata.duckdb_query.open_duckdb()</span></code></strong> — the query entry point;
-works identically from a local machine, Colab, or CI.</p></li>
-</ul>
-</section>
 <section id="querying">
 <h2>Querying<a class="headerlink" href="#querying" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.duckdb_query</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_duckdb</span>
@@ -317,72 +297,31 @@ files — nothing is precomputed or stored ahead of time; add your own macro
 (or just write ad hoc SQL against <code class="docutils literal notranslate"><span class="pre">minute_bars(...)</span></code>/<code class="docutils literal notranslate"><span class="pre">read_parquet(...)</span></code>
 directly) for any other rollup or research feature you need. <code class="docutils literal notranslate"><span class="pre">open_duckdb()</span></code>
 also registers the <a class="reference internal" href="research-sec.html#querying-with-raw-sql"><span class="std std-ref">SEC macros</span></a> —
-one connection covers all three lakes.</p>
+one connection covers all lakes.</p>
+<section id="minutebarstore-the-python-api-not-raw-sql">
+<h3><code class="docutils literal notranslate"><span class="pre">MinuteBarStore</span></code> — the Python API, not raw SQL<a class="headerlink" href="#minutebarstore-the-python-api-not-raw-sql" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.store</span><span class="w"> </span><span class="kn">import</span> <span class="n">R2MinuteBarStore</span>  <span class="c1"># or LocalMinuteBarStore(root)</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">R2MinuteBarStore</span><span class="p">()</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">"SPY"</span><span class="p">)</span>            <span class="c1"># full history for one symbol</span>
+<span class="n">store</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"SPY"</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>            <span class="c1"># upsert -- merges into whatever year(s) df's index spans</span>
+<span class="n">store</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">"SPY"</span><span class="p">)</span>
+<span class="n">store</span><span class="o">.</span><span class="n">list_symbols</span><span class="p">()</span>              <span class="c1"># every symbol currently in the bucket</span>
+</pre></div>
+</div>
+</section>
 <section id="from-a-personal-token-no-admin-r2-credentials-needed">
 <h3>From a personal token (no admin R2 credentials needed)<a class="headerlink" href="#from-a-personal-token-no-admin-r2-credentials-needed" title="Link to this heading">¶</a></h3>
 <p>Recommended for Colab or a laptop — see <a class="reference internal" href="notebooks.html#querying-the-market-data-lakes"><span class="std std-ref">Notebooks</span></a>
 for the full self-service token flow via <code class="docutils literal notranslate"><span class="pre">tam.marketdata.explorer_client.connect()</span></code>.</p>
 </section>
 </section>
-<section id="r2-setup">
-<h2>R2 setup<a class="headerlink" href="#r2-setup" title="Link to this heading">¶</a></h2>
-<ol class="arabic simple">
-<li><p>Create an R2 bucket in the Cloudflare dashboard (e.g. <code class="docutils literal notranslate"><span class="pre">tam-data</span></code>).</p></li>
-<li><p>Create <strong>two</strong> API tokens (R2 → Manage API Tokens): a <strong>read-only</strong> one
-for querying, and a <strong>read-write</strong> one for ingestion. Never use the
-write token from a notebook.</p></li>
-<li><p>Set credentials — see <code class="docutils literal notranslate"><span class="pre">.env.example</span></code> for the exact names
-(<code class="docutils literal notranslate"><span class="pre">R2_ACCOUNT_ID</span></code>, <code class="docutils literal notranslate"><span class="pre">R2_ACCESS_KEY_ID</span></code>, <code class="docutils literal notranslate"><span class="pre">R2_SECRET_ACCESS_KEY</span></code>,
-<code class="docutils literal notranslate"><span class="pre">R2_BUCKET</span></code>). Resolution order
-(<code class="docutils literal notranslate"><span class="pre">tam.marketdata.credentials.resolve_r2_credentials</span></code>): explicit kwarg →
-env var → Colab secret (same name) → a saved file
-(<code class="docutils literal notranslate"><span class="pre">save_r2_credentials(...)</span></code>, written to <code class="docutils literal notranslate"><span class="pre">~/.config/tam-marketdata/r2_credentials.json</span></code>).</p></li>
-<li><p>For Massive flat-file access, generate <strong>S3-style</strong> keys from your
-Massive dashboard (NOT a regular REST <code class="docutils literal notranslate"><span class="pre">apiKey</span></code>) and set
-<code class="docutils literal notranslate"><span class="pre">MASSIVE_S3_ACCESS_KEY_ID</span></code> / <code class="docutils literal notranslate"><span class="pre">MASSIVE_S3_SECRET_ACCESS_KEY</span></code>.</p></li>
-</ol>
-<p>No boto3 dependency for this lake: reads/writes go through
-<code class="docutils literal notranslate"><span class="pre">pyarrow.fs.S3FileSystem</span></code>; interactive querying goes through DuckDB’s own
-<code class="docutils literal notranslate"><span class="pre">httpfs</span></code> extension.</p>
-<details>
-<summary>Backfilling / ingesting new data (maintainers only — not needed to query the lake)</summary>
-<p>Validate against a small range/universe locally first (no R2/Massive
-credentials needed):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>examples.ingest_minute_bars<span class="w"> </span>examples/ingest_minute_bars_config.yaml
-</pre></div>
-</div>
-<p>Then point the same CLI at real credentials for a production backfill —
-swap <code class="docutils literal notranslate"><span class="pre">store:</span> <span class="pre">local_parquet</span></code> for <code class="docutils literal notranslate"><span class="pre">store:</span> <span class="pre">r2_parquet</span></code> and <code class="docutils literal notranslate"><span class="pre">universe:</span> <span class="pre">static</span></code>
-for <code class="docutils literal notranslate"><span class="pre">universe:</span> <span class="pre">pitindex</span></code>. A large multi-year backfill is a one-off job —
-run it locally or on a dedicated machine, not inside a GitHub Actions job
-(runtime-limited); re-running after an interruption is safe and fast for
-already-completed days (a manifest tracks progress by content hash).</p>
-<p><code class="docutils literal notranslate"><span class="pre">flush_every_days</span></code> (default 20, also settable via <code class="docutils literal notranslate"><span class="pre">marketdata:</span> <span class="pre">flush_every_days:</span></code>) batches store writes rather than writing after every
-single day — <code class="docutils literal notranslate"><span class="pre">MinuteBarStore.write()</span></code> reads/merges/rewrites a symbol’s
-entire year-partition file per call.</p>
-<p><strong>Backfilling completeness sidecars for already-ingested data:</strong></p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/backfill_completeness.py<span class="w">            </span><span class="c1"># every symbol currently in the bucket</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/backfill_completeness.py<span class="w"> </span>--symbol<span class="w"> </span>AAPL<span class="w"> </span>--symbol<span class="w"> </span>MSFT
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/backfill_completeness.py<span class="w"> </span>--force<span class="w">     </span><span class="c1"># recompute even where a sidecar already exists</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/backfill_completeness.py<span class="w"> </span>--workers<span class="w"> </span><span class="m">16</span><span class="w">  </span><span class="c1"># default: 8 -- I/O-bound, safe to raise</span>
-</pre></div>
-</div>
-<p>Safe to re-run: without <code class="docutils literal notranslate"><span class="pre">--force</span></code> it skips any symbol-year that already
-has a sidecar.</p>
-<p><strong>Ongoing daily ingestion:</strong> two scheduled GitHub Actions workflows,
-gated on the test suite passing first: <code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_minute_bars.yml</span></code>
-and <code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_eod_bars.yml</span></code>. Both run daily via
-<code class="docutils literal notranslate"><span class="pre">schedule:</span></code>, plus <code class="docutils literal notranslate"><span class="pre">workflow_dispatch</span></code> for an on-demand run.</p>
-</details>
-</section>
-<section id="reference-data-splits-dividends-ipos-short-interest-volume-float">
-<h2>Reference data — splits, dividends, IPOs, short interest/volume, float<a class="headerlink" href="#reference-data-splits-dividends-ipos-short-interest-volume-float" title="Link to this heading">¶</a></h2>
-<p>Corporate actions and positioning data for every US-listed ticker, from
-the same vendor (Massive, formerly Polygon.io) as the minute bars above,
-ingested into the same R2 bucket so it stays queryable even after
-subscription access to the vendor lapses. Same <code class="docutils literal notranslate"><span class="pre">open_duckdb()</span></code>/DuckDB-
-macro pattern as <code class="docutils literal notranslate"><span class="pre">minute_bars</span></code>/<code class="docutils literal notranslate"><span class="pre">eod_bars</span></code> — no Python wrapper class.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"tam-quant[marketdata]"</span><span class="w">   </span><span class="c1"># same extra as minute bars — adds the `massive` SDK</span>
+<section id="reference-data">
+<h2>Reference data<a class="headerlink" href="#reference-data" title="Link to this heading">¶</a></h2>
+<p>Same vendor as the minute bars above (Massive, formerly Polygon.io), same
+<code class="docutils literal notranslate"><span class="pre">open_duckdb()</span></code>/DuckDB-macro pattern — no Python wrapper class needed for
+querying.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"tam-quant[marketdata]"</span><span class="w">   </span><span class="c1"># same extra as minute bars -- adds the `massive` SDK</span>
 </pre></div>
 </div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.duckdb_query</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_duckdb</span>
@@ -400,97 +339,32 @@ macro pattern as <code class="docutils literal notranslate"><span class="pre">mi
 <p>Every macro takes an <strong>optional</strong> ticker (<code class="docutils literal notranslate"><span class="pre">splits()</span></code> with no argument
 returns every ticker’s rows at once) — pass one to scope to a single
 company.</p>
-<section id="r2-layout">
-<h3>R2 layout<a class="headerlink" href="#r2-layout" title="Link to this heading">¶</a></h3>
-<p>Grouped under two top-level prefixes by what the data represents, not by
-which vendor call fetched it: <code class="docutils literal notranslate"><span class="pre">corporate_actions/</span></code> (things a company
-actively does) and <code class="docutils literal notranslate"><span class="pre">positioning/</span></code> (things about how its shares are held
-or traded).</p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Dataset</p></th>
-<th class="head"><p>R2 path</p></th>
-<th class="head"><p>Partitioning</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Splits</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">corporate_actions/splits/&lt;year&gt;.parquet</span></code></p></td>
-<td><p>year, append-only</p></td>
-</tr>
-<tr class="row-odd"><td><p>Dividends</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">corporate_actions/dividends/&lt;year&gt;.parquet</span></code></p></td>
-<td><p>year, append-only</p></td>
-</tr>
-<tr class="row-even"><td><p>IPOs</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">corporate_actions/ipos/all.parquet</span></code></p></td>
-<td><p>single file, full refresh every run</p></td>
-</tr>
-<tr class="row-odd"><td><p>Short volume</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">positioning/short_volume/&lt;TICKER&gt;/&lt;year&gt;.parquet</span></code></p></td>
-<td><p><strong>ticker + year</strong>, append-only</p></td>
-</tr>
-<tr class="row-even"><td><p>Short interest</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">positioning/short_interest/&lt;TICKER&gt;/&lt;year&gt;.parquet</span></code></p></td>
-<td><p><strong>ticker + year</strong>, append-only</p></td>
-</tr>
-<tr class="row-odd"><td><p>Float</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">positioning/float/all.parquet</span></code></p></td>
-<td><p>single file, full refresh every run</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p>Short volume and short interest are the two datasets partitioned
-per-ticker (<code class="docutils literal notranslate"><span class="pre">positioning/short_volume/AAPL/2025.parquet</span></code>, same layout as
-minute bars’ <code class="docutils literal notranslate"><span class="pre">minute/&lt;SYMBOL&gt;/&lt;year&gt;.parquet</span></code>) — every other dataset here
-is small enough market-wide that a single global year (or all-time) file
-is fine. Short volume in particular is a daily figure for every US
-ticker; a single global year file for it runs into the millions of rows.</p>
-<p>Each group also has its own manifest tracking incremental-ingest
-cursors: <code class="docutils literal notranslate"><span class="pre">corporate_actions/_manifest.json</span></code>, <code class="docutils literal notranslate"><span class="pre">positioning/_manifest.json</span></code>.</p>
-<details>
-<summary>Ingesting new reference data (maintainers only — not needed to query the lake)</summary>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>examples.ingest_reference_data<span class="w"> </span>--local-root<span class="w"> </span>data<span class="w">   </span><span class="c1"># local dry-run, no R2/vendor credentials needed</span>
-python<span class="w"> </span>-m<span class="w"> </span>examples.ingest_reference_data<span class="w">                      </span><span class="c1"># real R2 + MASSIVE_API_KEY</span>
+<section id="referencestore-the-python-api-not-raw-sql">
+<h3><code class="docutils literal notranslate"><span class="pre">ReferenceStore</span></code> — the Python API, not raw SQL<a class="headerlink" href="#referencestore-the-python-api-not-raw-sql" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.reference_store</span><span class="w"> </span><span class="kn">import</span> <span class="n">R2ReferenceStore</span>  <span class="c1"># or LocalReferenceStore(root)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.reference_provider</span><span class="w"> </span><span class="kn">import</span> <span class="n">MassiveReferenceProvider</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">R2ReferenceStore</span><span class="p">()</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">"splits"</span><span class="p">)</span>                          <span class="c1"># every ticker</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">"short_volume"</span><span class="p">,</span> <span class="n">ticker</span><span class="o">=</span><span class="s2">"AAPL"</span><span class="p">)</span>     <span class="c1"># per-ticker datasets accept an optional ticker=</span>
+
+<span class="n">provider</span> <span class="o">=</span> <span class="n">MassiveReferenceProvider</span><span class="p">()</span>  <span class="c1"># needs MASSIVE_API_KEY</span>
+<span class="n">fresh</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="n">fetch_splits</span><span class="p">(</span><span class="n">since</span><span class="o">=</span><span class="s2">"2024-01-01"</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Needs <code class="docutils literal notranslate"><span class="pre">MASSIVE_API_KEY</span></code> — the vendor’s REST bearer token, a <strong>different</strong>
-credential from the <code class="docutils literal notranslate"><span class="pre">MASSIVE_S3_ACCESS_KEY_ID</span></code>/<code class="docutils literal notranslate"><span class="pre">MASSIVE_S3_SECRET_ACCESS_KEY</span></code>
-flat-file keys minute bars use. Splits/dividends/short volume/short
-interest resume from their own stored cursor automatically; IPOs/float
-have no incremental concept and re-fetch their full current table every
-run. Scheduled daily via <code class="docutils literal notranslate"><span class="pre">.github/workflows/ingest_reference_data.yml</span></code>
-(same gated-on-tests, <code class="docutils literal notranslate"><span class="pre">schedule:</span></code> + <code class="docutils literal notranslate"><span class="pre">workflow_dispatch</span></code> shape as the
-other ingestion workflows).</p>
-</details>
+<p>Dataset names: <code class="docutils literal notranslate"><span class="pre">&quot;splits&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;dividends&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;ipos&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;short_volume&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;short_interest&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;float&quot;</span></code>. See
+<a class="reference internal" href="storage-layout.html#equity-market-data"><span class="std std-ref">Data storage layout</span></a> for exact
+columns and on-disk paths per dataset.</p>
 </section>
 </section>
-<section id="data-model-notes-things-that-can-silently-break-a-backtest">
-<h2>Data model notes — things that can silently break a backtest<a class="headerlink" href="#data-model-notes-things-that-can-silently-break-a-backtest" title="Link to this heading">¶</a></h2>
-<ul class="simple">
-<li><p><strong>Timestamps are UTC, timezone-aware, always</strong> (<code class="docutils literal notranslate"><span class="pre">tam.marketdata.schema.TS</span></code>)
-— never naive. Convert with <code class="docutils literal notranslate"><span class="pre">.tz_convert(&quot;America/New_York&quot;)</span></code> only at
-query/display time.</p></li>
-<li><p><strong>Survivorship bias</strong>: solved by filtering ingestion through
-<code class="docutils literal notranslate"><span class="pre">UniverseProvider.constituents(day)</span></code> (point-in-time, not today’s list) —
-spot-check your provider’s historical add/remove dates before trusting
-it across a long horizon, and avoid re-deriving today’s membership list
-downstream by convenience (that reintroduces the exact bias point-in-time
-ingestion was meant to avoid).</p></li>
-<li><p><strong>Ticker changes/reuse</strong>: raw bars are keyed by the ticker as traded that
-day. A rename (e.g. FB → META) or a reused ticker will silently merge or
-split what should be one continuous instrument unless you maintain a
-security-master mapping and join on that instead of the raw ticker.</p></li>
-<li><p><strong>Splits/dividends</strong>: <code class="docutils literal notranslate"><span class="pre">MassiveFlatFileProvider</span></code> defaults <code class="docutils literal notranslate"><span class="pre">adj_close</span></code> to
-<code class="docutils literal notranslate"><span class="pre">close</span></code> when the raw feed carries no separate adjustment — confirm
-whether your actual flat-file product is raw or already split-adjusted
-before computing returns across a split boundary using <code class="docutils literal notranslate"><span class="pre">open</span></code>/<code class="docutils literal notranslate"><span class="pre">high</span></code>/
-<code class="docutils literal notranslate"><span class="pre">low</span></code>/<code class="docutils literal notranslate"><span class="pre">close</span></code> directly.</p></li>
-<li><p><strong>Delistings</strong>: a delisted symbol’s bars simply stop — expected, not a
-gap to backfill. Don’t forward-fill past a symbol’s last real bar.</p></li>
-</ul>
+<section id="r2-credentials">
+<h2>R2 credentials<a class="headerlink" href="#r2-credentials" title="Link to this heading">¶</a></h2>
+<p>Read-only credentials are enough to query either lake — see
+<a class="reference internal" href="architecture.html#r2-setup"><span class="std std-ref">Architecture &amp; background</span></a> for the full setup
+(bucket creation, token scopes, credential resolution order) and for how
+these lakes actually get populated (backfills, daily ingestion GitHub
+Actions).</p>
 </section>
 </section>
 
@@ -550,17 +424,16 @@ gap to backfill. Don’t forward-fill past a symbol’s last real bar.</p></li>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Market data</a><ul>
-<li><a class="reference internal" href="#architecture-at-a-glance">Architecture at a glance</a></li>
 <li><a class="reference internal" href="#querying">Querying</a><ul>
+<li><a class="reference internal" href="#minutebarstore-the-python-api-not-raw-sql"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore</span></code> — the Python API, not raw SQL</a></li>
 <li><a class="reference internal" href="#from-a-personal-token-no-admin-r2-credentials-needed">From a personal token (no admin R2 credentials needed)</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#r2-setup">R2 setup</a></li>
-<li><a class="reference internal" href="#reference-data-splits-dividends-ipos-short-interest-volume-float">Reference data — splits, dividends, IPOs, short interest/volume, float</a><ul>
-<li><a class="reference internal" href="#r2-layout">R2 layout</a></li>
+<li><a class="reference internal" href="#reference-data">Reference data</a><ul>
+<li><a class="reference internal" href="#referencestore-the-python-api-not-raw-sql"><code class="docutils literal notranslate"><span class="pre">ReferenceStore</span></code> — the Python API, not raw SQL</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#data-model-notes-things-that-can-silently-break-a-backtest">Data model notes — things that can silently break a backtest</a></li>
+<li><a class="reference internal" href="#r2-credentials">R2 credentials</a></li>
 </ul>
 </li>
 </ul>

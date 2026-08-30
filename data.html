@@ -195,7 +195,7 @@
 <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notebooks.html">Notebooks (Colab / Jupyter)</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Core library</span></p>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="strategy.html">Strategy</a></li>
@@ -204,12 +204,17 @@
 <li class="toctree-l1"><a class="reference internal" href="reporting.html">Reporting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="charting.html">Charting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basket.html">Basket research</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Data &amp; research</span></p>
-<ul>
 <li class="toctree-l1"><a class="reference internal" href="marketdata.html">Market data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="research-fred.html">FRED</a></li>
 <li class="toctree-l1"><a class="reference internal" href="research-sec.html">SEC</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data storage layout</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="storage-layout.html">Data storage layout</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; background</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture &amp; background</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Sites</span></p>
 <ul>
@@ -283,10 +288,11 @@ thing everything else actually calls:</p>
 <span class="n">df</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2023</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># cached in-memory after first read</span>
 </pre></div>
 </div>
-<p>Ships with <code class="docutils literal notranslate"><span class="pre">&quot;yfinance&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;fmp&quot;</span></code> providers and <code class="docutils literal notranslate"><span class="pre">&quot;csv&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;parquet&quot;</span></code> stores
-(year-partitioned on disk: <code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/&lt;SYMBOL&gt;/&lt;year&gt;.&lt;ext&gt;</span></code>). Add your own
-data source or cache format with one <code class="docutils literal notranslate"><span class="pre">&#64;Registry.register(...)</span></code> class —
-nothing else in the codebase needs to change.</p>
+<p>Ships with <code class="docutils literal notranslate"><span class="pre">&quot;yfinance&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;fmp&quot;</span></code> providers and <code class="docutils literal notranslate"><span class="pre">&quot;csv&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;parquet&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;r2_parquet&quot;</span></code>
+stores — see <a class="reference internal" href="storage-layout.html#eod-end-of-day-bars"><span class="std std-ref">Data storage layout</span></a>
+for the exact on-disk path scheme and schema. Add your own data source or
+cache format with one <code class="docutils literal notranslate"><span class="pre">&#64;Registry.register(...)</span></code> class — nothing else in
+the codebase needs to change.</p>
 <section id="writing-ingested-data-elsewhere">
 <h2>Writing ingested data elsewhere<a class="headerlink" href="#writing-ingested-data-elsewhere" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">DataRepository.write()</span></code> hands ingested data to a <code class="docutils literal notranslate"><span class="pre">RepoWriter</span></code> — a

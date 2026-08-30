@@ -1,10 +1,13 @@
 # SEC
 
-`tam.research.data.sec` is its own small R2-backed data lake (same bucket
-as [market data](marketdata.md), under `sec/`) — raw XBRL facts (full
-fidelity: taxonomy, unit, accession number, filed date, ...) and a
-derived, normalized `financials` layer (long format: one row per line
-item, e.g. `revenue`/`net_income`/`total_assets`).
+`tam.research.data.sec` is its own small R2-backed data lake — raw XBRL
+facts (full fidelity: taxonomy, unit, accession number, filed date, ...)
+and a derived, normalized `financials` layer (long format: one row per
+line item, e.g. `revenue`/`net_income`/`total_assets`). See
+[Data storage layout](storage-layout.md#company-fundamentals-sec) for the
+exact on-disk paths/schemas, and [Architecture & background](architecture.md#sec-company-fundamentals)
+for why facts and financials are two separate layers and how the lake
+gets backfilled.
 
 ```bash
 pip install "tam-quant[sec]"

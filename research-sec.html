@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Discovery" href="tam-discovery.html"><link rel="prev" title="FRED" href="research-fred.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Data storage layout" href="storage-layout.html"><link rel="prev" title="FRED" href="research-fred.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>SEC - tam</title>
@@ -195,8 +195,8 @@
 <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notebooks.html">Notebooks (Colab / Jupyter)</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Core library</span></p>
-<ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="strategy.html">Strategy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio &amp; Trader</a></li>
@@ -204,12 +204,17 @@
 <li class="toctree-l1"><a class="reference internal" href="reporting.html">Reporting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="charting.html">Charting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basket.html">Basket research</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Data &amp; research</span></p>
-<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="marketdata.html">Market data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="research-fred.html">FRED</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">SEC</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data storage layout</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="storage-layout.html">Data storage layout</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; background</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture &amp; background</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Sites</span></p>
 <ul>
@@ -255,11 +260,14 @@
         <article role="main" id="furo-main-content">
           <section id="sec">
 <h1>SEC<a class="headerlink" href="#sec" title="Link to this heading">¶</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">tam.research.data.sec</span></code> is its own small R2-backed data lake (same bucket
-as <a class="reference internal" href="marketdata.html"><span class="std std-doc">market data</span></a>, under <code class="docutils literal notranslate"><span class="pre">sec/</span></code>) — raw XBRL facts (full
-fidelity: taxonomy, unit, accession number, filed date, …) and a
-derived, normalized <code class="docutils literal notranslate"><span class="pre">financials</span></code> layer (long format: one row per line
-item, e.g. <code class="docutils literal notranslate"><span class="pre">revenue</span></code>/<code class="docutils literal notranslate"><span class="pre">net_income</span></code>/<code class="docutils literal notranslate"><span class="pre">total_assets</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">tam.research.data.sec</span></code> is its own small R2-backed data lake — raw XBRL
+facts (full fidelity: taxonomy, unit, accession number, filed date, …)
+and a derived, normalized <code class="docutils literal notranslate"><span class="pre">financials</span></code> layer (long format: one row per
+line item, e.g. <code class="docutils literal notranslate"><span class="pre">revenue</span></code>/<code class="docutils literal notranslate"><span class="pre">net_income</span></code>/<code class="docutils literal notranslate"><span class="pre">total_assets</span></code>). See
+<a class="reference internal" href="storage-layout.html#company-fundamentals-sec"><span class="std std-ref">Data storage layout</span></a> for the
+exact on-disk paths/schemas, and <a class="reference internal" href="architecture.html#sec-company-fundamentals"><span class="std std-ref">Architecture &amp; background</span></a>
+for why facts and financials are two separate layers and how the lake
+gets backfilled.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"tam-quant[sec]"</span>
 </pre></div>
 </div>
@@ -362,12 +370,12 @@ so the same macros work directly in raw SQL over either connection:</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="tam-discovery.html">
+          <a class="next-page" href="storage-layout.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Discovery</div>
+                <div class="title">Data storage layout</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
