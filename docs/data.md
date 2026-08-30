@@ -32,10 +32,11 @@ repo.ingest(["AAPL", "MSFT"], date(2020, 1, 1), date(2024, 1, 1))  # only fetche
 df = repo.query("AAPL", date(2023, 1, 1), date(2023, 6, 1))  # cached in-memory after first read
 ```
 
-Ships with `"yfinance"`/`"fmp"` providers and `"csv"`/`"parquet"` stores
-(year-partitioned on disk: `<root>/<SYMBOL>/<year>.<ext>`). Add your own
-data source or cache format with one `@Registry.register(...)` class —
-nothing else in the codebase needs to change.
+Ships with `"yfinance"`/`"fmp"` providers and `"csv"`/`"parquet"`/`"r2_parquet"`
+stores — see [Data storage layout](storage-layout.md#eod-end-of-day-bars)
+for the exact on-disk path scheme and schema. Add your own data source or
+cache format with one `@Registry.register(...)` class — nothing else in
+the codebase needs to change.
 
 ## Writing ingested data elsewhere
 

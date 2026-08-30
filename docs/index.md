@@ -18,7 +18,7 @@ notebooks
 ```
 
 ```{toctree}
-:caption: Core library
+:caption: API reference
 :maxdepth: 1
 
 data
@@ -28,15 +28,23 @@ backtest
 reporting
 charting
 basket
-```
-
-```{toctree}
-:caption: Data & research
-:maxdepth: 1
-
 marketdata
 research-fred
 research-sec
+```
+
+```{toctree}
+:caption: Data storage layout
+:maxdepth: 1
+
+storage-layout
+```
+
+```{toctree}
+:caption: Architecture & background
+:maxdepth: 1
+
+architecture
 ```
 
 ```{toctree}
