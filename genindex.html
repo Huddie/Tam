@@ -329,6 +329,7 @@
 <li class="toctree-l3"><a class="reference internal" href="api/tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/tam.secrets.html">tam.secrets module</a></li>
@@ -526,6 +527,12 @@
 </li>
         <li><a href="api/tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.checkpoint_path">checkpoint_path (tam.backtest.runner.BacktestSettings attribute)</a>
 </li>
+        <li><a href="api/tam.html#tam.CIK">CIK (class in tam)</a>
+
+        <ul>
+          <li><a href="api/tam.symbol.html#tam.symbol.CIK">(class in tam.symbol)</a>
+</li>
+        </ul></li>
         <li><a href="api/tam.html#tam.Cache.clear">clear() (tam.Cache method)</a>
 
         <ul>
@@ -840,6 +847,12 @@
 </li>
         <li><a href="api/tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials.endpoint">endpoint (tam.marketdata.credentials.R2Credentials property)</a>
 </li>
+        <li><a href="api/tam.html#tam.Engine">Engine (class in tam)</a>
+
+        <ul>
+          <li><a href="api/tam.engine.html#tam.engine.Engine">(class in tam.engine)</a>
+</li>
+        </ul></li>
         <li><a href="api/tam.marketdata.schema.html#tam.marketdata.schema.ensure_utc_index">ensure_utc_index() (in module tam.marketdata.schema)</a>
 </li>
         <li><a href="api/tam.html#tam.Symbol.eod_bars">eod_bars() (tam.Symbol method)</a>
@@ -856,10 +869,10 @@
 </li>
         <li><a href="api/tam.events.types.html#tam.events.types.Event">Event (class in tam.events.types)</a>
 </li>
-        <li><a href="api/tam.events.bus.html#tam.events.bus.EventBus">EventBus (class in tam.events.bus)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/tam.events.bus.html#tam.events.bus.EventBus">EventBus (class in tam.events.bus)</a>
+</li>
         <li><a href="api/tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.SqlConnection.execute">execute() (tam.marketdata.explorer_client.SqlConnection method)</a>
 
         <ul>
@@ -1434,6 +1447,8 @@
 </li>
           <li><a href="api/tam.discovery.upload.html#module-tam.discovery.upload">tam.discovery.upload</a>
 </li>
+          <li><a href="api/tam.engine.html#module-tam.engine">tam.engine</a>
+</li>
           <li><a href="api/tam.events.html#module-tam.events">tam.events</a>
 </li>
           <li><a href="api/tam.events.bus.html#module-tam.events.bus">tam.events.bus</a>
@@ -1671,6 +1686,12 @@
   <h2>P</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/tam.html#tam.Engine.PANDAS">PANDAS (tam.Engine attribute)</a>
+
+        <ul>
+          <li><a href="api/tam.engine.html#tam.engine.Engine.PANDAS">(tam.engine.Engine attribute)</a>
+</li>
+        </ul></li>
         <li><a href="api/tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore">ParquetFileSystemStore (class in tam.marketdata.store)</a>
 </li>
         <li><a href="api/tam.data.format.html#tam.data.format.ParquetFormat">ParquetFormat (class in tam.data.format)</a>
@@ -1689,6 +1710,12 @@
 </li>
         <li><a href="api/tam.basket.universe.html#tam.basket.universe.PitIndexUniverse">PitIndexUniverse (class in tam.basket.universe)</a>
 </li>
+        <li><a href="api/tam.html#tam.Engine.POLARS">POLARS (tam.Engine attribute)</a>
+
+        <ul>
+          <li><a href="api/tam.engine.html#tam.engine.Engine.POLARS">(tam.engine.Engine attribute)</a>
+</li>
+        </ul></li>
         <li><a href="api/tam.backtest.runner.html#tam.backtest.runner.ReportSettings.poll_seconds">poll_seconds (tam.backtest.runner.ReportSettings attribute)</a>
 </li>
         <li><a href="api/tam.portfolio.portfolio.html#tam.portfolio.portfolio.Portfolio">Portfolio (class in tam.portfolio.portfolio)</a>
@@ -1705,12 +1732,12 @@
 </li>
         <li><a href="api/tam.portfolio.portfolio.html#tam.portfolio.portfolio.Position">Position (class in tam.portfolio.portfolio)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api/tam.portfolio.portfolio.html#tam.portfolio.portfolio.Portfolio.position">position() (tam.portfolio.portfolio.Portfolio method)</a>
 </li>
         <li><a href="api/tam.backtest.presenter.html#tam.backtest.presenter.Presenter">Presenter (class in tam.backtest.presenter)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api/tam.backtest.runner.html#tam.backtest.runner.ReportSettings.presenter">presenter (tam.backtest.runner.ReportSettings attribute)</a>
 </li>
         <li><a href="api/tam.backtest.runner.html#tam.backtest.runner.ReportSettings.presenter_kwargs">presenter_kwargs (tam.backtest.runner.ReportSettings attribute)</a>
@@ -2601,6 +2628,13 @@
 </li>
         </ul></li>
         <li>
+    tam.engine
+
+        <ul>
+          <li><a href="api/tam.engine.html#module-tam.engine">module</a>
+</li>
+        </ul></li>
+        <li>
     tam.events
 
         <ul>
@@ -3023,6 +3057,10 @@
         <ul>
           <li><a href="api/tam.portfolio.portfolio.html#tam.portfolio.portfolio.Portfolio.tickers">(tam.portfolio.portfolio.Portfolio property)</a>
 </li>
+          <li><a href="api/tam.html#tam.Symbol.tickers">(tam.Symbol attribute)</a>
+</li>
+          <li><a href="api/tam.symbol.html#tam.symbol.Symbol.tickers">(tam.symbol.Symbol attribute)</a>
+</li>
         </ul></li>
         <li><a href="api/tam.charting.html#tam.charting.timeseries">timeseries() (in module tam.charting)</a>
 </li>
@@ -3176,10 +3214,16 @@
 </li>
         <li><a href="api/tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport">ValidationReport (class in tam.marketdata.validate)</a>
 </li>
-        <li><a href="api/tam.backtest.tearsheet.html#tam.backtest.tearsheet.ValueAtRiskMetric">ValueAtRiskMetric (class in tam.backtest.tearsheet)</a>
+        <li><a href="api/tam.html#tam.CIK.value">value (tam.CIK attribute)</a>
+
+        <ul>
+          <li><a href="api/tam.symbol.html#tam.symbol.CIK.value">(tam.symbol.CIK attribute)</a>
 </li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/tam.backtest.tearsheet.html#tam.backtest.tearsheet.ValueAtRiskMetric">ValueAtRiskMetric (class in tam.backtest.tearsheet)</a>
+</li>
         <li><a href="api/tam.discovery.upload.html#tam.discovery.upload.UploadResult.version">version (tam.discovery.upload.UploadResult attribute)</a>
 
         <ul>

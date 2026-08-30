@@ -331,6 +331,7 @@
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -404,13 +405,14 @@ mildly wasteful locally, actually slow against a real R2-backed
 connection. Construct ONE cache object at the top of a notebook and pass
 it to every <cite>Symbol(…)</cite>/<cite>tam.query(…)</cite> call for the rest of the
 session:</p>
-<blockquote>
-<div><p>from tam import Symbol, ManualCache</p>
-<p>cache = ManualCache()
-Symbol(“AAPL”, cache=cache).minute_bars()   # hits the connection
-Symbol(“AAPL”, cache=cache).minute_bars()   # same call, same cache key -&gt; cached, no re-fetch
-cache.clear()                                # explicit – ManualCache never evicts on its own</p>
-</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam</span><span class="w"> </span><span class="kn">import</span> <span class="n">Symbol</span><span class="p">,</span> <span class="n">ManualCache</span>
+
+<span class="n">cache</span> <span class="o">=</span> <span class="n">ManualCache</span><span class="p">()</span>
+<span class="n">Symbol</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span><span class="o">.</span><span class="n">minute_bars</span><span class="p">()</span>   <span class="c1"># hits the connection</span>
+<span class="n">Symbol</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span><span class="o">.</span><span class="n">minute_bars</span><span class="p">()</span>   <span class="c1"># same call, same cache key -&gt; cached, no re-fetch</span>
+<span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>                                <span class="c1"># explicit -- ManualCache never evicts on its own</span>
+</pre></div>
+</div>
 <p>Every implementation here keys on the exact (sql, params, engine) tuple
 that would otherwise be sent to the connection – not on anything
 dataset-specific – so correctness is automatic: two calls only ever

@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -406,13 +407,14 @@ validation together into a resumable backfill.</p>
 <p>Query access does not go through this package at all once data is in R2 –
 DuckDB’s own httpfs extension reads the Parquet lake directly (see
 tam.marketdata.duckdb_query.open_duckdb()), from a local machine, Colab, or
-anywhere else, with no API service in between.</p>
-<blockquote>
-<div><p>from tam.marketdata.credentials import resolve_r2_credentials
-from tam.marketdata.duckdb_query import open_duckdb</p>
-<p>con = open_duckdb(bucket=”tam-data”)
-con.sql(“SELECT * FROM daily_bars(‘SPY’)”).df()</p>
-</div></blockquote>
+anywhere else, with no API service in between:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.credentials</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_r2_credentials</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.duckdb_query</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_duckdb</span>
+
+<span class="n">con</span> <span class="o">=</span> <span class="n">open_duckdb</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="s2">"tam-data"</span><span class="p">)</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM daily_bars('SPY')"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
+</pre></div>
+</div>
 <dl class="py function">
 <dt class="sig sig-object py" id="tam.marketdata.empty_minute_bar_frame">
 <span class="sig-prename descclassname"><span class="pre">tam.marketdata.</span></span><span class="sig-name descname"><span class="pre">empty_minute_bar_frame</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#tam.marketdata.empty_minute_bar_frame" title="Link to this definition">¶</a></dt>
@@ -426,32 +428,9 @@ MINUTE_BAR_COLUMNS. Mirrors tam.data.schema.empty_ohlcv_frame().</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.completeness.html">tam.marketdata.completeness module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.actual_bars"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.actual_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.calendar"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.calendar</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.expected_bars"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.expected_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.extended_hours_bars"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.extended_hours_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.months"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.months</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.symbol"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.symbol</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.to_json"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.to_json()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex.year"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex.year</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.DayCompleteness"><code class="docutils literal notranslate"><span class="pre">DayCompleteness</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.DayCompleteness.actual_bars"><code class="docutils literal notranslate"><span class="pre">DayCompleteness.actual_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.DayCompleteness.day"><code class="docutils literal notranslate"><span class="pre">DayCompleteness.day</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.DayCompleteness.expected_bars"><code class="docutils literal notranslate"><span class="pre">DayCompleteness.expected_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.DayCompleteness.extended_hours_bars"><code class="docutils literal notranslate"><span class="pre">DayCompleteness.extended_hours_bars</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.MonthCompleteness"><code class="docutils literal notranslate"><span class="pre">MonthCompleteness</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.MonthCompleteness.actual_bars"><code class="docutils literal notranslate"><span class="pre">MonthCompleteness.actual_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.MonthCompleteness.days"><code class="docutils literal notranslate"><span class="pre">MonthCompleteness.days</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.MonthCompleteness.expected_bars"><code class="docutils literal notranslate"><span class="pre">MonthCompleteness.expected_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.MonthCompleteness.extended_hours_bars"><code class="docutils literal notranslate"><span class="pre">MonthCompleteness.extended_hours_bars</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.MonthCompleteness.month"><code class="docutils literal notranslate"><span class="pre">MonthCompleteness.month</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.CompletenessIndex"><code class="docutils literal notranslate"><span class="pre">CompletenessIndex</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.DayCompleteness"><code class="docutils literal notranslate"><span class="pre">DayCompleteness</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.MonthCompleteness"><code class="docutils literal notranslate"><span class="pre">MonthCompleteness</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.completeness_sidecar_suffix"><code class="docutils literal notranslate"><span class="pre">completeness_sidecar_suffix()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.compute_completeness"><code class="docutils literal notranslate"><span class="pre">compute_completeness()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.completeness.html#tam.marketdata.completeness.sidecar_schema_version"><code class="docutils literal notranslate"><span class="pre">sidecar_schema_version()</span></code></a></li>
@@ -464,28 +443,14 @@ MINUTE_BAR_COLUMNS. Mirrors tam.data.schema.empty_ohlcv_frame().</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.credentials.html">tam.marketdata.credentials module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials"><code class="docutils literal notranslate"><span class="pre">R2Credentials</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials.access_key_id"><code class="docutils literal notranslate"><span class="pre">R2Credentials.access_key_id</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials.account_id"><code class="docutils literal notranslate"><span class="pre">R2Credentials.account_id</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials.bucket"><code class="docutils literal notranslate"><span class="pre">R2Credentials.bucket</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials.endpoint"><code class="docutils literal notranslate"><span class="pre">R2Credentials.endpoint</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials.secret_access_key"><code class="docutils literal notranslate"><span class="pre">R2Credentials.secret_access_key</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.R2Credentials"><code class="docutils literal notranslate"><span class="pre">R2Credentials</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.credentials_file_path"><code class="docutils literal notranslate"><span class="pre">credentials_file_path()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.resolve_r2_credentials"><code class="docutils literal notranslate"><span class="pre">resolve_r2_credentials()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.credentials.html#tam.marketdata.credentials.save_r2_credentials"><code class="docutils literal notranslate"><span class="pre">save_r2_credentials()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.datasets.html">tam.marketdata.datasets module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.datasets.html#tam.marketdata.datasets.DatasetSpec"><code class="docutils literal notranslate"><span class="pre">DatasetSpec</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.datasets.html#tam.marketdata.datasets.DatasetSpec.columns"><code class="docutils literal notranslate"><span class="pre">DatasetSpec.columns</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.datasets.html#tam.marketdata.datasets.DatasetSpec.date_column"><code class="docutils literal notranslate"><span class="pre">DatasetSpec.date_column</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.datasets.html#tam.marketdata.datasets.DatasetSpec.macro"><code class="docutils literal notranslate"><span class="pre">DatasetSpec.macro</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.datasets.html#tam.marketdata.datasets.DatasetSpec.supports_scan_all"><code class="docutils literal notranslate"><span class="pre">DatasetSpec.supports_scan_all</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.datasets.html#tam.marketdata.datasets.DatasetSpec.ticker_column"><code class="docutils literal notranslate"><span class="pre">DatasetSpec.ticker_column</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.datasets.html#tam.marketdata.datasets.DatasetSpec"><code class="docutils literal notranslate"><span class="pre">DatasetSpec</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.duckdb_query.html">tam.marketdata.duckdb_query module</a><ul>
@@ -493,11 +458,7 @@ MINUTE_BAR_COLUMNS. Mirrors tam.data.schema.empty_ohlcv_frame().</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.explorer_client.html">tam.marketdata.explorer_client module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.SqlConnection"><code class="docutils literal notranslate"><span class="pre">SqlConnection</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.SqlConnection.execute"><code class="docutils literal notranslate"><span class="pre">SqlConnection.execute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.SqlConnection.sql"><code class="docutils literal notranslate"><span class="pre">SqlConnection.sql()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.SqlConnection"><code class="docutils literal notranslate"><span class="pre">SqlConnection</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.credentials_file_path"><code class="docutils literal notranslate"><span class="pre">credentials_file_path()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.explorer_client.html#tam.marketdata.explorer_client.download_csv"><code class="docutils literal notranslate"><span class="pre">download_csv()</span></code></a></li>
@@ -513,35 +474,9 @@ MINUTE_BAR_COLUMNS. Mirrors tam.data.schema.empty_ohlcv_frame().</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.ingest.html">tam.marketdata.ingest module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.CoverageReport"><code class="docutils literal notranslate"><span class="pre">CoverageReport</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.CoverageReport.expected"><code class="docutils literal notranslate"><span class="pre">CoverageReport.expected</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.CoverageReport.ingested"><code class="docutils literal notranslate"><span class="pre">CoverageReport.ingested</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.CoverageReport.is_complete"><code class="docutils literal notranslate"><span class="pre">CoverageReport.is_complete</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.CoverageReport.missing"><code class="docutils literal notranslate"><span class="pre">CoverageReport.missing</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.IngestResult"><code class="docutils literal notranslate"><span class="pre">IngestResult</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.IngestResult.days_processed"><code class="docutils literal notranslate"><span class="pre">IngestResult.days_processed</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.IngestResult.days_skipped_already_done"><code class="docutils literal notranslate"><span class="pre">IngestResult.days_skipped_already_done</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.IngestResult.days_skipped_no_data"><code class="docutils literal notranslate"><span class="pre">IngestResult.days_skipped_no_data</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.end"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.end</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.extra_symbols"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.extra_symbols</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.flush_every_days"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.flush_every_days</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.flush_workers"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.flush_workers</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.force_recheck"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.force_recheck</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.max_workers"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.max_workers</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.provider"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.provider</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.provider_kwargs"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.provider_kwargs</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.start"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.start</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.store"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.store</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.store_kwargs"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.store_kwargs</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.universe"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.universe</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings.universe_kwargs"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings.universe_kwargs</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.CoverageReport"><code class="docutils literal notranslate"><span class="pre">CoverageReport</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.IngestResult"><code class="docutils literal notranslate"><span class="pre">IngestResult</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.MarketDataSettings"><code class="docutils literal notranslate"><span class="pre">MarketDataSettings</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.coverage_report"><code class="docutils literal notranslate"><span class="pre">coverage_report()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.ingest"><code class="docutils literal notranslate"><span class="pre">ingest()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.ingest.html#tam.marketdata.ingest.ingest_day"><code class="docutils literal notranslate"><span class="pre">ingest_day()</span></code></a></li>
@@ -551,37 +486,17 @@ MINUTE_BAR_COLUMNS. Mirrors tam.data.schema.empty_ohlcv_frame().</p>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.providers.html">tam.marketdata.providers module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.providers.html#tam.marketdata.providers.MassiveFlatFileProvider"><code class="docutils literal notranslate"><span class="pre">MassiveFlatFileProvider</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.providers.html#tam.marketdata.providers.MinuteBarProvider"><code class="docutils literal notranslate"><span class="pre">MinuteBarProvider</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.providers.html#tam.marketdata.providers.MinuteBarProvider.fetch"><code class="docutils literal notranslate"><span class="pre">MinuteBarProvider.fetch()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.providers.html#tam.marketdata.providers.MinuteBarProvider"><code class="docutils literal notranslate"><span class="pre">MinuteBarProvider</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.reference_ingest.html">tam.marketdata.reference_ingest module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.DatasetResult"><code class="docutils literal notranslate"><span class="pre">DatasetResult</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.DatasetResult.dataset"><code class="docutils literal notranslate"><span class="pre">DatasetResult.dataset</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.DatasetResult.rows_fetched"><code class="docutils literal notranslate"><span class="pre">DatasetResult.rows_fetched</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.Manifest"><code class="docutils literal notranslate"><span class="pre">Manifest</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.Manifest.cursor_for"><code class="docutils literal notranslate"><span class="pre">Manifest.cursor_for()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.Manifest.flush"><code class="docutils literal notranslate"><span class="pre">Manifest.flush()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.Manifest.record"><code class="docutils literal notranslate"><span class="pre">Manifest.record()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.DatasetResult"><code class="docutils literal notranslate"><span class="pre">DatasetResult</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.Manifest"><code class="docutils literal notranslate"><span class="pre">Manifest</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_ingest.html#tam.marketdata.reference_ingest.ingest_reference_data"><code class="docutils literal notranslate"><span class="pre">ingest_reference_data()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.reference_provider.html">tam.marketdata.reference_provider module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider.fetch_dividends"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider.fetch_dividends()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider.fetch_float"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider.fetch_float()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider.fetch_ipos"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider.fetch_ipos()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider.fetch_short_interest"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider.fetch_short_interest()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider.fetch_short_volume"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider.fetch_short_volume()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider.fetch_splits"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider.fetch_splits()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_provider.html#tam.marketdata.reference_provider.MassiveReferenceProvider"><code class="docutils literal notranslate"><span class="pre">MassiveReferenceProvider</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.reference_schema.html">tam.marketdata.reference_schema module</a><ul>
@@ -590,27 +505,9 @@ MINUTE_BAR_COLUMNS. Mirrors tam.data.schema.empty_ohlcv_frame().</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.reference_store.html">tam.marketdata.reference_store module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.LocalReferenceStore"><code class="docutils literal notranslate"><span class="pre">LocalReferenceStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.LocalReferenceStore.read"><code class="docutils literal notranslate"><span class="pre">LocalReferenceStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.LocalReferenceStore.read_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">LocalReferenceStore.read_manifest_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.LocalReferenceStore.write"><code class="docutils literal notranslate"><span class="pre">LocalReferenceStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.LocalReferenceStore.write_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">LocalReferenceStore.write_manifest_bytes()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.R2ReferenceStore"><code class="docutils literal notranslate"><span class="pre">R2ReferenceStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.R2ReferenceStore.read"><code class="docutils literal notranslate"><span class="pre">R2ReferenceStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.R2ReferenceStore.read_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">R2ReferenceStore.read_manifest_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.R2ReferenceStore.write"><code class="docutils literal notranslate"><span class="pre">R2ReferenceStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.R2ReferenceStore.write_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">R2ReferenceStore.write_manifest_bytes()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.ReferenceStore"><code class="docutils literal notranslate"><span class="pre">ReferenceStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.ReferenceStore.read"><code class="docutils literal notranslate"><span class="pre">ReferenceStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.ReferenceStore.read_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">ReferenceStore.read_manifest_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.ReferenceStore.write"><code class="docutils literal notranslate"><span class="pre">ReferenceStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.ReferenceStore.write_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">ReferenceStore.write_manifest_bytes()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.LocalReferenceStore"><code class="docutils literal notranslate"><span class="pre">LocalReferenceStore</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.R2ReferenceStore"><code class="docutils literal notranslate"><span class="pre">R2ReferenceStore</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.reference_store.html#tam.marketdata.reference_store.ReferenceStore"><code class="docutils literal notranslate"><span class="pre">ReferenceStore</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.schema.html">tam.marketdata.schema module</a><ul>
@@ -620,48 +517,13 @@ MINUTE_BAR_COLUMNS. Mirrors tam.data.schema.empty_ohlcv_frame().</p>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.store.html">tam.marketdata.store module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.LocalMinuteBarStore"><code class="docutils literal notranslate"><span class="pre">LocalMinuteBarStore</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore.exists"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore.exists()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore.read"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore.read_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore.read_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore.read_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore.read_manifest_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore.write"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore.write_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore.write_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore.write_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore.write_manifest_bytes()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore.exists"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore.exists()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore.read"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore.read_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore.read_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore.read_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore.read_manifest_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore.write"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore.write_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore.write_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore.write_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore.write_manifest_bytes()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.exists"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.exists()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.list_symbols"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.list_symbols()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.read"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.read_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.read_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.read_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.read_manifest_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.write"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.write_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.write_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore.write_manifest_bytes"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore.write_manifest_bytes()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.MinuteBarStore"><code class="docutils literal notranslate"><span class="pre">MinuteBarStore</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.ParquetFileSystemStore"><code class="docutils literal notranslate"><span class="pre">ParquetFileSystemStore</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.store.html#tam.marketdata.store.R2MinuteBarStore"><code class="docutils literal notranslate"><span class="pre">R2MinuteBarStore</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.marketdata.validate.html">tam.marketdata.validate module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport"><code class="docutils literal notranslate"><span class="pre">ValidationReport</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport.day"><code class="docutils literal notranslate"><span class="pre">ValidationReport.day</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport.errors"><code class="docutils literal notranslate"><span class="pre">ValidationReport.errors</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport.ok"><code class="docutils literal notranslate"><span class="pre">ValidationReport.ok</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport.raise_if_invalid"><code class="docutils literal notranslate"><span class="pre">ValidationReport.raise_if_invalid()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport.warning_messages"><code class="docutils literal notranslate"><span class="pre">ValidationReport.warning_messages</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.ValidationReport"><code class="docutils literal notranslate"><span class="pre">ValidationReport</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.marketdata.validate.html#tam.marketdata.validate.validate_day"><code class="docutils literal notranslate"><span class="pre">validate_day()</span></code></a></li>
 </ul>
 </li>

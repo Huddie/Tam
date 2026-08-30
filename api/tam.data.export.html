@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -402,17 +403,16 @@ harness. Not tied to any particular column shape – whatever a DataProvider
 returns for a symbol (OHLCV today; anything else a future/custom DataProvider
 returns tomorrow) passes straight through to <cite>transform</cite> and the output file
 untouched. Nothing here assumes “OHLC” specifically – see <cite>tam/data/
-providers.py</cite> if you want a provider with a different shape.</p>
-<blockquote>
-<div><p>from datetime import date
-from tam.data.export import export_history</p>
-<dl class="simple">
-<dt>export_history(</dt><dd><p>“MU”, date(2020, 1, 1), date(2024, 1, 1), “mu.csv”,
-transform=lambda df: df.assign(ret=df[“close”].pct_change()),</p>
-</dd>
-</dl>
-<p>)</p>
-</div></blockquote>
+providers.py</cite> if you want a provider with a different shape:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.data.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_history</span>
+
+<span class="n">export_history</span><span class="p">(</span>
+    <span class="s2">"MU"</span><span class="p">,</span> <span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="s2">"mu.csv"</span><span class="p">,</span>
+    <span class="n">transform</span><span class="o">=</span><span class="k">lambda</span> <span class="n">df</span><span class="p">:</span> <span class="n">df</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">ret</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s2">"close"</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <p><cite>cache_store</cite>/<cite>cache_root</cite> are the SAME kind of year-partitioned store
 <cite>tam.backtest.runner</cite> uses to avoid re-fetching from the provider on repeat
 calls – that’s an internal ingestion cache, not the file this function

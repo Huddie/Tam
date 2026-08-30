@@ -10,7 +10,7 @@ Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    tam.backtest
    tam.basket
@@ -28,11 +28,12 @@ Submodules
 ----------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    tam.cache
    tam.charting
    tam.config
+   tam.engine
    tam.query
    tam.registry
    tam.secrets

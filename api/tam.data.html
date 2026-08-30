@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -404,73 +405,31 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.export.html">tam.data.export module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.export.html#tam.data.export.DataSettings"><code class="docutils literal notranslate"><span class="pre">DataSettings</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.DataSettings.provider"><code class="docutils literal notranslate"><span class="pre">DataSettings.provider</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.DataSettings.root"><code class="docutils literal notranslate"><span class="pre">DataSettings.root</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.DataSettings.store"><code class="docutils literal notranslate"><span class="pre">DataSettings.store</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.export.html#tam.data.export.ExportSettings"><code class="docutils literal notranslate"><span class="pre">ExportSettings</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.ExportSettings.end"><code class="docutils literal notranslate"><span class="pre">ExportSettings.end</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.ExportSettings.format"><code class="docutils literal notranslate"><span class="pre">ExportSettings.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.ExportSettings.path"><code class="docutils literal notranslate"><span class="pre">ExportSettings.path</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.ExportSettings.start"><code class="docutils literal notranslate"><span class="pre">ExportSettings.start</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.export.html#tam.data.export.ExportSettings.symbol"><code class="docutils literal notranslate"><span class="pre">ExportSettings.symbol</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.export.html#tam.data.export.DataSettings"><code class="docutils literal notranslate"><span class="pre">DataSettings</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.export.html#tam.data.export.ExportSettings"><code class="docutils literal notranslate"><span class="pre">ExportSettings</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.data.export.html#tam.data.export.export_history"><code class="docutils literal notranslate"><span class="pre">export_history()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.data.export.html#tam.data.export.run_export"><code class="docutils literal notranslate"><span class="pre">run_export()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.format.html">tam.data.format module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.format.html#tam.data.format.CsvFormat"><code class="docutils literal notranslate"><span class="pre">CsvFormat</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.format.html#tam.data.format.CsvFormat.write"><code class="docutils literal notranslate"><span class="pre">CsvFormat.write()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.format.html#tam.data.format.FileFormat"><code class="docutils literal notranslate"><span class="pre">FileFormat</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.format.html#tam.data.format.FileFormat.write"><code class="docutils literal notranslate"><span class="pre">FileFormat.write()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.format.html#tam.data.format.ParquetFormat"><code class="docutils literal notranslate"><span class="pre">ParquetFormat</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.format.html#tam.data.format.ParquetFormat.write"><code class="docutils literal notranslate"><span class="pre">ParquetFormat.write()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.format.html#tam.data.format.CsvFormat"><code class="docutils literal notranslate"><span class="pre">CsvFormat</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.format.html#tam.data.format.FileFormat"><code class="docutils literal notranslate"><span class="pre">FileFormat</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.format.html#tam.data.format.ParquetFormat"><code class="docutils literal notranslate"><span class="pre">ParquetFormat</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.history.html">tam.data.history module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.history.html#tam.data.history.SymbolHistory"><code class="docutils literal notranslate"><span class="pre">SymbolHistory</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.history.html#tam.data.history.SymbolHistory.frame"><code class="docutils literal notranslate"><span class="pre">SymbolHistory.frame</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.history.html#tam.data.history.SymbolHistory.price_at"><code class="docutils literal notranslate"><span class="pre">SymbolHistory.price_at()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.history.html#tam.data.history.SymbolHistory.window_ending"><code class="docutils literal notranslate"><span class="pre">SymbolHistory.window_ending()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.history.html#tam.data.history.SymbolHistory"><code class="docutils literal notranslate"><span class="pre">SymbolHistory</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.providers.html">tam.data.providers module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.DataProvider"><code class="docutils literal notranslate"><span class="pre">DataProvider</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.DataProvider.fetch_eod"><code class="docutils literal notranslate"><span class="pre">DataProvider.fetch_eod()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.FMPProvider"><code class="docutils literal notranslate"><span class="pre">FMPProvider</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.FMPProvider.BASE_URL"><code class="docutils literal notranslate"><span class="pre">FMPProvider.BASE_URL</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.FMPProvider.fetch_eod"><code class="docutils literal notranslate"><span class="pre">FMPProvider.fetch_eod()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.DataProvider"><code class="docutils literal notranslate"><span class="pre">DataProvider</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.FMPProvider"><code class="docutils literal notranslate"><span class="pre">FMPProvider</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.YFinanceAdjustedProvider"><code class="docutils literal notranslate"><span class="pre">YFinanceAdjustedProvider</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.YFinanceProvider"><code class="docutils literal notranslate"><span class="pre">YFinanceProvider</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.YFinanceProvider.fetch_eod"><code class="docutils literal notranslate"><span class="pre">YFinanceProvider.fetch_eod()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.providers.html#tam.data.providers.YFinanceProvider"><code class="docutils literal notranslate"><span class="pre">YFinanceProvider</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.repository.html">tam.data.repository module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository"><code class="docutils literal notranslate"><span class="pre">DataRepository</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository.history"><code class="docutils literal notranslate"><span class="pre">DataRepository.history()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository.ingest"><code class="docutils literal notranslate"><span class="pre">DataRepository.ingest()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository.query"><code class="docutils literal notranslate"><span class="pre">DataRepository.query()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository.write"><code class="docutils literal notranslate"><span class="pre">DataRepository.write()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository"><code class="docutils literal notranslate"><span class="pre">DataRepository</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.schema.html">tam.data.schema module</a><ul>
@@ -479,38 +438,16 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.storage.html">tam.data.storage module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.CsvStore"><code class="docutils literal notranslate"><span class="pre">CsvStore</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.DataStore"><code class="docutils literal notranslate"><span class="pre">DataStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.DataStore.exists"><code class="docutils literal notranslate"><span class="pre">DataStore.exists()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.DataStore.read"><code class="docutils literal notranslate"><span class="pre">DataStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.DataStore.read_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">DataStore.read_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.DataStore.write"><code class="docutils literal notranslate"><span class="pre">DataStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.DataStore.write_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">DataStore.write_completeness_bytes()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.MultiDataStore"><code class="docutils literal notranslate"><span class="pre">MultiDataStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.MultiDataStore.exists"><code class="docutils literal notranslate"><span class="pre">MultiDataStore.exists()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.MultiDataStore.read"><code class="docutils literal notranslate"><span class="pre">MultiDataStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.MultiDataStore.write"><code class="docutils literal notranslate"><span class="pre">MultiDataStore.write()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.DataStore"><code class="docutils literal notranslate"><span class="pre">DataStore</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.MultiDataStore"><code class="docutils literal notranslate"><span class="pre">MultiDataStore</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.ParquetStore"><code class="docutils literal notranslate"><span class="pre">ParquetStore</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.R2DataStore"><code class="docutils literal notranslate"><span class="pre">R2DataStore</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.R2DataStore.exists"><code class="docutils literal notranslate"><span class="pre">R2DataStore.exists()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.R2DataStore.read"><code class="docutils literal notranslate"><span class="pre">R2DataStore.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.R2DataStore.read_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">R2DataStore.read_completeness_bytes()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.R2DataStore.write"><code class="docutils literal notranslate"><span class="pre">R2DataStore.write()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.R2DataStore.write_completeness_bytes"><code class="docutils literal notranslate"><span class="pre">R2DataStore.write_completeness_bytes()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.storage.html#tam.data.storage.R2DataStore"><code class="docutils literal notranslate"><span class="pre">R2DataStore</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.data.writer.html">tam.data.writer module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tam.data.writer.html#tam.data.writer.CsvRepoWriter"><code class="docutils literal notranslate"><span class="pre">CsvRepoWriter</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.data.writer.html#tam.data.writer.ParquetRepoWriter"><code class="docutils literal notranslate"><span class="pre">ParquetRepoWriter</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.data.writer.html#tam.data.writer.RepoWriter"><code class="docutils literal notranslate"><span class="pre">RepoWriter</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.data.writer.html#tam.data.writer.RepoWriter.write"><code class="docutils literal notranslate"><span class="pre">RepoWriter.write()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.data.writer.html#tam.data.writer.RepoWriter"><code class="docutils literal notranslate"><span class="pre">RepoWriter</span></code></a></li>
 </ul>
 </li>
 </ul>

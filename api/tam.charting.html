@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -396,17 +397,16 @@
 <p>General-purpose composable charting: any Chart subclass is callable
 with data and returns a ChartCall that renders inline in a Jupyter cell
 (last-expression rich display) or via .show(); chain multiple with | to
-produce a single composite figure.</p>
-<blockquote>
-<div><dl class="simple">
-<dt>class MyChart(Chart):</dt><dd><p>title = “My Chart”
-def render(self, data) -&gt; go.Figure: …   # <cite>data</cite> is whatever YOUR chart expects</p>
-</dd>
-</dl>
-<p>MyChart()(my_data)             # a ChartCall – auto-displays in Jupyter
-MyChart()(my_data).show()      # explicit .show()
-c1(data) | c2(data)            # a ChartPipeline – one composite figure</p>
-</div></blockquote>
+produce a single composite figure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyChart</span><span class="p">(</span><span class="n">Chart</span><span class="p">):</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">"My Chart"</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span> <span class="o">...</span>   <span class="c1"># `data` is whatever YOUR chart expects</span>
+
+<span class="n">MyChart</span><span class="p">()(</span><span class="n">my_data</span><span class="p">)</span>             <span class="c1"># a ChartCall -- auto-displays in Jupyter</span>
+<span class="n">MyChart</span><span class="p">()(</span><span class="n">my_data</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>      <span class="c1"># explicit .show()</span>
+<span class="n">c1</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">|</span> <span class="n">c2</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>            <span class="c1"># a ChartPipeline -- one composite figure</span>
+</pre></div>
+</div>
 <p>Chart is deliberately NOT tied to tam.backtest.report.Report (or anything
 else) – <cite>render(self, data)</cite> takes whatever shape of <cite>data</cite> that
 PARTICULAR chart needs, decided entirely by the subclass. Report happens

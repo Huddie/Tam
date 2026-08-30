@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="tam.registry module" href="tam.registry.html"><link rel="prev" title="tam.config module" href="tam.config.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="tam.registry module" href="tam.registry.html"><link rel="prev" title="tam.engine module" href="tam.engine.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>tam.query module - tam</title>
@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -394,30 +395,33 @@
           <section id="module-tam.query">
 <span id="tam-query-module"></span><h1>tam.query module<a class="headerlink" href="#module-tam.query" title="Link to this heading">¶</a></h1>
 <p>tam.query() – raw SQL over every macro at once, no ticker object
-needed. The low-level tier of tam’s data-access layer: <cite>tam.Symbol</cite>/
-<cite>tam.Symbols</cite> are the ergonomic per-ticker layer built on top of exactly
-this; reach for <cite>query()</cite> directly for anything that doesn’t fit a single
-ticker or a fixed list of them (a cross-ticker join, an aggregation over
-the whole universe, …).</p>
-<blockquote>
-<div><p>import tam</p>
-<p>tam.query(“SELECT * FROM daily_bars(‘AAPL’) ORDER BY day”)
-tam.query(“SELECT * FROM splits() WHERE execution_date &gt;= ‘2024-01-01’”, engine=”polars”)</p>
-<p>cache = tam.ManualCache()
-tam.query(“SELECT count(*) FROM sec_companies()”, cache=cache)   # hits the connection
-tam.query(“SELECT count(*) FROM sec_companies()”, cache=cache)   # identical call -&gt; cached</p>
-</div></blockquote>
+needed. The low-level tier of tam’s data-access layer: <cite>tam.Symbol</cite> is the
+ergonomic per-ticker layer built on top of exactly this; reach for
+<cite>query()</cite> directly for anything that doesn’t fit a single ticker or a
+fixed list of them (a cross-ticker join, an aggregation over the whole
+universe, …):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tam</span>
+
+<span class="n">tam</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT * FROM daily_bars('AAPL') ORDER BY day"</span><span class="p">)</span>
+<span class="n">tam</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT * FROM splits() WHERE execution_date &gt;= '2024-01-01'"</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">"polars"</span><span class="p">)</span>
+
+<span class="n">cache</span> <span class="o">=</span> <span class="n">tam</span><span class="o">.</span><span class="n">ManualCache</span><span class="p">()</span>
+<span class="n">tam</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT count(*) FROM sec_companies()"</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span>   <span class="c1"># hits the connection</span>
+<span class="n">tam</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT count(*) FROM sec_companies()"</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span>   <span class="c1"># identical call -&gt; cached</span>
+</pre></div>
+</div>
 <dl class="py function">
 <dt class="sig sig-object py" id="tam.query.query">
-<span class="sig-prename descclassname"><span class="pre">tam.query.</span></span><span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sql</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'pandas'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.cache.html#tam.cache.Cache" title="tam.cache.Cache"><span class="pre">Cache</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">con</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">connection_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#tam.query.query" title="Link to this definition">¶</a></dt>
-<dd><p>Runs <cite>sql</cite> and returns pandas (<cite>engine=”pandas”</cite>, the default) or
-polars (<cite>engine=”polars”</cite>, DuckDB’s own native <cite>.pl()</cite> – no <cite>tam</cite>
-dependency on polars itself, install it yourself if you want this).
-<cite>con=</cite>/<cite>local_root=</cite>/any other <cite>open_duckdb()</cite> kwarg overrides the
-connection outright (same resolution chain as <cite>tam.Symbol</cite>/<cite>Sec</cite>);
-omit all of them to share the one lazily-built default connection
-every default-configured caller in the process reuses. <cite>cache=</cite> (a
-<cite>tam.Cache</cite>) is opt-in, keyed on the exact <cite>(sql, engine)</cite> pair.</p>
+<span class="sig-prename descclassname"><span class="pre">tam.query.</span></span><span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sql</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="tam.engine.html#tam.engine.Engine" title="tam.engine.Engine"><span class="pre">Engine</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Engine.PANDAS</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.cache.html#tam.cache.Cache" title="tam.cache.Cache"><span class="pre">Cache</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">con</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">connection_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#tam.query.query" title="Link to this definition">¶</a></dt>
+<dd><p>Runs <cite>sql</cite> and returns pandas (<cite>engine=Engine.PANDAS</cite>/<cite>”pandas”</cite>,
+the default) or polars (<cite>engine=Engine.POLARS</cite>/<cite>”polars”</cite>, DuckDB’s
+own native <cite>.pl()</cite> – no <cite>tam</cite> dependency on polars itself, install
+it yourself if you want this). <cite>con=</cite>/<cite>local_root=</cite>/any other
+<cite>open_duckdb()</cite> kwarg overrides the connection outright (same
+resolution chain as <cite>tam.Symbol</cite>/<cite>Sec</cite>); omit all of them to share
+the one lazily-built default connection every default-configured
+caller in the process reuses. <cite>cache=</cite> (a <cite>tam.Cache</cite>) is opt-in,
+keyed on the exact <cite>(sql, engine)</cite> pair.</p>
 </dd></dl>
 
 </section>
@@ -436,14 +440,14 @@ every default-configured caller in the process reuses. <cite>cache=</cite> (a
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="tam.config.html">
+          <a class="prev-page" href="tam.engine.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">tam.config module</div>
+                <div class="title">tam.engine module</div>
                 
               </div>
             </a>

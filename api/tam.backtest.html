@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -402,17 +403,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.backtest.harness.html">tam.backtest.harness module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.BacktestHarness"><code class="docutils literal notranslate"><span class="pre">BacktestHarness</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.BacktestHarness.run"><code class="docutils literal notranslate"><span class="pre">BacktestHarness.run()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.Progress"><code class="docutils literal notranslate"><span class="pre">Progress</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.Progress.current_date"><code class="docutils literal notranslate"><span class="pre">Progress.current_date</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.Progress.day_index"><code class="docutils literal notranslate"><span class="pre">Progress.day_index</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.Progress.fraction"><code class="docutils literal notranslate"><span class="pre">Progress.fraction</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.Progress.total_days"><code class="docutils literal notranslate"><span class="pre">Progress.total_days</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.BacktestHarness"><code class="docutils literal notranslate"><span class="pre">BacktestHarness</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.harness.html#tam.backtest.harness.Progress"><code class="docutils literal notranslate"><span class="pre">Progress</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.backtest.live.html">tam.backtest.live module</a><ul>
@@ -422,28 +414,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.backtest.presenter.html">tam.backtest.presenter module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.CliPresenter"><code class="docutils literal notranslate"><span class="pre">CliPresenter</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.CliPresenter.run_batch"><code class="docutils literal notranslate"><span class="pre">CliPresenter.run_batch()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.CliPresenter.run_live"><code class="docutils literal notranslate"><span class="pre">CliPresenter.run_live()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.CliPresenter.show_report"><code class="docutils literal notranslate"><span class="pre">CliPresenter.show_report()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.DashNotebookPresenter"><code class="docutils literal notranslate"><span class="pre">DashNotebookPresenter</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.DashNotebookPresenter.run_live"><code class="docutils literal notranslate"><span class="pre">DashNotebookPresenter.run_live()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.NotebookPresenter"><code class="docutils literal notranslate"><span class="pre">NotebookPresenter</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.NotebookPresenter.run_batch"><code class="docutils literal notranslate"><span class="pre">NotebookPresenter.run_batch()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.NotebookPresenter.run_live"><code class="docutils literal notranslate"><span class="pre">NotebookPresenter.run_live()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.NotebookPresenter.show_report"><code class="docutils literal notranslate"><span class="pre">NotebookPresenter.show_report()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.Presenter"><code class="docutils literal notranslate"><span class="pre">Presenter</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.Presenter.run_batch"><code class="docutils literal notranslate"><span class="pre">Presenter.run_batch()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.Presenter.run_live"><code class="docutils literal notranslate"><span class="pre">Presenter.run_live()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.Presenter.show_report"><code class="docutils literal notranslate"><span class="pre">Presenter.show_report()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.CliPresenter"><code class="docutils literal notranslate"><span class="pre">CliPresenter</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.DashNotebookPresenter"><code class="docutils literal notranslate"><span class="pre">DashNotebookPresenter</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.NotebookPresenter"><code class="docutils literal notranslate"><span class="pre">NotebookPresenter</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.presenter.html#tam.backtest.presenter.Presenter"><code class="docutils literal notranslate"><span class="pre">Presenter</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.backtest.quantstats_report.html">tam.backtest.quantstats_report module</a><ul>
@@ -452,53 +426,13 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.backtest.report.html">tam.backtest.report module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report"><code class="docutils literal notranslate"><span class="pre">Report</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.annotations"><code class="docutils literal notranslate"><span class="pre">Report.annotations</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.drawdown_curve"><code class="docutils literal notranslate"><span class="pre">Report.drawdown_curve()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.equity_curve"><code class="docutils literal notranslate"><span class="pre">Report.equity_curve()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.from_curves"><code class="docutils literal notranslate"><span class="pre">Report.from_curves()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.portfolio_ids"><code class="docutils literal notranslate"><span class="pre">Report.portfolio_ids()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.snapshots"><code class="docutils literal notranslate"><span class="pre">Report.snapshots</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.summary"><code class="docutils literal notranslate"><span class="pre">Report.summary()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.summary_all"><code class="docutils literal notranslate"><span class="pre">Report.summary_all()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.to_frame"><code class="docutils literal notranslate"><span class="pre">Report.to_frame()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.trades"><code class="docutils literal notranslate"><span class="pre">Report.trades</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.trades_for"><code class="docutils literal notranslate"><span class="pre">Report.trades_for()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report.trades_frame"><code class="docutils literal notranslate"><span class="pre">Report.trades_frame()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.report.html#tam.backtest.report.Report"><code class="docutils literal notranslate"><span class="pre">Report</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.backtest.runner.html">tam.backtest.runner module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings"><code class="docutils literal notranslate"><span class="pre">BacktestSettings</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.cash"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.cash</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.checkpoint_every"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.checkpoint_every</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.checkpoint_path"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.checkpoint_path</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.cost_model"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.cost_model</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.end"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.end</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.price_chart"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.price_chart</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.report_path"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.report_path</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.start"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.start</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.strategies"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.strategies</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings.tickers"><code class="docutils literal notranslate"><span class="pre">BacktestSettings.tickers</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.DataSettings"><code class="docutils literal notranslate"><span class="pre">DataSettings</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.DataSettings.provider"><code class="docutils literal notranslate"><span class="pre">DataSettings.provider</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.DataSettings.provider_kwargs"><code class="docutils literal notranslate"><span class="pre">DataSettings.provider_kwargs</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.DataSettings.root"><code class="docutils literal notranslate"><span class="pre">DataSettings.root</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.DataSettings.store"><code class="docutils literal notranslate"><span class="pre">DataSettings.store</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings"><code class="docutils literal notranslate"><span class="pre">ReportSettings</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings.height"><code class="docutils literal notranslate"><span class="pre">ReportSettings.height</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings.poll_seconds"><code class="docutils literal notranslate"><span class="pre">ReportSettings.poll_seconds</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings.presenter"><code class="docutils literal notranslate"><span class="pre">ReportSettings.presenter</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings.presenter_kwargs"><code class="docutils literal notranslate"><span class="pre">ReportSettings.presenter_kwargs</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings.show_trades_default"><code class="docutils literal notranslate"><span class="pre">ReportSettings.show_trades_default</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings.template"><code class="docutils literal notranslate"><span class="pre">ReportSettings.template</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.BacktestSettings"><code class="docutils literal notranslate"><span class="pre">BacktestSettings</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.DataSettings"><code class="docutils literal notranslate"><span class="pre">DataSettings</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.ReportSettings"><code class="docutils literal notranslate"><span class="pre">ReportSettings</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.runner.html#tam.backtest.runner.run_backtest"><code class="docutils literal notranslate"><span class="pre">run_backtest()</span></code></a></li>
 </ul>
@@ -512,199 +446,44 @@
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#standalone-chained-chart-api">Standalone / chained chart API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ALL_CHARTS"><code class="docutils literal notranslate"><span class="pre">ALL_CHARTS</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ALL_METRICS"><code class="docutils literal notranslate"><span class="pre">ALL_METRICS</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrByStartDateChart"><code class="docutils literal notranslate"><span class="pre">CagrByStartDateChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrByStartDateChart.render"><code class="docutils literal notranslate"><span class="pre">CagrByStartDateChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrMetric"><code class="docutils literal notranslate"><span class="pre">CagrMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrMetric.compute"><code class="docutils literal notranslate"><span class="pre">CagrMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrMetric.format"><code class="docutils literal notranslate"><span class="pre">CagrMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrMetric.label"><code class="docutils literal notranslate"><span class="pre">CagrMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CalmarMetric"><code class="docutils literal notranslate"><span class="pre">CalmarMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CalmarMetric.compute"><code class="docutils literal notranslate"><span class="pre">CalmarMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CalmarMetric.format"><code class="docutils literal notranslate"><span class="pre">CalmarMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CalmarMetric.label"><code class="docutils literal notranslate"><span class="pre">CalmarMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CumulativeReturnsChart"><code class="docutils literal notranslate"><span class="pre">CumulativeReturnsChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CumulativeReturnsChart.render"><code class="docutils literal notranslate"><span class="pre">CumulativeReturnsChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CumulativeReturnsChart.title"><code class="docutils literal notranslate"><span class="pre">CumulativeReturnsChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.DrawdownChart"><code class="docutils literal notranslate"><span class="pre">DrawdownChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.DrawdownChart.render"><code class="docutils literal notranslate"><span class="pre">DrawdownChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.DrawdownChart.title"><code class="docutils literal notranslate"><span class="pre">DrawdownChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.EOYReturnsChart"><code class="docutils literal notranslate"><span class="pre">EOYReturnsChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.EOYReturnsChart.render"><code class="docutils literal notranslate"><span class="pre">EOYReturnsChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.EOYReturnsChart.title"><code class="docutils literal notranslate"><span class="pre">EOYReturnsChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ExpectedShortfallMetric"><code class="docutils literal notranslate"><span class="pre">ExpectedShortfallMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ExpectedShortfallMetric.compute"><code class="docutils literal notranslate"><span class="pre">ExpectedShortfallMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ExpectedShortfallMetric.format"><code class="docutils literal notranslate"><span class="pre">ExpectedShortfallMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ExpectedShortfallMetric.label"><code class="docutils literal notranslate"><span class="pre">ExpectedShortfallMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.FinalValueByStartDateChart"><code class="docutils literal notranslate"><span class="pre">FinalValueByStartDateChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.FinalValueByStartDateChart.render"><code class="docutils literal notranslate"><span class="pre">FinalValueByStartDateChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.FinalValueByStartDateChart.title"><code class="docutils literal notranslate"><span class="pre">FinalValueByStartDateChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.KurtosisMetric"><code class="docutils literal notranslate"><span class="pre">KurtosisMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.KurtosisMetric.compute"><code class="docutils literal notranslate"><span class="pre">KurtosisMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.KurtosisMetric.format"><code class="docutils literal notranslate"><span class="pre">KurtosisMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.KurtosisMetric.label"><code class="docutils literal notranslate"><span class="pre">KurtosisMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.LogCumulativeReturnsChart"><code class="docutils literal notranslate"><span class="pre">LogCumulativeReturnsChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.LogCumulativeReturnsChart.render"><code class="docutils literal notranslate"><span class="pre">LogCumulativeReturnsChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.LogCumulativeReturnsChart.title"><code class="docutils literal notranslate"><span class="pre">LogCumulativeReturnsChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownByStartDateChart"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownByStartDateChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownByStartDateChart.render"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownByStartDateChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownByStartDateChart.title"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownByStartDateChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownMetric"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownMetric.compute"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownMetric.format"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownMetric.label"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnByStartDateChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnByStartDateChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnByStartDateChart.render"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnByStartDateChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsChart.render"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsChart.title"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsDistributionChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsDistributionChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsDistributionChart.render"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsDistributionChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsDistributionChart.title"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsDistributionChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsHeatmapChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsHeatmapChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsHeatmapChart.render"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsHeatmapChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.NumTradesMetric"><code class="docutils literal notranslate"><span class="pre">NumTradesMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.NumTradesMetric.compute"><code class="docutils literal notranslate"><span class="pre">NumTradesMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.NumTradesMetric.format"><code class="docutils literal notranslate"><span class="pre">NumTradesMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.NumTradesMetric.label"><code class="docutils literal notranslate"><span class="pre">NumTradesMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnDistributionByStartDateChart"><code class="docutils literal notranslate"><span class="pre">ReturnDistributionByStartDateChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnDistributionByStartDateChart.render"><code class="docutils literal notranslate"><span class="pre">ReturnDistributionByStartDateChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnDistributionByStartDateChart.title"><code class="docutils literal notranslate"><span class="pre">ReturnDistributionByStartDateChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnMatrixChart"><code class="docutils literal notranslate"><span class="pre">ReturnMatrixChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnMatrixChart.render"><code class="docutils literal notranslate"><span class="pre">ReturnMatrixChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnQuantilesChart"><code class="docutils literal notranslate"><span class="pre">ReturnQuantilesChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnQuantilesChart.render"><code class="docutils literal notranslate"><span class="pre">ReturnQuantilesChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnQuantilesChart.title"><code class="docutils literal notranslate"><span class="pre">ReturnQuantilesChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingReturnChart"><code class="docutils literal notranslate"><span class="pre">RollingReturnChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingReturnChart.render"><code class="docutils literal notranslate"><span class="pre">RollingReturnChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingReturnHeatmapChart"><code class="docutils literal notranslate"><span class="pre">RollingReturnHeatmapChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingReturnHeatmapChart.render"><code class="docutils literal notranslate"><span class="pre">RollingReturnHeatmapChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingSharpeChart"><code class="docutils literal notranslate"><span class="pre">RollingSharpeChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingSharpeChart.render"><code class="docutils literal notranslate"><span class="pre">RollingSharpeChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingSharpeChart.title"><code class="docutils literal notranslate"><span class="pre">RollingSharpeChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingSortinoChart"><code class="docutils literal notranslate"><span class="pre">RollingSortinoChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingSortinoChart.render"><code class="docutils literal notranslate"><span class="pre">RollingSortinoChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingVolatilityChart"><code class="docutils literal notranslate"><span class="pre">RollingVolatilityChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingVolatilityChart.render"><code class="docutils literal notranslate"><span class="pre">RollingVolatilityChart.render()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingVolatilityChart.title"><code class="docutils literal notranslate"><span class="pre">RollingVolatilityChart.title</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeByStartDateChart"><code class="docutils literal notranslate"><span class="pre">SharpeByStartDateChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeByStartDateChart.render"><code class="docutils literal notranslate"><span class="pre">SharpeByStartDateChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeDifferenceByStartDateChart"><code class="docutils literal notranslate"><span class="pre">SharpeDifferenceByStartDateChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeDifferenceByStartDateChart.render"><code class="docutils literal notranslate"><span class="pre">SharpeDifferenceByStartDateChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeMetric"><code class="docutils literal notranslate"><span class="pre">SharpeMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeMetric.compute"><code class="docutils literal notranslate"><span class="pre">SharpeMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeMetric.format"><code class="docutils literal notranslate"><span class="pre">SharpeMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeMetric.label"><code class="docutils literal notranslate"><span class="pre">SharpeMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SkewMetric"><code class="docutils literal notranslate"><span class="pre">SkewMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SkewMetric.compute"><code class="docutils literal notranslate"><span class="pre">SkewMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SkewMetric.format"><code class="docutils literal notranslate"><span class="pre">SkewMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SkewMetric.label"><code class="docutils literal notranslate"><span class="pre">SkewMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SortinoMetric"><code class="docutils literal notranslate"><span class="pre">SortinoMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SortinoMetric.compute"><code class="docutils literal notranslate"><span class="pre">SortinoMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SortinoMetric.format"><code class="docutils literal notranslate"><span class="pre">SortinoMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SortinoMetric.label"><code class="docutils literal notranslate"><span class="pre">SortinoMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet"><code class="docutils literal notranslate"><span class="pre">Tearsheet</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet.add_chart"><code class="docutils literal notranslate"><span class="pre">Tearsheet.add_chart()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet.add_metric"><code class="docutils literal notranslate"><span class="pre">Tearsheet.add_metric()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet.build"><code class="docutils literal notranslate"><span class="pre">Tearsheet.build()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet.charts"><code class="docutils literal notranslate"><span class="pre">Tearsheet.charts</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet.metrics"><code class="docutils literal notranslate"><span class="pre">Tearsheet.metrics</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet.show"><code class="docutils literal notranslate"><span class="pre">Tearsheet.show()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet.write"><code class="docutils literal notranslate"><span class="pre">Tearsheet.write()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrByStartDateChart"><code class="docutils literal notranslate"><span class="pre">CagrByStartDateChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CagrMetric"><code class="docutils literal notranslate"><span class="pre">CagrMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CalmarMetric"><code class="docutils literal notranslate"><span class="pre">CalmarMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.CumulativeReturnsChart"><code class="docutils literal notranslate"><span class="pre">CumulativeReturnsChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.DrawdownChart"><code class="docutils literal notranslate"><span class="pre">DrawdownChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.EOYReturnsChart"><code class="docutils literal notranslate"><span class="pre">EOYReturnsChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ExpectedShortfallMetric"><code class="docutils literal notranslate"><span class="pre">ExpectedShortfallMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.FinalValueByStartDateChart"><code class="docutils literal notranslate"><span class="pre">FinalValueByStartDateChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.KurtosisMetric"><code class="docutils literal notranslate"><span class="pre">KurtosisMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.LogCumulativeReturnsChart"><code class="docutils literal notranslate"><span class="pre">LogCumulativeReturnsChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownByStartDateChart"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownByStartDateChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MaxDrawdownMetric"><code class="docutils literal notranslate"><span class="pre">MaxDrawdownMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnByStartDateChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnByStartDateChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsDistributionChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsDistributionChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.MonthlyReturnsHeatmapChart"><code class="docutils literal notranslate"><span class="pre">MonthlyReturnsHeatmapChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.NumTradesMetric"><code class="docutils literal notranslate"><span class="pre">NumTradesMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnDistributionByStartDateChart"><code class="docutils literal notranslate"><span class="pre">ReturnDistributionByStartDateChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnMatrixChart"><code class="docutils literal notranslate"><span class="pre">ReturnMatrixChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ReturnQuantilesChart"><code class="docutils literal notranslate"><span class="pre">ReturnQuantilesChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingReturnChart"><code class="docutils literal notranslate"><span class="pre">RollingReturnChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingReturnHeatmapChart"><code class="docutils literal notranslate"><span class="pre">RollingReturnHeatmapChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingSharpeChart"><code class="docutils literal notranslate"><span class="pre">RollingSharpeChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingSortinoChart"><code class="docutils literal notranslate"><span class="pre">RollingSortinoChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.RollingVolatilityChart"><code class="docutils literal notranslate"><span class="pre">RollingVolatilityChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeByStartDateChart"><code class="docutils literal notranslate"><span class="pre">SharpeByStartDateChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeDifferenceByStartDateChart"><code class="docutils literal notranslate"><span class="pre">SharpeDifferenceByStartDateChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SharpeMetric"><code class="docutils literal notranslate"><span class="pre">SharpeMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SkewMetric"><code class="docutils literal notranslate"><span class="pre">SkewMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.SortinoMetric"><code class="docutils literal notranslate"><span class="pre">SortinoMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.Tearsheet"><code class="docutils literal notranslate"><span class="pre">Tearsheet</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TearsheetChart"><code class="docutils literal notranslate"><span class="pre">TearsheetChart</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TearsheetMetric"><code class="docutils literal notranslate"><span class="pre">TearsheetMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TearsheetMetric.compute"><code class="docutils literal notranslate"><span class="pre">TearsheetMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TearsheetMetric.format"><code class="docutils literal notranslate"><span class="pre">TearsheetMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TearsheetMetric.label"><code class="docutils literal notranslate"><span class="pre">TearsheetMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TotalReturnMetric"><code class="docutils literal notranslate"><span class="pre">TotalReturnMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TotalReturnMetric.compute"><code class="docutils literal notranslate"><span class="pre">TotalReturnMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TotalReturnMetric.format"><code class="docutils literal notranslate"><span class="pre">TotalReturnMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TotalReturnMetric.label"><code class="docutils literal notranslate"><span class="pre">TotalReturnMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ValueAtRiskMetric"><code class="docutils literal notranslate"><span class="pre">ValueAtRiskMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ValueAtRiskMetric.compute"><code class="docutils literal notranslate"><span class="pre">ValueAtRiskMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ValueAtRiskMetric.format"><code class="docutils literal notranslate"><span class="pre">ValueAtRiskMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ValueAtRiskMetric.label"><code class="docutils literal notranslate"><span class="pre">ValueAtRiskMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.VolatilityMetric"><code class="docutils literal notranslate"><span class="pre">VolatilityMetric</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.VolatilityMetric.compute"><code class="docutils literal notranslate"><span class="pre">VolatilityMetric.compute()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.VolatilityMetric.format"><code class="docutils literal notranslate"><span class="pre">VolatilityMetric.format</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.VolatilityMetric.label"><code class="docutils literal notranslate"><span class="pre">VolatilityMetric.label</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.WorstDrawdownPathsChart"><code class="docutils literal notranslate"><span class="pre">WorstDrawdownPathsChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.WorstDrawdownPathsChart.render"><code class="docutils literal notranslate"><span class="pre">WorstDrawdownPathsChart.render()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.WorstDrawdownPeriodsChart"><code class="docutils literal notranslate"><span class="pre">WorstDrawdownPeriodsChart</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.WorstDrawdownPeriodsChart.render"><code class="docutils literal notranslate"><span class="pre">WorstDrawdownPeriodsChart.render()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TearsheetMetric"><code class="docutils literal notranslate"><span class="pre">TearsheetMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.TotalReturnMetric"><code class="docutils literal notranslate"><span class="pre">TotalReturnMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.ValueAtRiskMetric"><code class="docutils literal notranslate"><span class="pre">ValueAtRiskMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.VolatilityMetric"><code class="docutils literal notranslate"><span class="pre">VolatilityMetric</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.WorstDrawdownPathsChart"><code class="docutils literal notranslate"><span class="pre">WorstDrawdownPathsChart</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.WorstDrawdownPeriodsChart"><code class="docutils literal notranslate"><span class="pre">WorstDrawdownPeriodsChart</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.build_tearsheet"><code class="docutils literal notranslate"><span class="pre">build_tearsheet()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.metrics_table"><code class="docutils literal notranslate"><span class="pre">metrics_table()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.tearsheet.html#tam.backtest.tearsheet.show"><code class="docutils literal notranslate"><span class="pre">show()</span></code></a></li>
@@ -712,12 +491,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.backtest.visualization.html">tam.backtest.visualization module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.RenderOptions"><code class="docutils literal notranslate"><span class="pre">RenderOptions</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.RenderOptions.height"><code class="docutils literal notranslate"><span class="pre">RenderOptions.height</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.RenderOptions.show_trades_default"><code class="docutils literal notranslate"><span class="pre">RenderOptions.show_trades_default</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.RenderOptions.template"><code class="docutils literal notranslate"><span class="pre">RenderOptions.template</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.RenderOptions"><code class="docutils literal notranslate"><span class="pre">RenderOptions</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.render"><code class="docutils literal notranslate"><span class="pre">render()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.render_curves"><code class="docutils literal notranslate"><span class="pre">render_curves()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.backtest.visualization.html#tam.backtest.visualization.write_html"><code class="docutils literal notranslate"><span class="pre">write_html()</span></code></a></li>

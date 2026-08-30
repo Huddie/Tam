@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -406,16 +407,18 @@ depending which quantstats function you named – letting you call the real
 function yourself means you’re reading quantstats’ own docs/signature for
 whichever one you pick, not this module’s guess at a common shape.</p>
 <p>Needs the <cite>quantstats</cite> extra (<cite>pip install “tam-quant[quantstats]”</cite>) for
-anything beyond importing this module, which always works.</p>
-<blockquote>
-<div><p>from tam.backtest.quantstats_report import returns_for, resolve_benchmark
-import quantstats as qs</p>
-<p>returns = returns_for(report, “main”)
-benchmark = resolve_benchmark(report, “alt”)   # or “SPY”, or an already-built Series, or None</p>
-<p>qs.reports.metrics(returns, benchmark=benchmark, mode=”full”)
-qs.plots.snapshot(returns)
-qs.reports.html(returns, benchmark=benchmark, output=”tearsheet.html”)</p>
-</div></blockquote>
+anything beyond importing this module, which always works:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.backtest.quantstats_report</span><span class="w"> </span><span class="kn">import</span> <span class="n">returns_for</span><span class="p">,</span> <span class="n">resolve_benchmark</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">quantstats</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">qs</span>
+
+<span class="n">returns</span> <span class="o">=</span> <span class="n">returns_for</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">"main"</span><span class="p">)</span>
+<span class="n">benchmark</span> <span class="o">=</span> <span class="n">resolve_benchmark</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">"alt"</span><span class="p">)</span>   <span class="c1"># or "SPY", or an already-built Series, or None</span>
+
+<span class="n">qs</span><span class="o">.</span><span class="n">reports</span><span class="o">.</span><span class="n">metrics</span><span class="p">(</span><span class="n">returns</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="n">benchmark</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"full"</span><span class="p">)</span>
+<span class="n">qs</span><span class="o">.</span><span class="n">plots</span><span class="o">.</span><span class="n">snapshot</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+<span class="n">qs</span><span class="o">.</span><span class="n">reports</span><span class="o">.</span><span class="n">html</span><span class="p">(</span><span class="n">returns</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="n">benchmark</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">"tearsheet.html"</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>Kept out of report.py/visualization.py so those stay free of this dependency
 – the same separation report.py’s own docstring already describes for
 plotly (“Kept free of any plotting dependency; see visualization.py”).</p>

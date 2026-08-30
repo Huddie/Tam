@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="tam.strategy.overnight_hold module" href="tam.strategy.overnight_hold.html"><link rel="prev" title="tam.strategy.mlx_lora_client module" href="tam.strategy.mlx_lora_client.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="tam.query module" href="tam.query.html"><link rel="prev" title="tam.config module" href="tam.config.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>tam.strategy.moving_average module - tam</title>
+        <title>tam.engine module - tam</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -307,7 +307,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l3 current has-children"><a class="reference internal" href="tam.strategy.html">tam.strategy package</a><input aria-label="Toggle navigation of tam.strategy package" checked="" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="tam.strategy.html">tam.strategy package</a><input aria-label="Toggle navigation of tam.strategy package" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.base.html">tam.strategy.base module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.basket_overnight.html">tam.strategy.basket_overnight module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.buy_and_hold.html">tam.strategy.buy_and_hold module</a></li>
@@ -317,7 +317,7 @@
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.ma_crossover.html">tam.strategy.ma_crossover module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.ml_walk_forward.html">tam.strategy.ml_walk_forward module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.mlx_lora_client.html">tam.strategy.mlx_lora_client module</a></li>
-<li class="toctree-l4 current current-page"><a class="current reference internal" href="#">tam.strategy.moving_average module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="tam.strategy.moving_average.html">tam.strategy.moving_average module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.overnight_hold.html">tam.strategy.overnight_hold module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.signals.html">tam.strategy.signals module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="tam.strategy.trend_rotation.html">tam.strategy.trend_rotation module</a></li>
@@ -331,7 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -374,7 +374,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../_sources/api/tam.strategy.moving_average.rst.txt" title="View this page">
+  <a class="muted-link" href="../_sources/api/tam.engine.rst.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -392,30 +392,34 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="module-tam.strategy.moving_average">
-<span id="tam-strategy-moving-average-module"></span><h1>tam.strategy.moving_average module<a class="headerlink" href="#module-tam.strategy.moving_average" title="Link to this heading">¶</a></h1>
-<p>Buys when price crosses above its own N-day moving average, sells when it
-crosses back below (gated by a held flag so it only fires on the transition).</p>
+          <section id="module-tam.engine">
+<span id="tam-engine-module"></span><h1>tam.engine module<a class="headerlink" href="#module-tam.engine" title="Link to this heading">¶</a></h1>
+<p>tam.Engine – which DataFrame library a query result comes back as, for
+every <cite>engine=</cite> parameter across <cite>tam.Symbol</cite>/<cite>tam.query()</cite>. A plain string
+(“pandas”/”polars”) still works everywhere <cite>engine=</cite> is accepted (this is a
+str-Enum specifically so <cite>engine == “polars”</cite> and passing a bare string
+both keep working unchanged) – <cite>Engine.PANDAS</cite>/<cite>Engine.POLARS</cite> just gives
+autocomplete/typo-safety instead of having to remember or guess the two
+valid spellings.</p>
+<blockquote>
+<div><p>from tam import Symbol, Engine</p>
+<p>Symbol(“AAPL”).splits(engine=Engine.POLARS)   # same as engine=”polars”</p>
+</div></blockquote>
 <dl class="py class">
-<dt class="sig sig-object py" id="tam.strategy.moving_average.MovingAverageStrategy">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.strategy.moving_average.</span></span><span class="sig-name descname"><span class="pre">MovingAverageStrategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository" title="tam.data.repository.DataRepository"><span class="pre">DataRepository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ticker</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buy_qty</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sell_qty</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">portfolio_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.strategy.moving_average.MovingAverageStrategy" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="tam.strategy.base.html#tam.strategy.base.Strategy" title="tam.strategy.base.Strategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">Strategy</span></code></a></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="tam.strategy.moving_average.MovingAverageStrategy.on_event">
-<span class="sig-name descname"><span class="pre">on_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.events.types.html#tam.events.types.Event" title="tam.events.types.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.strategy.moving_average.MovingAverageStrategy.on_event" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="tam.engine.Engine">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.engine.</span></span><span class="sig-name descname"><span class="pre">Engine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.engine.Engine" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tam.engine.Engine.PANDAS">
+<span class="sig-name descname"><span class="pre">PANDAS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'pandas'</span></span><a class="headerlink" href="#tam.engine.Engine.PANDAS" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="tam.strategy.moving_average.MovingAverageStrategy.state_change">
-<span class="sig-name descname"><span class="pre">state_change</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.events.types.html#tam.events.types.State" title="tam.events.types.State"><span class="pre">State</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.strategy.moving_average.MovingAverageStrategy.state_change" title="Link to this definition">¶</a></dt>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="tam.engine.Engine.POLARS">
+<span class="sig-name descname"><span class="pre">POLARS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'polars'</span></span><a class="headerlink" href="#tam.engine.Engine.POLARS" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="tam.strategy.moving_average.build_moving_average">
-<span class="sig-prename descclassname"><span class="pre">tam.strategy.moving_average.</span></span><span class="sig-name descname"><span class="pre">build_moving_average</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.data.repository.html#tam.data.repository.DataRepository" title="tam.data.repository.DataRepository"><span class="pre">DataRepository</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">portfolio_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cash</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#tam.strategy.moving_average.MovingAverageStrategy" title="tam.strategy.moving_average.MovingAverageStrategy"><span class="pre">MovingAverageStrategy</span></a></span></span><a class="headerlink" href="#tam.strategy.moving_average.build_moving_average" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </section>
 
@@ -424,23 +428,23 @@ crosses back below (gated by a held flag so it only fires on the transition).</p
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="tam.strategy.overnight_hold.html">
+          <a class="next-page" href="tam.query.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">tam.strategy.overnight_hold module</div>
+                <div class="title">tam.query module</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="tam.strategy.mlx_lora_client.html">
+          <a class="prev-page" href="tam.config.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">tam.strategy.mlx_lora_client module</div>
+                <div class="title">tam.config module</div>
                 
               </div>
             </a>
@@ -474,13 +478,12 @@ crosses back below (gated by a held flag so it only fires on the transition).</p
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">tam.strategy.moving_average module</a><ul>
-<li><a class="reference internal" href="#tam.strategy.moving_average.MovingAverageStrategy"><code class="docutils literal notranslate"><span class="pre">MovingAverageStrategy</span></code></a><ul>
-<li><a class="reference internal" href="#tam.strategy.moving_average.MovingAverageStrategy.on_event"><code class="docutils literal notranslate"><span class="pre">MovingAverageStrategy.on_event()</span></code></a></li>
-<li><a class="reference internal" href="#tam.strategy.moving_average.MovingAverageStrategy.state_change"><code class="docutils literal notranslate"><span class="pre">MovingAverageStrategy.state_change()</span></code></a></li>
+<li><a class="reference internal" href="#">tam.engine module</a><ul>
+<li><a class="reference internal" href="#tam.engine.Engine"><code class="docutils literal notranslate"><span class="pre">Engine</span></code></a><ul>
+<li><a class="reference internal" href="#tam.engine.Engine.PANDAS"><code class="docutils literal notranslate"><span class="pre">Engine.PANDAS</span></code></a></li>
+<li><a class="reference internal" href="#tam.engine.Engine.POLARS"><code class="docutils literal notranslate"><span class="pre">Engine.POLARS</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#tam.strategy.moving_average.build_moving_average"><code class="docutils literal notranslate"><span class="pre">build_moving_average()</span></code></a></li>
 </ul>
 </li>
 </ul>

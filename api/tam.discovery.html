@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -398,19 +399,20 @@ dashboard from tam.backtest.tearsheet/visualization, or any other
 self-contained .html) to Discovery, a private GitHub-authenticated catalog
 (see /tam-discovery for the Cloudflare Worker this talks to). Publishing is
 immutable by default – every call creates a new version; pass the same
-<cite>name</cite> twice to have a stable URL that always resolves to the latest one.</p>
-<blockquote>
-<div><p>from tam.discovery import upload</p>
-<p>result = upload(“report.html”, title=”Earnings Reaction”, tags=[“earnings”])
-print(result.url)</p>
-</div></blockquote>
+<cite>name</cite> twice to have a stable URL that always resolves to the latest one:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.discovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">upload</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">upload</span><span class="p">(</span><span class="s2">"report.html"</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Earnings Reaction"</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">"earnings"</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>Also accepts anything satisfying the Uploadable protocol (a Plotly Figure,
 or a tam.charting ChartCall/ChartPipeline – see Uploadable’s own
 docstring) directly, no need to render to a file first:</p>
-<blockquote>
-<div><p>from tam.charting import timeseries
-upload(timeseries(my_series), title=”…”)</p>
-</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">timeseries</span>
+<span class="n">upload</span><span class="p">(</span><span class="n">timeseries</span><span class="p">(</span><span class="n">my_series</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="s2">"..."</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>Needs a publishing token – see tam.discovery.auth for how one gets found
 automatically (env var, Colab secret, or <cite>upload-discovery login</cite>’s saved
 file), or run <cite>upload-discovery login</cite> once first.</p>
@@ -523,33 +525,13 @@ if no API URL is configured – see each for the exact resolution order.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.discovery.http.html">tam.discovery.http module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.create_discovery"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.create_discovery()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.create_version"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.create_version()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.finalize_version"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.finalize_version()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.get_discovery"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.get_discovery()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.get_versions"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.get_versions()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.list_discoveries"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.list_discoveries()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.upload_artifact"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.upload_artifact()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient.whoami"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient.whoami()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.DiscoveryClient"><code class="docutils literal notranslate"><span class="pre">DiscoveryClient</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.discovery.http.html#tam.discovery.http.resolve_api_url"><code class="docutils literal notranslate"><span class="pre">resolve_api_url()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tam.discovery.upload.html">tam.discovery.upload module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.UploadResult"><code class="docutils literal notranslate"><span class="pre">UploadResult</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.UploadResult.id"><code class="docutils literal notranslate"><span class="pre">UploadResult.id</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.UploadResult.title"><code class="docutils literal notranslate"><span class="pre">UploadResult.title</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.UploadResult.type"><code class="docutils literal notranslate"><span class="pre">UploadResult.type</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.UploadResult.url"><code class="docutils literal notranslate"><span class="pre">UploadResult.url</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.UploadResult.version"><code class="docutils literal notranslate"><span class="pre">UploadResult.version</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.Uploadable"><code class="docutils literal notranslate"><span class="pre">Uploadable</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.Uploadable.to_html"><code class="docutils literal notranslate"><span class="pre">Uploadable.to_html()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.UploadResult"><code class="docutils literal notranslate"><span class="pre">UploadResult</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.Uploadable"><code class="docutils literal notranslate"><span class="pre">Uploadable</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="tam.discovery.upload.html#tam.discovery.upload.upload"><code class="docutils literal notranslate"><span class="pre">upload()</span></code></a></li>
 </ul>
 </li>

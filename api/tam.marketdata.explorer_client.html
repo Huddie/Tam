@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -421,13 +422,14 @@ tam.marketdata.duckdb_query.open_duckdb() (identical macros – daily_bars,
 rollup_bars, rolling_volatility, …), just without ever handling the real,
 permanent R2 account credentials yourself. What’s actually running the
 queries (DuckDB, today) is an implementation detail, not part of this
-module’s public API.</p>
-<blockquote>
-<div><p>from tam.marketdata.explorer_client import fetch_dataframe, connect</p>
-<p>df = fetch_dataframe(“AAPL”, 2024)                     # one file, plain HTTP
-con = connect()                                         # full lake, real SQL
-con.sql(“SELECT * FROM daily_bars(‘AAPL’) ORDER BY day”).df()</p>
-</div></blockquote>
+module’s public API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.explorer_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_dataframe</span><span class="p">,</span> <span class="n">connect</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">fetch_dataframe</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>                     <span class="c1"># one file, plain HTTP</span>
+<span class="n">con</span> <span class="o">=</span> <span class="n">connect</span><span class="p">()</span>                                         <span class="c1"># full lake, real SQL</span>
+<span class="n">con</span><span class="o">.</span><span class="n">sql</span><span class="p">(</span><span class="s2">"SELECT * FROM daily_bars('AAPL') ORDER BY day"</span><span class="p">)</span><span class="o">.</span><span class="n">df</span><span class="p">()</span>
+</pre></div>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="tam.marketdata.explorer_client.SqlConnection">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.marketdata.explorer_client.</span></span><span class="sig-name descname"><span class="pre">SqlConnection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">token</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ttl_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.marketdata.explorer_client.SqlConnection" title="Link to this definition">¶</a></dt>

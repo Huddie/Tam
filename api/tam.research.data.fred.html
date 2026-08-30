@@ -331,6 +331,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tam.cache.html">tam.cache module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.charting.html">tam.charting module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.config.html">tam.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tam.engine.html">tam.engine module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.query.html">tam.query module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.registry.html">tam.registry module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tam.secrets.html">tam.secrets module</a></li>
@@ -397,12 +398,13 @@
 tam.Secrets[“FRED_API_KEY”] internally (nothing to construct/pass yourself),
 adds a small human-readable-name lookup on top of fredapi’s raw
 get_series(), and a Datasets enum of commonly-used series ids so you don’t
-need to look up “DGS10” from memory/docs every time.</p>
-<blockquote>
-<div><p>from tam import Fred</p>
-<p>dgs10 = Fred.get(Fred.Datasets.TREASURY_10Y)   # or Fred.get(“DGS10”) – same thing
-dgs10.name                                      # “10-Year Treasury Yield”, not “DGS10”</p>
-</div></blockquote>
+need to look up “DGS10” from memory/docs every time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fred</span>
+
+<span class="n">dgs10</span> <span class="o">=</span> <span class="n">Fred</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Fred</span><span class="o">.</span><span class="n">Datasets</span><span class="o">.</span><span class="n">TREASURY_10Y</span><span class="p">)</span>   <span class="c1"># or Fred.get("DGS10") -- same thing</span>
+<span class="n">dgs10</span><span class="o">.</span><span class="n">name</span>                                      <span class="c1"># "10-Year Treasury Yield", not "DGS10"</span>
+</pre></div>
+</div>
 <p>The underlying fredapi.Fred client (and therefore the FRED_API_KEY lookup)
 is built LAZILY on first use, not at import time – <cite>from tam import Fred</cite>
 or referencing <cite>Fred.Datasets</cite> never requires an API key to be configured;
