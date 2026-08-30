@@ -1,6 +1,6 @@
 # Symbol — one ergonomic object per ticker
 
-*Full generated reference: [`tam.symbol`](api/tam.symbol.rst), [`tam.query`](api/tam.query.rst), [`tam.cache`](api/tam.cache.rst).*
+*Full generated reference: [`tam.symbol`](api/tam.symbol.rst), [`tam.query`](api/tam.query.rst), [`tam.cache`](api/tam.cache.rst), [`tam.engine`](api/tam.engine.rst).*
 
 The layer on top of raw SQL — one ticker (or several), one method per
 dataset, mirroring the DuckDB macro names exactly so there's zero
@@ -11,7 +11,7 @@ from tam import Symbol
 
 aapl = Symbol("AAPL")
 aapl.minute_bars(start="2024-01-01")
-aapl.daily_bars()
+aapl.daily_bars(start="2024-01-01")  # weekly_bars/monthly_bars also take start=/end=
 aapl.eod_bars()
 aapl.splits()
 aapl.dividends()
@@ -23,9 +23,53 @@ aapl.filings(forms=["10-K"])
 ```
 
 Every method takes an optional `start=`/`end=` (where the dataset has a
-real date column to filter on) and `engine="pandas"|"polars"` (DuckDB's
-own native `.pl()` — no `tam` dependency on polars, install it yourself
-to use this).
+real date column to filter on), `columns=[...]` (a subset instead of
+every column — see below), and `engine=` (pandas or polars — see
+`tam.Engine` below).
+
+## Identifying a company — ticker or CIK
+
+```python
+from tam import Symbol, CIK
+
+Symbol("AAPL").splits()
+Symbol(CIK(320193)).splits()  # same company, identified by its SEC CIK instead
+Symbol("MSFT", CIK(320193)).short_volume()  # mixes freely
+```
+
+`CIK(...)` is resolved automatically wherever it's used: to the real
+ticker (via `sec_companies()`, cached after the first lookup) for every
+ticker-column macro (`minute_bars`, `splits`, `short_volume`, ...) —
+those have no CIK concept at all — and passed straight through to `Sec`
+(which already accepts a ticker or a raw CIK interchangeably) for
+`.financials()`/`.filings()`, with no resolution needed there. A plain
+`int` (not wrapped in `CIK(...)`) is rejected with a `TypeError` rather
+than silently guessing what you meant.
+
+## Selecting columns
+
+```python
+aapl.splits(columns=["ticker", "execution_date"])
+```
+
+Validated against that dataset's own known columns — a typo raises
+`ValueError` listing the real ones, rather than building broken SQL
+(column names can't be bound as query parameters the way values can).
+
+## `engine=` — pandas or polars, discoverable
+
+```python
+from tam import Engine
+
+aapl.splits(engine=Engine.POLARS)  # same as engine="polars"
+aapl.splits(engine="polars")  # a plain string still works everywhere
+```
+
+`Engine` is a `str`-`Enum` purely for autocomplete/typo-safety — every
+`engine=` parameter across `Symbol` and `tam.query()` accepts either the
+enum member or the equivalent plain string interchangeably. DuckDB's own
+native `.pl()` produces the polars result — no `tam` dependency on
+polars itself, install it yourself to use this.
 
 ## Multiple tickers — same object, same methods
 

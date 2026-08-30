@@ -394,7 +394,7 @@
         <article role="main" id="furo-main-content">
           <section id="symbol-one-ergonomic-object-per-ticker">
 <h1>Symbol — one ergonomic object per ticker<a class="headerlink" href="#symbol-one-ergonomic-object-per-ticker" title="Link to this heading">¶</a></h1>
-<p><em>Full generated reference: <a class="reference internal" href="api/tam.symbol.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.symbol</span></code></span></a>, <a class="reference internal" href="api/tam.query.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.query</span></code></span></a>, <a class="reference internal" href="api/tam.cache.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.cache</span></code></span></a>.</em></p>
+<p><em>Full generated reference: <a class="reference internal" href="api/tam.symbol.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.symbol</span></code></span></a>, <a class="reference internal" href="api/tam.query.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.query</span></code></span></a>, <a class="reference internal" href="api/tam.cache.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.cache</span></code></span></a>, <a class="reference internal" href="api/tam.engine.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.engine</span></code></span></a>.</em></p>
 <p>The layer on top of raw SQL — one ticker (or several), one method per
 dataset, mirroring the DuckDB macro names exactly so there’s zero
 translation cost between “I wrote raw SQL” and “I used the facade”:</p>
@@ -402,7 +402,7 @@ translation cost between “I wrote raw SQL” and “I used the facade”:</p>
 
 <span class="n">aapl</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">)</span>
 <span class="n">aapl</span><span class="o">.</span><span class="n">minute_bars</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s2">"2024-01-01"</span><span class="p">)</span>
-<span class="n">aapl</span><span class="o">.</span><span class="n">daily_bars</span><span class="p">()</span>
+<span class="n">aapl</span><span class="o">.</span><span class="n">daily_bars</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s2">"2024-01-01"</span><span class="p">)</span>  <span class="c1"># weekly_bars/monthly_bars also take start=/end=</span>
 <span class="n">aapl</span><span class="o">.</span><span class="n">eod_bars</span><span class="p">()</span>
 <span class="n">aapl</span><span class="o">.</span><span class="n">splits</span><span class="p">()</span>
 <span class="n">aapl</span><span class="o">.</span><span class="n">dividends</span><span class="p">()</span>
@@ -414,9 +414,50 @@ translation cost between “I wrote raw SQL” and “I used the facade”:</p>
 </pre></div>
 </div>
 <p>Every method takes an optional <code class="docutils literal notranslate"><span class="pre">start=</span></code>/<code class="docutils literal notranslate"><span class="pre">end=</span></code> (where the dataset has a
-real date column to filter on) and <code class="docutils literal notranslate"><span class="pre">engine=&quot;pandas&quot;|&quot;polars&quot;</span></code> (DuckDB’s
-own native <code class="docutils literal notranslate"><span class="pre">.pl()</span></code> — no <code class="docutils literal notranslate"><span class="pre">tam</span></code> dependency on polars, install it yourself
-to use this).</p>
+real date column to filter on), <code class="docutils literal notranslate"><span class="pre">columns=[...]</span></code> (a subset instead of
+every column — see below), and <code class="docutils literal notranslate"><span class="pre">engine=</span></code> (pandas or polars — see
+<code class="docutils literal notranslate"><span class="pre">tam.Engine</span></code> below).</p>
+<section id="identifying-a-company-ticker-or-cik">
+<h2>Identifying a company — ticker or CIK<a class="headerlink" href="#identifying-a-company-ticker-or-cik" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam</span><span class="w"> </span><span class="kn">import</span> <span class="n">Symbol</span><span class="p">,</span> <span class="n">CIK</span>
+
+<span class="n">Symbol</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">)</span><span class="o">.</span><span class="n">splits</span><span class="p">()</span>
+<span class="n">Symbol</span><span class="p">(</span><span class="n">CIK</span><span class="p">(</span><span class="mi">320193</span><span class="p">))</span><span class="o">.</span><span class="n">splits</span><span class="p">()</span>  <span class="c1"># same company, identified by its SEC CIK instead</span>
+<span class="n">Symbol</span><span class="p">(</span><span class="s2">"MSFT"</span><span class="p">,</span> <span class="n">CIK</span><span class="p">(</span><span class="mi">320193</span><span class="p">))</span><span class="o">.</span><span class="n">short_volume</span><span class="p">()</span>  <span class="c1"># mixes freely</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">CIK(...)</span></code> is resolved automatically wherever it’s used: to the real
+ticker (via <code class="docutils literal notranslate"><span class="pre">sec_companies()</span></code>, cached after the first lookup) for every
+ticker-column macro (<code class="docutils literal notranslate"><span class="pre">minute_bars</span></code>, <code class="docutils literal notranslate"><span class="pre">splits</span></code>, <code class="docutils literal notranslate"><span class="pre">short_volume</span></code>, …) —
+those have no CIK concept at all — and passed straight through to <code class="docutils literal notranslate"><span class="pre">Sec</span></code>
+(which already accepts a ticker or a raw CIK interchangeably) for
+<code class="docutils literal notranslate"><span class="pre">.financials()</span></code>/<code class="docutils literal notranslate"><span class="pre">.filings()</span></code>, with no resolution needed there. A plain
+<code class="docutils literal notranslate"><span class="pre">int</span></code> (not wrapped in <code class="docutils literal notranslate"><span class="pre">CIK(...)</span></code>) is rejected with a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> rather
+than silently guessing what you meant.</p>
+</section>
+<section id="selecting-columns">
+<h2>Selecting columns<a class="headerlink" href="#selecting-columns" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">aapl</span><span class="o">.</span><span class="n">splits</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"ticker"</span><span class="p">,</span> <span class="s2">"execution_date"</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Validated against that dataset’s own known columns — a typo raises
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code> listing the real ones, rather than building broken SQL
+(column names can’t be bound as query parameters the way values can).</p>
+</section>
+<section id="engine-pandas-or-polars-discoverable">
+<h2><code class="docutils literal notranslate"><span class="pre">engine=</span></code> — pandas or polars, discoverable<a class="headerlink" href="#engine-pandas-or-polars-discoverable" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
+
+<span class="n">aapl</span><span class="o">.</span><span class="n">splits</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="n">Engine</span><span class="o">.</span><span class="n">POLARS</span><span class="p">)</span>  <span class="c1"># same as engine="polars"</span>
+<span class="n">aapl</span><span class="o">.</span><span class="n">splits</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s2">"polars"</span><span class="p">)</span>  <span class="c1"># a plain string still works everywhere</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Engine</span></code> is a <code class="docutils literal notranslate"><span class="pre">str</span></code>-<code class="docutils literal notranslate"><span class="pre">Enum</span></code> purely for autocomplete/typo-safety — every
+<code class="docutils literal notranslate"><span class="pre">engine=</span></code> parameter across <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> and <code class="docutils literal notranslate"><span class="pre">tam.query()</span></code> accepts either the
+enum member or the equivalent plain string interchangeably. DuckDB’s own
+native <code class="docutils literal notranslate"><span class="pre">.pl()</span></code> produces the polars result — no <code class="docutils literal notranslate"><span class="pre">tam</span></code> dependency on
+polars itself, install it yourself to use this.</p>
+</section>
 <section id="multiple-tickers-same-object-same-methods">
 <h2>Multiple tickers — same object, same methods<a class="headerlink" href="#multiple-tickers-same-object-same-methods" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">basket</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="s2">"MSFT"</span><span class="p">,</span> <span class="s2">"NVDA"</span><span class="p">)</span>
@@ -564,6 +605,9 @@ for the reasoning.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Symbol — one ergonomic object per ticker</a><ul>
+<li><a class="reference internal" href="#identifying-a-company-ticker-or-cik">Identifying a company — ticker or CIK</a></li>
+<li><a class="reference internal" href="#selecting-columns">Selecting columns</a></li>
+<li><a class="reference internal" href="#engine-pandas-or-polars-discoverable"><code class="docutils literal notranslate"><span class="pre">engine=</span></code> — pandas or polars, discoverable</a></li>
 <li><a class="reference internal" href="#multiple-tickers-same-object-same-methods">Multiple tickers — same object, same methods</a></li>
 <li><a class="reference internal" href="#caching-opt-in-for-when-re-running-a-cell-shouldn-t-re-fetch">Caching — opt-in, for when re-running a cell shouldn’t re-fetch</a></li>
 <li><a class="reference internal" href="#tam-query-raw-sql-no-ticker-object-needed"><code class="docutils literal notranslate"><span class="pre">tam.query()</span></code> — raw SQL, no ticker object needed</a></li>
