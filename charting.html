@@ -416,6 +416,32 @@ which is built on the exact same <code class="docutils literal notranslate"><spa
 named <code class="docutils literal notranslate"><span class="pre">&quot;sma_20&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;rsi_14&quot;</span></code>, so no manual renaming needed), a
 <code class="docutils literal notranslate"><span class="pre">{name:</span> <span class="pre">series}</span></code> dict, or a wide <code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code> (one column per name).</p>
 </section>
+<section id="candles-ohlc-native-candlesticks">
+<h2><code class="docutils literal notranslate"><span class="pre">candles()</span></code> — OHLC, native candlesticks<a class="headerlink" href="#candles-ohlc-native-candlesticks" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam</span><span class="w"> </span><span class="kn">import</span> <span class="n">Symbol</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">candles</span>
+
+<span class="n">aapl</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">)</span>
+<span class="n">candles</span><span class="p">(</span><span class="n">aapl</span><span class="o">.</span><span class="n">eod_bars</span><span class="p">())</span>  <span class="c1"># "date"/open/high/low/close, auto-detected</span>
+<span class="n">candles</span><span class="p">(</span><span class="n">aapl</span><span class="o">.</span><span class="n">minute_bars</span><span class="p">())</span>  <span class="c1"># "ts" instead of "date" -- also auto-detected</span>
+<span class="n">candles</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="nb">open</span><span class="o">=</span><span class="s2">"Open"</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="s2">"High"</span><span class="p">,</span> <span class="n">low</span><span class="o">=</span><span class="s2">"Low"</span><span class="p">,</span> <span class="n">close</span><span class="o">=</span><span class="s2">"Close"</span><span class="p">)</span>  <span class="c1"># explicit column names</span>
+</pre></div>
+</div>
+<p>A real <code class="docutils literal notranslate"><span class="pre">go.Candlestick</span></code> trace, not a <code class="docutils literal notranslate"><span class="pre">timeseries()</span></code> line — a candle needs
+open/high/low/close per point, a shape <code class="docutils literal notranslate"><span class="pre">timeseries()</span></code>’s one-scalar-per-
+curve model can’t represent. <code class="docutils literal notranslate"><span class="pre">open</span></code>/<code class="docutils literal notranslate"><span class="pre">high</span></code>/<code class="docutils literal notranslate"><span class="pre">low</span></code>/<code class="docutils literal notranslate"><span class="pre">close</span></code> default to
+lowercase column names, matching what <code class="docutils literal notranslate"><span class="pre">Symbol(...).eod_bars()</span></code>/
+<code class="docutils literal notranslate"><span class="pre">.daily_bars()</span></code>/<code class="docutils literal notranslate"><span class="pre">.minute_bars()</span></code> already return with no renaming needed.
+The x-axis is the DataFrame’s own index if it has one, else a <code class="docutils literal notranslate"><span class="pre">date</span></code>/<code class="docutils literal notranslate"><span class="pre">ts</span></code>
+column if present — pass <code class="docutils literal notranslate"><span class="pre">x=...</span></code> to override the guess, or <code class="docutils literal notranslate"><span class="pre">rangeslider=True</span></code>
+to bring back Plotly’s own default range slider (off by default here,
+since it eats vertical space once piped into a multi-row <code class="docutils literal notranslate"><span class="pre">ChartPipeline</span></code>).
+Composes with <code class="docutils literal notranslate"><span class="pre">|</span></code>/<code class="docutils literal notranslate"><span class="pre">&amp;</span></code> exactly like every other chart:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">candles</span><span class="p">(</span><span class="n">aapl</span><span class="o">.</span><span class="n">eod_bars</span><span class="p">())</span> <span class="o">|</span> <span class="n">timeseries</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Volume"</span><span class="p">)</span>
+<span class="n">candles</span><span class="p">(</span><span class="n">aapl</span><span class="o">.</span><span class="n">eod_bars</span><span class="p">())</span> <span class="o">&amp;</span> <span class="n">rect</span><span class="p">(</span><span class="n">divergence_blocks</span><span class="p">,</span> <span class="n">layer</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># shaded behind the candles, same row</span>
+</pre></div>
+</div>
+</section>
 <section id="composite-figures-with">
 <h2>Composite figures with <code class="docutils literal notranslate"><span class="pre">|</span></code><a class="headerlink" href="#composite-figures-with" title="Link to this heading">¶</a></h2>
 <p>Chain multiple calls for series on genuinely different scales (RSI’s
@@ -549,6 +575,7 @@ intermediate <code class="docutils literal notranslate"><span class="pre">.html<
             <ul>
 <li><a class="reference internal" href="#">Charting</a><ul>
 <li><a class="reference internal" href="#timeseries-plot-any-series-raw"><code class="docutils literal notranslate"><span class="pre">timeseries()</span></code> — plot any series, raw</a></li>
+<li><a class="reference internal" href="#candles-ohlc-native-candlesticks"><code class="docutils literal notranslate"><span class="pre">candles()</span></code> — OHLC, native candlesticks</a></li>
 <li><a class="reference internal" href="#composite-figures-with">Composite figures with <code class="docutils literal notranslate"><span class="pre">|</span></code></a></li>
 <li><a class="reference internal" href="#shaded-regions-with-rect">Shaded regions with <code class="docutils literal notranslate"><span class="pre">rect()</span></code></a></li>
 <li><a class="reference internal" href="#writing-your-own-chart">Writing your own chart</a></li>
