@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 
-from tam import ManualCache, Symbol, query
+from tam import CIK, Engine, ManualCache, Symbol, query
 
 
 def main() -> None:
@@ -34,6 +34,22 @@ def main() -> None:
     print("splits:", len(aapl.splits()), "rows")
     print("short volume:", len(aapl.short_volume()), "rows")
     print("financials (income statement):", len(aapl.financials(statement="income_statement")), "rows")
+
+    # Same AAPL, identified by its SEC CIK instead of the ticker -- resolved
+    # automatically, mixes freely with plain ticker strings.
+    print("splits via CIK:", len(Symbol(CIK(320193), **connection_kwargs).splits()), "rows")
+
+    # columns= selects a subset instead of every column.
+    print("splits (columns=):", aapl.splits(columns=["ticker", "execution_date"]).columns.tolist())
+
+    # engine=Engine.POLARS (or the plain string "polars") returns a polars
+    # DataFrame instead of pandas -- requires polars to be installed.
+    try:
+        import polars  # noqa: F401
+
+        print("splits (polars):", type(aapl.splits(engine=Engine.POLARS)).__name__)
+    except ImportError:
+        print("polars not installed -- skipping the engine=Engine.POLARS demo")
 
     basket = Symbol("AAPL", "MSFT", "NVDA", **connection_kwargs)
     print("basket short volume (one query, not three):", len(basket.short_volume()), "rows")
