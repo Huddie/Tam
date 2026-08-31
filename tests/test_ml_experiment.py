@@ -21,6 +21,7 @@ from tam.data.schema import OHLCV_COLUMNS  # noqa: E402
 from tam.data.storage import CsvStore  # noqa: E402
 from tam.ml.experiment import ExperimentResult, run_experiment, run_sweep  # noqa: E402
 from tam.ml.feature_store import FeatureStore  # noqa: E402
+from tam.ml.model import MLPModel  # noqa: E402
 
 
 class _FakeProvider(DataProvider):
@@ -84,6 +85,17 @@ def test_run_experiment_baseline_col_can_be_overridden(tmp_path):
     )
 
     assert result.baseline_col == "rsi_14"
+
+
+def test_run_experiment_accepts_a_model_instance_directly(tmp_path):
+    store, tickers, n = _store(tmp_path)
+    start = date(2024, 1, 1)
+    end = start + timedelta(days=n - 1)
+    instance = MLPModel(**_MODEL_KWARGS)
+
+    result = run_experiment(store, tickers, start, end, horizon=3, model=instance)
+
+    assert result.model is instance  # passed straight through, not a separately-constructed copy
 
 
 def test_passed_gate_is_false_when_model_does_not_beat_baseline(tmp_path):

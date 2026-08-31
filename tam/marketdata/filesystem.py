@@ -10,6 +10,7 @@ and hand it credentials.
 
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING
 
 from .credentials import R2Credentials
@@ -17,6 +18,22 @@ from .credentials import R2Credentials
 if TYPE_CHECKING:
     import duckdb
     import pyarrow.fs
+
+# DuckDB's own `INSTALL httpfs` writes the extension binary to a shared local
+# path (~/.duckdb/extensions/...) -- confirmed live: two threads each setting
+# up their own connection at the same time (e.g. tam.marketdata.connection.
+# thread_local_connection(), one per worker in DataRepository.ingest()'s
+# thread pool) can race on that same file the FIRST time it doesn't exist yet
+# on a fresh machine/container, one thread's install deleting/replacing it out
+# from under another's, raising "Could not remove file ... No such file or
+# directory". Only the INSTALL/LOAD step itself needs serializing -- once the
+# extension is cached on disk (after the first successful install), every
+# later call finds it already there and this lock is uncontended. Shared here
+# (the lowest-level module in the R2/DuckDB chain, imported by duckdb_query.py
+# and explorer_client.py) rather than one lock per call site, since the
+# contended resource -- the local extensions directory -- is process-wide,
+# not specific to either module's own connection-setup path.
+HTTPFS_INSTALL_LOCK = threading.Lock()
 
 
 def r2_filesystem(credentials: R2Credentials) -> pyarrow.fs.S3FileSystem:
@@ -59,7 +76,8 @@ def configure_duckdb_r2(con: duckdb.DuckDBPyConnection, credentials: R2Credentia
     bucket -- see tam.marketdata.duckdb_query.open_duckdb() for the
     higher-level entry point most callers should use instead of calling
     this directly."""
-    con.sql("INSTALL httpfs; LOAD httpfs;")
+    with HTTPFS_INSTALL_LOCK:
+        con.sql("INSTALL httpfs; LOAD httpfs;")
     con.sql(
         f"""
         SET s3_endpoint = '{credentials.account_id}.r2.cloudflarestorage.com';

@@ -4408,6 +4408,22 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "boto3" },
+    { name = "dash" },
+    { name = "duckdb" },
+    { name = "edgartools" },
+    { name = "fredapi" },
+    { name = "ipython", version = "8.39.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "ipython", version = "9.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "massive" },
+    { name = "mlx-lm" },
+    { name = "pandas-market-calendars" },
+    { name = "pitindex", marker = "python_full_version >= '3.11'" },
+    { name = "quantstats" },
+    { name = "skorch" },
+    { name = "torch" },
+]
 dev = [
     { name = "ipython", version = "8.39.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -4486,11 +4502,12 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "skorch", marker = "extra == 'ml'", specifier = ">=1.4" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
+    { name = "tam-quant", extras = ["live", "llm", "notebook", "quantstats", "pitindex", "marketdata", "fred", "sec", "ml"], marker = "extra == 'all'" },
     { name = "torch", marker = "extra == 'ml'", specifier = ">=2.2" },
     { name = "tulipy", specifier = ">=0.4.0" },
     { name = "yfinance", specifier = ">=0.2" },
 ]
-provides-extras = ["dev", "live", "llm", "notebook", "quantstats", "pitindex", "marketdata", "fred", "sec", "ml", "docs"]
+provides-extras = ["dev", "live", "llm", "notebook", "quantstats", "pitindex", "marketdata", "fred", "sec", "ml", "docs", "all"]
 
 [[package]]
 name = "tenacity"

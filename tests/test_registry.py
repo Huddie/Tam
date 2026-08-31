@@ -90,6 +90,36 @@ def test_get_unregistered_name_raises_key_error_with_name_in_message():
         Registry.get(_BaseUnregisteredGet, "missing")
 
 
+def test_resolve_with_a_name_behaves_like_create():
+    class _BaseResolveName:
+        pass
+
+    @Registry.register(_BaseResolveName, "thing")
+    class _ImplResolveName(_BaseResolveName):
+        def __init__(self, value):
+            self.value = value
+
+    resolved = Registry.resolve(_BaseResolveName, "thing", "hello")
+
+    assert isinstance(resolved, _ImplResolveName)
+    assert resolved.value == "hello"
+
+
+def test_resolve_with_an_instance_passes_it_through_unchanged():
+    class _BaseResolveInstance:
+        pass
+
+    class _ImplResolveInstance(_BaseResolveInstance):
+        def __init__(self, value):
+            self.value = value
+
+    instance = _ImplResolveInstance("hello")
+
+    resolved = Registry.resolve(_BaseResolveInstance, instance, "ignored")
+
+    assert resolved is instance  # *args/**kwargs ignored -- it's already constructed
+
+
 def test_names_returns_sorted_names_scoped_to_base_type():
     class _BaseNamesA:
         pass

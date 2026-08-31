@@ -1,3 +1,4 @@
+import warnings
 from datetime import date
 
 import pandas as pd
@@ -100,5 +101,16 @@ def test_price_matrix_omits_a_ticker_with_no_data(tmp_path):
     repo = _repo(tmp_path, frames)
 
     matrix = price_matrix(repo, ["AAPL", "MSFT"], date(2024, 1, 2), date(2024, 1, 4))
+
+    assert list(matrix.columns) == ["AAPL"]
+
+
+def test_price_matrix_warn_false_silences_the_no_data_warning(tmp_path):
+    frames = {"AAPL": _bars(_DATES, opens=[100, 102, 103], closes=[101, 103, 104]), "MSFT": _bars([], [], [])}
+    repo = _repo(tmp_path, frames)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # any warning fails the test
+        matrix = price_matrix(repo, ["AAPL", "MSFT"], date(2024, 1, 2), date(2024, 1, 4), warn=False)
 
     assert list(matrix.columns) == ["AAPL"]

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import pandas as pd
 
@@ -80,17 +80,21 @@ def run_experiment(
     start: date,
     end: date,
     horizon: int,
-    model: str,
+    model: Union[str, Model],
     model_kwargs: Optional[dict] = None,
     baseline_col: Optional[str] = None,
     train_frac: float = 0.70,
     val_frac: float = 0.85,
     warmup: int = 60,
 ) -> ExperimentResult:
-    """`store.with_labels(...)` -> `time_split` -> fit `Registry(Model,
-    model)` -> score the test split -> `ExperimentResult`. `baseline_col`
-    defaults to `store`'s first registered feature name (any raw Factor
-    value is a legitimate naive baseline) if not given."""
+    """`store.with_labels(...)` -> `time_split` -> fit `model` -> score the
+    test split -> `ExperimentResult`. `model` is either a registered
+    `Registry(Model, ...)` name (`model_kwargs` construct it) or an
+    already-built `Model` instance (`model_kwargs` ignored -- it's already
+    constructed) -- pass an instance directly to try an architecture without
+    registering it first. `baseline_col` defaults to `store`'s first
+    registered feature name (any raw Factor value is a legitimate naive
+    baseline) if not given."""
     dataset = store.with_labels(tickers, start, end, horizon, warmup=warmup)
     label_col = dataset.attrs["label_col"]
     feature_cols = store.feature_names
@@ -98,7 +102,7 @@ def run_experiment(
 
     train, val, test = time_split(dataset, train_frac=train_frac, val_frac=val_frac, gap=horizon)
 
-    model_instance = Registry.create(Model, model, **(model_kwargs or {}))
+    model_instance = Registry.resolve(Model, model, **(model_kwargs or {}))
     model_instance.fit(
         train[feature_cols].to_numpy(),
         train[label_col].to_numpy(),

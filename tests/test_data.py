@@ -129,6 +129,15 @@ def test_ingest_warns_when_provider_returns_no_data_for_a_gap(tmp_path):
         repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4))
 
 
+def test_ingest_warn_false_silences_the_no_data_warning(tmp_path):
+    store = CsvStore(tmp_path)
+    repo = DataRepository(FakeProvider(_bars([], [])), store)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # any warning fails the test
+        repo.ingest(["AAPL"], date(2024, 1, 2), date(2024, 1, 4), warn=False)
+
+
 def test_ingest_does_not_re_fetch_or_re_warn_for_a_confirmed_empty_gap_in_the_same_session(tmp_path):
     # Regression test: requesting today's bar before a provider has posted
     # it fails the exact same way every time within the same day -- without

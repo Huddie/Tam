@@ -122,6 +122,15 @@ docs = [
     "myst-parser>=2.0",
     "furo>=2024.1.29",
 ]
+# Every runtime feature extra in one shot, for local/Colab use where you'd
+# rather not track which specific extra a given import needs -- `dev`/`docs`
+# deliberately excluded (dev tooling and doc-building, not library features).
+# Self-referencing (tam-quant[...]) rather than repeating each extra's own
+# dependency list -- pip/setuptools resolve this against the package
+# currently being installed, no separate maintenance burden.
+all = [
+    "tam-quant[live,llm,notebook,quantstats,pitindex,marketdata,fred,sec,ml]",
+]
 
 [build-system]
 requires = ["setuptools>=68"]

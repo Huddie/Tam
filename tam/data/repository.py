@@ -45,7 +45,7 @@ class DataRepository:
             self._cache[symbol] = SymbolHistory(self._store.read(symbol))
         return self._cache[symbol]
 
-    def ingest(self, symbols: Iterable[str], start: date, end: date, max_workers: int = 8) -> None:
+    def ingest(self, symbols: Iterable[str], start: date, end: date, max_workers: int = 8, warn: bool = True) -> None:
         """Fetches every symbol's missing [start, end] sub-range CONCURRENTLY
         (network I/O-bound -- a thread pool, not a process pool) via
         `max_workers` worker threads, rather than one network round-trip at
@@ -53,7 +53,16 @@ class DataRepository:
         minutes and seconds. Store writes/cache invalidation happen back on
         the calling thread as each fetch completes, never inside a worker
         thread, so there's no risk of two threads racing on the same
-        symbol's store partition or `self._cache` entry."""
+        symbol's store partition or `self._cache` entry.
+
+        `warn=False` silences the per-empty-range UserWarning below -- the
+        underlying "leave this range uncached, fail loud later instead of
+        silently" behavior is unchanged either way, this only controls
+        whether it's ALSO printed immediately. Useful for a broad universe
+        scan (e.g. `tam.basket.matrix.price_matrix()` over 30+ tickers) where
+        a few expected gaps (a ticker's IPO date, today's not-yet-posted
+        bar, ...) would otherwise flood notebook output with one warning per
+        ticker per gap."""
         tasks = []
         for symbol in symbols:
             existing = self._store.read(symbol) if self._store.exists(symbol) else None
@@ -76,13 +85,14 @@ class DataRepository:
                     self._cache.pop(symbol, None)
                 else:
                     self._known_empty.add((symbol, gap_start, gap_end))
-                    warnings.warn(
-                        f"no data returned for {symbol} in [{gap_start}, {gap_end}] -- "
-                        "leaving this range uncached; a strategy that later trades this "
-                        "symbol on one of these dates will fail with a clear LookupError "
-                        "rather than silently getting stale/missing prices",
-                        stacklevel=2,
-                    )
+                    if warn:
+                        warnings.warn(
+                            f"no data returned for {symbol} in [{gap_start}, {gap_end}] -- "
+                            "leaving this range uncached; a strategy that later trades this "
+                            "symbol on one of these dates will fail with a clear LookupError "
+                            "rather than silently getting stale/missing prices",
+                            stacklevel=2,
+                        )
 
     @staticmethod
     def _missing_ranges(existing: pd.DataFrame | None, start: date, end: date) -> list[tuple[date, date]]:

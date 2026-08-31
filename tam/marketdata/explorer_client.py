@@ -50,6 +50,7 @@ import requests
 
 from ..secrets import Secrets, resolve_chain
 from .duckdb_query import _configure_connection
+from .filesystem import HTTPFS_INSTALL_LOCK
 
 # TAM_PAT ("personal access token"), not something Data-Explorer-specific --
 # the same token also authenticates against Discovery (tam.discovery.auth
@@ -217,7 +218,8 @@ class SqlConnection:
         import duckdb
 
         con = duckdb.connect()
-        con.sql("INSTALL httpfs; LOAD httpfs;")
+        with HTTPFS_INSTALL_LOCK:
+            con.sql("INSTALL httpfs; LOAD httpfs;")
         self._apply_credentials(con)
         _configure_connection(con)
         return con

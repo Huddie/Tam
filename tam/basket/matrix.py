@@ -28,17 +28,26 @@ from ..data.schema import CLOSE
 
 
 def price_matrix(
-    repository: DataRepository, tickers: Iterable[str], start: date, end: date, column: str = CLOSE
+    repository: DataRepository,
+    tickers: Iterable[str],
+    start: date,
+    end: date,
+    column: str = CLOSE,
+    warn: bool = True,
 ) -> pd.DataFrame:
     """date-indexed, one column per ticker, values from `column` (one of
     tam.data.schema's OPEN/HIGH/LOW/CLOSE/ADJ_CLOSE/VOLUME). Ingests each
     ticker first (via DataRepository.ingest -- only fetches what's missing),
     so this is safe to call without ingesting yourself first. A ticker with
     no data in range is silently omitted, not filled with NaN/zero -- its
-    column just doesn't exist in the result."""
+    column just doesn't exist in the result. `warn=False` silences
+    DataRepository.ingest()'s own per-empty-range UserWarning -- pass it
+    through when scanning a broad universe where a few tickers/ranges with
+    no data (an IPO date, today's not-yet-posted bar, ...) are expected and
+    would otherwise flood notebook output with one warning per ticker."""
     columns = {}
     for ticker in tickers:
-        repository.ingest([ticker], start, end)
+        repository.ingest([ticker], start, end, warn=warn)
         df = repository.query(ticker, start, end)
         if df.empty:
             continue

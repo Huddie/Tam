@@ -51,6 +51,20 @@ class Registry:
         return cls._lookup(base_type, name)(*args, **kwargs)
 
     @classmethod
+    def resolve(cls, base_type: type, name_or_instance, *args, **kwargs):
+        """`name_or_instance` may be a registered name (looked up via
+        `create()`, same as calling `create()` directly) OR an already-built
+        `base_type` instance, passed straight through unchanged -- for a
+        caller like `tam.ml.experiment.run_experiment(model=...)` that
+        shouldn't have to register a one-off model/strategy/algorithm just
+        to try it once. `*args`/`**kwargs` are ignored when an instance is
+        given (it's already constructed) and forwarded to `create()`
+        otherwise."""
+        if isinstance(name_or_instance, base_type):
+            return name_or_instance
+        return cls.create(base_type, name_or_instance, *args, **kwargs)
+
+    @classmethod
     def get(cls, base_type: type, name: str):
         """Return a cached, lazily-constructed (no-arg) singleton for (base_type, name)."""
         key = (base_type, name)
