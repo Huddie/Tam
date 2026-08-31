@@ -423,7 +423,7 @@ on every call.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="tam.data.repository.DataRepository.ingest">
-<span class="sig-name descname"><span class="pre">ingest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_workers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.data.repository.DataRepository.ingest" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">ingest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_workers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.data.repository.DataRepository.ingest" title="Link to this definition">¶</a></dt>
 <dd><p>Fetches every symbol’s missing [start, end] sub-range CONCURRENTLY
 (network I/O-bound – a thread pool, not a process pool) via
 <cite>max_workers</cite> worker threads, rather than one network round-trip at
@@ -432,6 +432,14 @@ minutes and seconds. Store writes/cache invalidation happen back on
 the calling thread as each fetch completes, never inside a worker
 thread, so there’s no risk of two threads racing on the same
 symbol’s store partition or <cite>self._cache</cite> entry.</p>
+<p><cite>warn=False</cite> silences the per-empty-range UserWarning below – the
+underlying “leave this range uncached, fail loud later instead of
+silently” behavior is unchanged either way, this only controls
+whether it’s ALSO printed immediately. Useful for a broad universe
+scan (e.g. <cite>tam.basket.matrix.price_matrix()</cite> over 30+ tickers) where
+a few expected gaps (a ticker’s IPO date, today’s not-yet-posted
+bar, …) would otherwise flood notebook output with one warning per
+ticker per gap.</p>
 </dd></dl>
 
 <dl class="py method">

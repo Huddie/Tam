@@ -615,6 +615,19 @@ None itself).</p>
 <span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">register</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.discovery.html#tam.discovery.UploadResult.type" title="tam.discovery.UploadResult.type"><span class="pre">type</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.Registry.register" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.Registry.resolve">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="tam.discovery.html#tam.discovery.UploadResult.type" title="tam.discovery.UploadResult.type"><span class="pre">type</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_or_instance</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.Registry.resolve" title="Link to this definition">¶</a></dt>
+<dd><p><cite>name_or_instance</cite> may be a registered name (looked up via
+<cite>create()</cite>, same as calling <cite>create()</cite> directly) OR an already-built
+<cite>base_type</cite> instance, passed straight through unchanged – for a
+caller like <cite>tam.ml.experiment.run_experiment(model=…)</cite> that
+shouldn’t have to register a one-off model/strategy/algorithm just
+to try it once. <cite>*args</cite>/<cite>**kwargs</cite> are ignored when an instance is
+given (it’s already constructed) and forwarded to <cite>create()</cite>
+otherwise.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -1036,6 +1049,7 @@ keyed on the exact <cite>(sql, engine)</cite> pair.</p>
 <li><a class="reference internal" href="#tam.Registry.get"><code class="docutils literal notranslate"><span class="pre">Registry.get()</span></code></a></li>
 <li><a class="reference internal" href="#tam.Registry.names"><code class="docutils literal notranslate"><span class="pre">Registry.names()</span></code></a></li>
 <li><a class="reference internal" href="#tam.Registry.register"><code class="docutils literal notranslate"><span class="pre">Registry.register()</span></code></a></li>
+<li><a class="reference internal" href="#tam.Registry.resolve"><code class="docutils literal notranslate"><span class="pre">Registry.resolve()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#tam.Symbol"><code class="docutils literal notranslate"><span class="pre">Symbol</span></code></a><ul>
