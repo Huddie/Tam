@@ -417,6 +417,23 @@ pandas/numpy) – see docs/ml.md for the full reasoning.</p>
 <p><cite>frame</cite> throughout is expected to have a MultiIndex (<cite>date</cite>, <cite>ticker</cite>) –
 exactly what <cite>FeatureStore.with_labels()</cite> produces.</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="tam.ml.analysis.feature_ic_summary">
+<span class="sig-prename descclassname"><span class="pre">tam.ml.analysis.</span></span><span class="sig-name descname"><span class="pre">feature_ic_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_cols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_quantiles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#tam.ml.analysis.feature_ic_summary" title="Link to this definition">¶</a></dt>
+<dd><p>One row per <cite>score_cols</cite> entry – <cite>mean_ic</cite>/<cite>mean_spread</cite>/<cite>hit_rate</cite>
+against <cite>label_col</cite>, computed independently (no model involved) so a raw
+<cite>Factor</cite> and a trained <cite>Model</cite>’s own <cite>“score”</cite> column score exactly the
+same way and land in the same ranked table. Sorted by <cite>mean_ic</cite>
+descending – the leaderboard answering “which of these actually carries
+signal on its own,” the natural next question once <cite>run_experiment()</cite>’s
+single model-vs-baseline comparison says the model beats ONE naive
+baseline but doesn’t say why, or whether some other registered feature
+would have done just as well alone. <cite>n_quantiles</cite> is forwarded to
+<cite>quantile_spread()</cite> for every column – lower it for a small universe
+where the default 5 buckets would come back NaN (fewer distinct scores
+per date than buckets requested).</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="tam.ml.analysis.hit_rate">
 <span class="sig-prename descclassname"><span class="pre">tam.ml.analysis.</span></span><span class="sig-name descname"><span class="pre">hit_rate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#tam.ml.analysis.hit_rate" title="Link to this definition">¶</a></dt>
 <dd><p>Fraction of rows where <cite>score_col</cite> and <cite>label_col</cite> have the same
@@ -498,6 +515,7 @@ one, per date – NaN for a date with fewer distinct score values than
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">tam.ml.analysis module</a><ul>
+<li><a class="reference internal" href="#tam.ml.analysis.feature_ic_summary"><code class="docutils literal notranslate"><span class="pre">feature_ic_summary()</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.analysis.hit_rate"><code class="docutils literal notranslate"><span class="pre">hit_rate()</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.analysis.information_coefficient"><code class="docutils literal notranslate"><span class="pre">information_coefficient()</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.analysis.quantile_spread"><code class="docutils literal notranslate"><span class="pre">quantile_spread()</span></code></a></li>

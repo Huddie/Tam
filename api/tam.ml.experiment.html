@@ -441,6 +441,15 @@ of the original Colab guide, now enforced here) is based on.</p>
 <span class="sig-name descname"><span class="pre">config</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#tam.ml.experiment.ExperimentResult.config" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="tam.ml.experiment.ExperimentResult.feature_cols">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">feature_cols</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#tam.ml.experiment.ExperimentResult.feature_cols" title="Link to this definition">¶</a></dt>
+<dd><p>Every registered feature’s own column name – <cite>self.test</cite> minus
+<cite>label_col</cite> and the model’s own <cite>“score”</cite> column, in the order they
+already appear (the same list <cite>run_experiment()</cite> itself trained
+on).</p>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="tam.ml.experiment.ExperimentResult.label_col">
 <span class="sig-name descname"><span class="pre">label_col</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#tam.ml.experiment.ExperimentResult.label_col" title="Link to this definition">¶</a></dt>
@@ -478,10 +487,19 @@ a docs callout someone has to remember to apply by eye.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="tam.ml.experiment.ExperimentResult.report">
 <span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tam.ml.experiment.ExperimentResult.report" title="Link to this definition">¶</a></dt>
-<dd><p>Prints the model-vs-baseline comparison and returns a composed
-chart (IC over time + score distributions) – call <cite>.show()</cite> on the
-result in a notebook, or let it auto-display as the cell’s last
-expression.</p>
+<dd><p>Prints a full model-vs-baseline comparison plus a per-feature
+leaderboard, and returns a five-panel report: a numeric summary
+table, the per-feature IC/spread/hit-rate leaderboard (every
+registered feature scored the SAME way as the model, independently
+– which of them already carries signal alone, or comes close to
+matching the model), each feature’s own IC over time (click a
+legend entry to isolate/hide it – Plotly’s own built-in
+interaction, not a separate filter widget), a feature correlation
+heatmap (redundant features cluster near +-1; a model built on
+several near-duplicates isn’t actually using as much independent
+information as its feature count suggests), and the model/baseline
+score distributions. Call <cite>.show()</cite> on the result in a notebook, or
+let it auto-display as the cell’s last expression.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -579,6 +597,7 @@ resolve tickers/universes/feature-sets itself – a <cite>tickers=[…]</cite> o
 <li><a class="reference internal" href="#tam.ml.experiment.ExperimentResult.baseline_ic"><code class="docutils literal notranslate"><span class="pre">ExperimentResult.baseline_ic</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.experiment.ExperimentResult.baseline_spread"><code class="docutils literal notranslate"><span class="pre">ExperimentResult.baseline_spread</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.experiment.ExperimentResult.config"><code class="docutils literal notranslate"><span class="pre">ExperimentResult.config</span></code></a></li>
+<li><a class="reference internal" href="#tam.ml.experiment.ExperimentResult.feature_cols"><code class="docutils literal notranslate"><span class="pre">ExperimentResult.feature_cols</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.experiment.ExperimentResult.label_col"><code class="docutils literal notranslate"><span class="pre">ExperimentResult.label_col</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.experiment.ExperimentResult.model"><code class="docutils literal notranslate"><span class="pre">ExperimentResult.model</span></code></a></li>
 <li><a class="reference internal" href="#tam.ml.experiment.ExperimentResult.model_hit_rate"><code class="docutils literal notranslate"><span class="pre">ExperimentResult.model_hit_rate</span></code></a></li>

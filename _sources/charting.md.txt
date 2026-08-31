@@ -116,6 +116,35 @@ not a shaded overlay behind an adjacent panel's lines — for shading
 directly behind a specific chart's own traces in the same panel, call
 `fig.add_vrect(...)` on that chart's own rendered figure instead.
 
+## Exact numbers with `table()`
+
+```python
+from tam.charting import table
+
+table(leaderboard_df, title="Per-feature leaderboard")
+timeseries(equity_curve, title="Equity") | table(summary_df)  # chart + exact numbers, one figure
+```
+
+A plain `go.Table` over any DataFrame's own columns — for the numeric
+precision a chart alone can't convey (a ranked leaderboard, a model-vs-
+baseline comparison, ...). Every float column renders via `float_format`
+(default 4 decimal places); every other dtype via plain `str()`.
+
+## Correlation/matrix views with `heatmap()`
+
+```python
+from tam.charting import heatmap
+
+heatmap(features_df.corr(), title="Feature correlations")
+```
+
+A color-coded grid with each cell's own value annotated directly on it.
+`zmid=0.0` (the default) centers the diverging `colorscale` at zero — the
+natural choice for a correlation matrix, where a strong negative and a
+strong positive correlation should look equally saturated but opposite-
+colored; pass `zmid=None` for a plain min-to-max scale on a matrix that
+isn't correlation-shaped (raw counts, a distance matrix, ...).
+
 ## Writing your own chart
 
 ```python

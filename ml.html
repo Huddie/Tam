@@ -587,17 +587,21 @@ this — zero <code class="docutils literal notranslate"><span class="pre">Featu
 </section>
 <section id="analysis">
 <h2>Analysis<a class="headerlink" href="#analysis" title="Link to this heading">¶</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.ml.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">hit_rate</span><span class="p">,</span> <span class="n">information_coefficient</span><span class="p">,</span> <span class="n">quantile_spread</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.ml.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">feature_ic_summary</span><span class="p">,</span> <span class="n">hit_rate</span><span class="p">,</span> <span class="n">information_coefficient</span><span class="p">,</span> <span class="n">quantile_spread</span>
 
 <span class="n">information_coefficient</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">,</span> <span class="s2">"fwd_return_3d"</span><span class="p">)</span>  <span class="c1"># per-date Spearman rank correlation</span>
 <span class="n">quantile_spread</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">,</span> <span class="s2">"fwd_return_3d"</span><span class="p">,</span> <span class="n">n_quantiles</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># top-quantile minus bottom-quantile mean return, per date</span>
 <span class="n">hit_rate</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">,</span> <span class="s2">"fwd_return_3d"</span><span class="p">)</span>  <span class="c1"># fraction of matching-sign rows</span>
+<span class="n">feature_ic_summary</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="p">[</span><span class="s2">"ret_5d"</span><span class="p">,</span> <span class="s2">"rsi_14"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">],</span> <span class="s2">"fwd_return_3d"</span><span class="p">)</span>  <span class="c1"># one row per column, ranked by mean IC</span>
 </pre></div>
 </div>
 <p>Pure functions over a <code class="docutils literal notranslate"><span class="pre">(date,</span> <span class="pre">ticker)</span></code>-indexed frame with a score column
 and a realized-return label column — no model/strategy coupling, so they
 work identically for a trained <code class="docutils literal notranslate"><span class="pre">Model</span></code>’s output and for a naive baseline
-(any raw <code class="docutils literal notranslate"><span class="pre">Factor</span></code>’s own value) compared against it.</p>
+(any raw <code class="docutils literal notranslate"><span class="pre">Factor</span></code>’s own value) compared against it. <code class="docutils literal notranslate"><span class="pre">feature_ic_summary()</span></code>
+runs the same three metrics over EVERY column given, independently — the
+leaderboard answering “which of these already carries signal alone,” not
+just “does the model beat one chosen baseline.”</p>
 </section>
 <section id="run-experiment-run-sweep">
 <h2><code class="docutils literal notranslate"><span class="pre">run_experiment()</span></code> / <code class="docutils literal notranslate"><span class="pre">run_sweep()</span></code><a class="headerlink" href="#run-experiment-run-sweep" title="Link to this heading">¶</a></h2>
@@ -606,7 +610,8 @@ work identically for a trained <code class="docutils literal notranslate"><span 
 <span class="n">result</span> <span class="o">=</span> <span class="n">run_experiment</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">tickers</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">horizon</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">"mlp"</span><span class="p">,</span> <span class="n">model_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">"hidden"</span><span class="p">:</span> <span class="mi">32</span><span class="p">})</span>
 <span class="n">result</span><span class="o">.</span><span class="n">model_ic</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">model_spread</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">model_hit_rate</span>  <span class="c1"># vs. result.baseline_ic/baseline_spread/baseline_hit_rate</span>
 <span class="n">result</span><span class="o">.</span><span class="n">passed_gate</span>  <span class="c1"># model beats baseline on BOTH mean IC and mean quantile spread</span>
-<span class="n">result</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>  <span class="c1"># prints the comparison; returns an IC-over-time + score-distribution ChartCall</span>
+<span class="n">result</span><span class="o">.</span><span class="n">feature_cols</span>  <span class="c1"># every registered feature's own column name in `result.test`</span>
+<span class="n">result</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>  <span class="c1"># prints the full comparison + per-feature leaderboard; returns a 5-panel report</span>
 
 <span class="n">leaderboard</span> <span class="o">=</span> <span class="n">run_sweep</span><span class="p">(</span>
     <span class="nb">dict</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">"mlp"</span><span class="p">),</span>

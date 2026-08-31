@@ -451,11 +451,12 @@ holds only the generic composition/display machinery and a couple of
 generic charts, so a raw price series, an indicator overlay, or a FRED
 series can be plotted without importing anything backtest-related):</p>
 <blockquote>
-<div><p>from tam.charting import timeseries, candles, rect
+<div><p>from tam.charting import timeseries, candles, rect, table, heatmap
 timeseries([close, sma(close, 20), sma(close, 50)])
 timeseries(price_series, title=”Price”) | timeseries(rsi_series, title=”RSI”)
 timeseries(spy) | rect(divergence_blocks, title=”Divergence”) | timeseries(<a href="#id3"><span class="problematic" id="id4">yield_</span></a>)
-candles(aapl.eod_bars())                                       # OHLC, native go.Candlestick, not a line</p>
+candles(aapl.eod_bars())                                       # OHLC, native go.Candlestick, not a line
+table(leaderboard_df) | heatmap(features_df.corr())            # exact numbers + a correlation matrix</p>
 </div></blockquote>
 <p>Every chart above renders under the current global theme (“light” by
 default, matching each one’s previous plain plotly_white styling) –
@@ -688,6 +689,22 @@ a DivergenceAlg directly.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.HeatmapChart">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">HeatmapChart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorscale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'RdBu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zmid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'.2f'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.HeatmapChart" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tam.charting.Chart" title="tam.charting.Chart"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chart</span></code></a></p>
+<p>A 2D matrix as a color-coded grid with each cell’s own value
+annotated directly on it – built for a correlation matrix
+(<cite>df.corr()</cite>) but works for any 2D numeric DataFrame. <cite>heatmap()</cite> below
+is the ergonomic standalone entry point most callers should use instead
+of constructing this directly.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.HeatmapChart.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.HeatmapChart.render" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="tam.charting.RectChart">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">RectChart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'red'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.RectChart" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#tam.charting.Chart" title="tam.charting.Chart"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chart</span></code></a></p>
@@ -699,6 +716,22 @@ point most callers should use instead of constructing this directly.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="tam.charting.RectChart.render">
 <span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">regions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.RectChart.render" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="tam.charting.TableChart">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">TableChart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float_format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'{:.4f}'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tam.charting.TableChart" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tam.charting.Chart" title="tam.charting.Chart"><code class="xref py py-class docutils literal notranslate"><span class="pre">Chart</span></code></a></p>
+<p>A plain <cite>go.Table</cite> over a DataFrame’s own columns – for the exact
+numeric summaries a line/bar chart can’t convey precisely (ranked
+leaderboards, a model-vs-baseline comparison, …). <cite>table()</cite> below is
+the ergonomic standalone entry point most callers should use instead of
+constructing this directly.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="tam.charting.TableChart.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="headerlink" href="#tam.charting.TableChart.render" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -804,6 +837,24 @@ subclass; “zscore” (ZScoreDivergence) is the only one built in.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="tam.charting.heatmap">
+<span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">heatmap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorscale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'RdBu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zmid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'.2f'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'left'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#tam.charting.ChartCall" title="tam.charting.ChartCall"><span class="pre">ChartCall</span></a></span></span><a class="headerlink" href="#tam.charting.heatmap" title="Link to this definition">¶</a></dt>
+<dd><p>A color-coded matrix with each cell’s own value annotated directly on
+it – built for a correlation matrix but works for any 2D numeric
+DataFrame:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">heatmap</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="n">feature_cols</span><span class="p">]</span><span class="o">.</span><span class="n">corr</span><span class="p">(),</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Feature correlations"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><cite>zmid=0.0</cite> (the default) centers the diverging <cite>colorscale</cite> at zero –
+the natural choice for a correlation matrix, where a strong negative and
+a strong positive correlation should look equally saturated but
+opposite-colored. Pass <cite>zmid=None</cite> for a plain min-to-max scale instead,
+e.g. for a matrix that isn’t correlation-shaped (raw counts, a distance
+matrix, …). Composes with <cite>|</cite>/<cite>&amp;</cite> exactly like every other chart
+here.</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="tam.charting.load_ipython_extension">
 <span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">load_ipython_extension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ipython</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#tam.charting.load_ipython_extension" title="Link to this definition">¶</a></dt>
 <dd><p><cite>%load_ext tam.charting</cite> – registers <cite>%theme &lt;name&gt;</cite>, <cite>%darkmode</cite>,
@@ -850,6 +901,24 @@ default; matches every chart’s previous plain plotly_white styling)
 or “dark”. Global and process-wide on purpose, not a per-call
 <cite>theme=</cite> kwarg: set once at the top of a notebook rather than passing
 it to every timeseries()/rect() call for the rest of the session.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tam.charting.table">
+<span class="sig-prename descclassname"><span class="pre">tam.charting.</span></span><span class="sig-name descname"><span class="pre">table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">float_format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'{:.4f}'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'left'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#tam.charting.ChartCall" title="tam.charting.ChartCall"><span class="pre">ChartCall</span></a></span></span><a class="headerlink" href="#tam.charting.table" title="Link to this definition">¶</a></dt>
+<dd><p>A plain numeric/text table straight from a DataFrame’s own columns –
+same call/compose contract as every chart here:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">table</span><span class="p">(</span><span class="n">feature_ic_summary</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">feature_cols</span><span class="p">,</span> <span class="n">label_col</span><span class="p">))</span>
+<span class="n">timeseries</span><span class="p">(</span><span class="n">equity_curve</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Equity"</span><span class="p">)</span> <span class="o">|</span> <span class="n">table</span><span class="p">(</span><span class="n">summary_df</span><span class="p">)</span>   <span class="c1"># chart + exact numbers, one figure</span>
+</pre></div>
+</div>
+<p>Every float column renders via <cite>float_format</cite> (default 4 decimal
+places); every other dtype via plain <cite>str()</cite> – good enough for the
+small, already-computed summary tables this is for, not a general
+DataFrame-formatting engine. <cite>ChartPipeline</cite> (the <cite>|</cite> composition)
+already detects a <cite>go.Table</cite> sub-figure and gives it a “table”-type
+subplot slot automatically – no special handling needed at the call
+site.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -982,8 +1051,16 @@ dark/light look across every chart instead of per-line colors, see
 <li><a class="reference internal" href="#tam.charting.DivergenceAlg.find"><code class="docutils literal notranslate"><span class="pre">DivergenceAlg.find()</span></code></a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#tam.charting.HeatmapChart"><code class="docutils literal notranslate"><span class="pre">HeatmapChart</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.HeatmapChart.render"><code class="docutils literal notranslate"><span class="pre">HeatmapChart.render()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#tam.charting.RectChart"><code class="docutils literal notranslate"><span class="pre">RectChart</span></code></a><ul>
 <li><a class="reference internal" href="#tam.charting.RectChart.render"><code class="docutils literal notranslate"><span class="pre">RectChart.render()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tam.charting.TableChart"><code class="docutils literal notranslate"><span class="pre">TableChart</span></code></a><ul>
+<li><a class="reference internal" href="#tam.charting.TableChart.render"><code class="docutils literal notranslate"><span class="pre">TableChart.render()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#tam.charting.TimeSeriesChart"><code class="docutils literal notranslate"><span class="pre">TimeSeriesChart</span></code></a><ul>
@@ -998,9 +1075,11 @@ dark/light look across every chart instead of per-line colors, see
 <li><a class="reference internal" href="#tam.charting.candles"><code class="docutils literal notranslate"><span class="pre">candles()</span></code></a></li>
 <li><a class="reference internal" href="#tam.charting.distribution"><code class="docutils literal notranslate"><span class="pre">distribution()</span></code></a></li>
 <li><a class="reference internal" href="#tam.charting.find_divergence"><code class="docutils literal notranslate"><span class="pre">find_divergence()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.heatmap"><code class="docutils literal notranslate"><span class="pre">heatmap()</span></code></a></li>
 <li><a class="reference internal" href="#tam.charting.load_ipython_extension"><code class="docutils literal notranslate"><span class="pre">load_ipython_extension()</span></code></a></li>
 <li><a class="reference internal" href="#tam.charting.rect"><code class="docutils literal notranslate"><span class="pre">rect()</span></code></a></li>
 <li><a class="reference internal" href="#tam.charting.set_theme"><code class="docutils literal notranslate"><span class="pre">set_theme()</span></code></a></li>
+<li><a class="reference internal" href="#tam.charting.table"><code class="docutils literal notranslate"><span class="pre">table()</span></code></a></li>
 <li><a class="reference internal" href="#tam.charting.timeseries"><code class="docutils literal notranslate"><span class="pre">timeseries()</span></code></a></li>
 </ul>
 </li>

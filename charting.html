@@ -509,6 +509,33 @@ not a shaded overlay behind an adjacent panel’s lines — for shading
 directly behind a specific chart’s own traces in the same panel, call
 <code class="docutils literal notranslate"><span class="pre">fig.add_vrect(...)</span></code> on that chart’s own rendered figure instead.</p>
 </section>
+<section id="exact-numbers-with-table">
+<h2>Exact numbers with <code class="docutils literal notranslate"><span class="pre">table()</span></code><a class="headerlink" href="#exact-numbers-with-table" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">table</span>
+
+<span class="n">table</span><span class="p">(</span><span class="n">leaderboard_df</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Per-feature leaderboard"</span><span class="p">)</span>
+<span class="n">timeseries</span><span class="p">(</span><span class="n">equity_curve</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Equity"</span><span class="p">)</span> <span class="o">|</span> <span class="n">table</span><span class="p">(</span><span class="n">summary_df</span><span class="p">)</span>  <span class="c1"># chart + exact numbers, one figure</span>
+</pre></div>
+</div>
+<p>A plain <code class="docutils literal notranslate"><span class="pre">go.Table</span></code> over any DataFrame’s own columns — for the numeric
+precision a chart alone can’t convey (a ranked leaderboard, a model-vs-
+baseline comparison, …). Every float column renders via <code class="docutils literal notranslate"><span class="pre">float_format</span></code>
+(default 4 decimal places); every other dtype via plain <code class="docutils literal notranslate"><span class="pre">str()</span></code>.</p>
+</section>
+<section id="correlation-matrix-views-with-heatmap">
+<h2>Correlation/matrix views with <code class="docutils literal notranslate"><span class="pre">heatmap()</span></code><a class="headerlink" href="#correlation-matrix-views-with-heatmap" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">heatmap</span>
+
+<span class="n">heatmap</span><span class="p">(</span><span class="n">features_df</span><span class="o">.</span><span class="n">corr</span><span class="p">(),</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Feature correlations"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A color-coded grid with each cell’s own value annotated directly on it.
+<code class="docutils literal notranslate"><span class="pre">zmid=0.0</span></code> (the default) centers the diverging <code class="docutils literal notranslate"><span class="pre">colorscale</span></code> at zero — the
+natural choice for a correlation matrix, where a strong negative and a
+strong positive correlation should look equally saturated but opposite-
+colored; pass <code class="docutils literal notranslate"><span class="pre">zmid=None</span></code> for a plain min-to-max scale on a matrix that
+isn’t correlation-shaped (raw counts, a distance matrix, …).</p>
+</section>
 <section id="writing-your-own-chart">
 <h2>Writing your own chart<a class="headerlink" href="#writing-your-own-chart" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.charting</span><span class="w"> </span><span class="kn">import</span> <span class="n">Chart</span>
@@ -609,6 +636,8 @@ intermediate <code class="docutils literal notranslate"><span class="pre">.html<
 <li><a class="reference internal" href="#candles-ohlc-native-candlesticks"><code class="docutils literal notranslate"><span class="pre">candles()</span></code> — OHLC, native candlesticks</a></li>
 <li><a class="reference internal" href="#composite-figures-with">Composite figures with <code class="docutils literal notranslate"><span class="pre">|</span></code></a></li>
 <li><a class="reference internal" href="#shaded-regions-with-rect">Shaded regions with <code class="docutils literal notranslate"><span class="pre">rect()</span></code></a></li>
+<li><a class="reference internal" href="#exact-numbers-with-table">Exact numbers with <code class="docutils literal notranslate"><span class="pre">table()</span></code></a></li>
+<li><a class="reference internal" href="#correlation-matrix-views-with-heatmap">Correlation/matrix views with <code class="docutils literal notranslate"><span class="pre">heatmap()</span></code></a></li>
 <li><a class="reference internal" href="#writing-your-own-chart">Writing your own chart</a></li>
 <li><a class="reference internal" href="#publishing-a-chart-directly">Publishing a chart directly</a></li>
 </ul>
