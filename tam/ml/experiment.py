@@ -13,10 +13,17 @@ from typing import Any, Optional, Union
 import pandas as pd
 
 from ..registry import Registry
-from .analysis import hit_rate, information_coefficient, quantile_spread
+from .analysis import feature_ic_summary, hit_rate, information_coefficient, quantile_spread
 from .dataset import time_split
 from .feature_store import FeatureStore
 from .model import Model
+
+# A commonly-cited rule of thumb in cross-sectional equity research: mean IC
+# below ~0.02 is weak even when it's positive, 0.05+ starts to look like a
+# real signal. Not a hard boundary -- just enough to flag "passed_gate=True
+# doesn't mean strong" directly in report(), instead of leaving that
+# distinction for the reader to infer from a bare number.
+_WEAK_IC_THRESHOLD = 0.02
 
 
 @dataclass
@@ -47,12 +54,33 @@ class ExperimentResult:
             self.model_ic.mean() > self.baseline_ic.mean() and self.model_spread.mean() > self.baseline_spread.mean()
         )
 
+    @property
+    def feature_cols(self) -> list[str]:
+        """Every registered feature's own column name -- `self.test` minus
+        `label_col` and the model's own `"score"` column, in the order they
+        already appear (the same list `run_experiment()` itself trained
+        on)."""
+        return [c for c in self.test.columns if c not in (self.label_col, "score")]
+
     def report(self):
-        """Prints the model-vs-baseline comparison and returns a composed
-        chart (IC over time + score distributions) -- call `.show()` on the
-        result in a notebook, or let it auto-display as the cell's last
-        expression."""
-        from ..charting import distribution, timeseries
+        """Prints a full model-vs-baseline comparison plus a per-feature
+        leaderboard, and returns a five-panel report: a numeric summary
+        table, the per-feature IC/spread/hit-rate leaderboard (every
+        registered feature scored the SAME way as the model, independently
+        -- which of them already carries signal alone, or comes close to
+        matching the model), each feature's own IC over time (click a
+        legend entry to isolate/hide it -- Plotly's own built-in
+        interaction, not a separate filter widget), a feature correlation
+        heatmap (redundant features cluster near +-1; a model built on
+        several near-duplicates isn't actually using as much independent
+        information as its feature count suggests), and the model/baseline
+        score distributions. Call `.show()` on the result in a notebook, or
+        let it auto-display as the cell's last expression."""
+        from ..charting import distribution, heatmap, table, timeseries
+
+        feature_cols = self.feature_cols
+        leaderboard = feature_ic_summary(self.test, [*feature_cols, "score"], self.label_col)
+        leaderboard["feature"] = leaderboard["feature"].replace({"score": "model_score"})
 
         print(
             f"model    -- mean IC: {self.model_ic.mean():.4f}  "
@@ -62,16 +90,40 @@ class ExperimentResult:
             f"baseline -- mean IC: {self.baseline_ic.mean():.4f}  "
             f"mean spread: {self.baseline_spread.mean():.5f}  hit rate: {self.baseline_hit_rate:.4f}"
         )
-        print(f"passed_gate: {self.passed_gate}")
+        print(f"passed_gate: {self.passed_gate}  (beats {self.baseline_col!r} on both mean IC and mean spread)")
+        if abs(self.model_ic.mean()) < _WEAK_IC_THRESHOLD:
+            print(
+                f"note: mean IC ({self.model_ic.mean():.4f}) is below the commonly-cited ~{_WEAK_IC_THRESHOLD} "
+                "weak-signal line -- passed_gate means 'better than this one baseline,' not 'strong' or 'ready to trade.'"
+            )
+        print("\nper-feature leaderboard -- every registered feature + the model's own score, ranked by mean IC:")
+        print(leaderboard.round(4).to_string(index=False))
 
-        ic_chart = timeseries(
-            {"model_ic": self.model_ic, "baseline_ic": self.baseline_ic}, title="Information coefficient, test period"
+        summary_table = table(
+            pd.DataFrame(
+                {
+                    "": ["model", "baseline"],
+                    "mean_ic": [self.model_ic.mean(), self.baseline_ic.mean()],
+                    "mean_spread": [self.model_spread.mean(), self.baseline_spread.mean()],
+                    "hit_rate": [self.model_hit_rate, self.baseline_hit_rate],
+                }
+            ),
+            title="Model vs. baseline",
         )
+        leaderboard_table = table(leaderboard, title="Per-feature leaderboard")
+
+        feature_ic_over_time = {col: information_coefficient(self.test, col, self.label_col) for col in feature_cols}
+        feature_ic_over_time["model_score"] = self.model_ic
+        ic_chart = timeseries(feature_ic_over_time, title="IC over time -- click a legend entry to isolate/hide it")
+
+        corr_chart = heatmap(self.test[feature_cols].corr(), title="Feature correlations")
+
         score_chart = distribution(
             {"model": self.test["score"], "baseline": self.test[self.baseline_col]},
             title="Score distribution, test period",
         )
-        return ic_chart | score_chart
+
+        return summary_table | leaderboard_table | ic_chart | corr_chart | score_chart
 
 
 def run_experiment(

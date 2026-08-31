@@ -43,11 +43,12 @@ holds only the generic composition/display machinery and a couple of
 generic charts, so a raw price series, an indicator overlay, or a FRED
 series can be plotted without importing anything backtest-related):
 
-    from tam.charting import timeseries, candles, rect
+    from tam.charting import timeseries, candles, rect, table, heatmap
     timeseries([close, sma(close, 20), sma(close, 50)])
     timeseries(price_series, title="Price") | timeseries(rsi_series, title="RSI")
     timeseries(spy) | rect(divergence_blocks, title="Divergence") | timeseries(yield_)
     candles(aapl.eod_bars())                                       # OHLC, native go.Candlestick, not a line
+    table(leaderboard_df) | heatmap(features_df.corr())            # exact numbers + a correlation matrix
 
 Every chart above renders under the current global theme ("light" by
 default, matching each one's previous plain plotly_white styling) --
@@ -481,12 +482,23 @@ class ChartPipeline:
             specs.append([spec])
         has_any_secondary = any(spec[0].get("secondary_y") for spec in specs)
 
+        # A fixed 0.06 left each row's own subplot_title sitting close enough
+        # to the row above's x-axis tick labels to look like visual overlap,
+        # confirmed live at the common n=2/3 case (e.g. ExperimentResult.
+        # report()'s ic_chart | score_chart). Plotly hard-caps vertical_spacing
+        # at 1/(rows-1) (raises ValueError above it), so a fixed larger value
+        # would break once enough charts are piped together -- scaling it down
+        # as n grows, capped at 90% of that limit, stays comfortably clear of
+        # it at any row count while giving small compositions real breathing
+        # room.
+        vertical_spacing = min(0.12, 0.9 / (n - 1))
+
         composite = make_subplots(
             rows=n,
             cols=1,
             subplot_titles=titles,
             specs=specs,
-            vertical_spacing=0.06,
+            vertical_spacing=vertical_spacing,
         )
 
         for row_idx, sub in enumerate(sub_figs, start=1):
@@ -879,6 +891,123 @@ def rect(
     whatever else is in that ChartOverlay (typically what you want for
     "shade behind these specific lines" rather than a separate strip)."""
     return RectChart(title=title, color=color, opacity=opacity)(regions, axis=axis, layer=layer)
+
+
+@Registry.register(Chart, "table")
+class TableChart(Chart):
+    """A plain `go.Table` over a DataFrame's own columns -- for the exact
+    numeric summaries a line/bar chart can't convey precisely (ranked
+    leaderboards, a model-vs-baseline comparison, ...). `table()` below is
+    the ergonomic standalone entry point most callers should use instead of
+    constructing this directly."""
+
+    def __init__(self, title: str = "", float_format: str = "{:.4f}"):
+        self.title = title
+        self._float_format = float_format
+
+    def _formatted_column(self, series: pd.Series) -> list[str]:
+        if pd.api.types.is_float_dtype(series):
+            return [self._float_format.format(v) if pd.notna(v) else "" for v in series]
+        return [str(v) for v in series]
+
+    def render(self, data: pd.DataFrame) -> go.Figure:
+        fig = go.Figure(
+            go.Table(
+                header=dict(values=[str(c) for c in data.columns], align="left"),
+                cells=dict(values=[self._formatted_column(data[col]) for col in data.columns], align="left"),
+            )
+        )
+        fig.update_layout(title=self.title)
+        return _apply_theme(fig)
+
+
+def table(
+    data: pd.DataFrame,
+    title: str = "",
+    *,
+    float_format: str = "{:.4f}",
+    axis: str = "left",
+    layer: int | None = None,
+) -> ChartCall:
+    """A plain numeric/text table straight from a DataFrame's own columns --
+    same call/compose contract as every chart here::
+
+        table(feature_ic_summary(test, feature_cols, label_col))
+        timeseries(equity_curve, title="Equity") | table(summary_df)   # chart + exact numbers, one figure
+
+    Every float column renders via `float_format` (default 4 decimal
+    places); every other dtype via plain `str()` -- good enough for the
+    small, already-computed summary tables this is for, not a general
+    DataFrame-formatting engine. `ChartPipeline` (the `|` composition)
+    already detects a `go.Table` sub-figure and gives it a "table"-type
+    subplot slot automatically -- no special handling needed at the call
+    site."""
+    return TableChart(title=title, float_format=float_format)(data, axis=axis, layer=layer)
+
+
+@Registry.register(Chart, "heatmap")
+class HeatmapChart(Chart):
+    """A 2D matrix as a color-coded grid with each cell's own value
+    annotated directly on it -- built for a correlation matrix
+    (`df.corr()`) but works for any 2D numeric DataFrame. `heatmap()` below
+    is the ergonomic standalone entry point most callers should use instead
+    of constructing this directly."""
+
+    def __init__(
+        self,
+        title: str = "",
+        colorscale: str = "RdBu",
+        zmid: float | None = 0.0,
+        value_format: str = ".2f",
+    ):
+        self.title = title
+        self._colorscale = colorscale
+        self._zmid = zmid
+        self._value_format = value_format
+
+    def render(self, data: pd.DataFrame) -> go.Figure:
+        fig = go.Figure(
+            go.Heatmap(
+                z=data.values,
+                x=[str(c) for c in data.columns],
+                y=[str(i) for i in data.index],
+                colorscale=self._colorscale,
+                zmid=self._zmid,
+                text=data.values,
+                texttemplate=f"%{{text:{self._value_format}}}",
+                textfont=dict(size=10),
+            )
+        )
+        fig.update_layout(title=self.title)
+        return _apply_theme(fig)
+
+
+def heatmap(
+    data: pd.DataFrame,
+    title: str = "",
+    *,
+    colorscale: str = "RdBu",
+    zmid: float | None = 0.0,
+    value_format: str = ".2f",
+    axis: str = "left",
+    layer: int | None = None,
+) -> ChartCall:
+    """A color-coded matrix with each cell's own value annotated directly on
+    it -- built for a correlation matrix but works for any 2D numeric
+    DataFrame::
+
+        heatmap(test[feature_cols].corr(), title="Feature correlations")
+
+    `zmid=0.0` (the default) centers the diverging `colorscale` at zero --
+    the natural choice for a correlation matrix, where a strong negative and
+    a strong positive correlation should look equally saturated but
+    opposite-colored. Pass `zmid=None` for a plain min-to-max scale instead,
+    e.g. for a matrix that isn't correlation-shaped (raw counts, a distance
+    matrix, ...). Composes with `|`/`&` exactly like every other chart
+    here."""
+    return HeatmapChart(title=title, colorscale=colorscale, zmid=zmid, value_format=value_format)(
+        data, axis=axis, layer=layer
+    )
 
 
 def _contiguous_ranges(flags: pd.Series) -> list[_Region]:

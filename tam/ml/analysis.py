@@ -47,3 +47,33 @@ def hit_rate(frame: pd.DataFrame, score_col: str, label_col: str) -> float:
     """Fraction of rows where `score_col` and `label_col` have the same
     sign -- the simplest possible "did the direction call work" metric."""
     return float((np.sign(frame[score_col]) == np.sign(frame[label_col])).mean())
+
+
+def feature_ic_summary(
+    frame: pd.DataFrame, score_cols: list[str], label_col: str, n_quantiles: int = 5
+) -> pd.DataFrame:
+    """One row per `score_cols` entry -- `mean_ic`/`mean_spread`/`hit_rate`
+    against `label_col`, computed independently (no model involved) so a raw
+    `Factor` and a trained `Model`'s own `"score"` column score exactly the
+    same way and land in the same ranked table. Sorted by `mean_ic`
+    descending -- the leaderboard answering "which of these actually carries
+    signal on its own," the natural next question once `run_experiment()`'s
+    single model-vs-baseline comparison says the model beats ONE naive
+    baseline but doesn't say why, or whether some other registered feature
+    would have done just as well alone. `n_quantiles` is forwarded to
+    `quantile_spread()` for every column -- lower it for a small universe
+    where the default 5 buckets would come back NaN (fewer distinct scores
+    per date than buckets requested)."""
+    rows = []
+    for col in score_cols:
+        ic = information_coefficient(frame, col, label_col)
+        spread = quantile_spread(frame, col, label_col, n_quantiles=n_quantiles)
+        rows.append(
+            {
+                "feature": col,
+                "mean_ic": ic.mean(),
+                "mean_spread": spread.mean(),
+                "hit_rate": hit_rate(frame, col, label_col),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("mean_ic", ascending=False).reset_index(drop=True)

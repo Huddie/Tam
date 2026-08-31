@@ -127,6 +127,46 @@ def test_report_prints_a_summary_and_returns_a_composed_chart(tmp_path, capsys):
     assert len(fig.data) > 0
 
 
+def test_feature_cols_excludes_label_and_score_columns(tmp_path):
+    store, tickers, n = _store(tmp_path)
+    start = date(2024, 1, 1)
+    end = start + timedelta(days=n - 1)
+    result = run_experiment(store, tickers, start, end, horizon=3, model="mlp", model_kwargs=_MODEL_KWARGS)
+
+    assert result.feature_cols == ["ret_5d", "rsi_14"]
+    assert result.label_col not in result.feature_cols
+    assert "score" not in result.feature_cols
+
+
+def test_report_prints_a_per_feature_leaderboard_covering_every_feature_and_the_model(tmp_path, capsys):
+    store, tickers, n = _store(tmp_path)
+    start = date(2024, 1, 1)
+    end = start + timedelta(days=n - 1)
+    result = run_experiment(store, tickers, start, end, horizon=3, model="mlp", model_kwargs=_MODEL_KWARGS)
+
+    result.report()
+
+    captured = capsys.readouterr()
+    assert "per-feature leaderboard" in captured.out
+    for name in ["ret_5d", "rsi_14", "model_score"]:
+        assert name in captured.out
+
+
+def test_report_chart_includes_tables_heatmap_and_distribution_alongside_the_ic_lines(tmp_path):
+    store, tickers, n = _store(tmp_path)
+    start = date(2024, 1, 1)
+    end = start + timedelta(days=n - 1)
+    result = run_experiment(store, tickers, start, end, horizon=3, model="mlp", model_kwargs=_MODEL_KWARGS)
+
+    fig = result.report().render()
+
+    trace_types = {type(trace).__name__ for trace in fig.data}
+    assert "Table" in trace_types  # summary + leaderboard tables
+    assert "Heatmap" in trace_types  # feature correlation matrix
+    assert "Scatter" in trace_types  # per-feature IC-over-time lines
+    assert "Histogram" in trace_types  # score distribution
+
+
 def test_run_sweep_produces_one_row_per_grid_combination(tmp_path):
     store, tickers, n = _store(tmp_path)
     start = date(2024, 1, 1)

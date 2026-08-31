@@ -20,15 +20,19 @@ from tam.charting import (
     ChartPipeline,
     DistributionChart,
     DivergenceAlg,
+    HeatmapChart,
     RectChart,
+    TableChart,
     TimeSeriesChart,
     ZScoreDivergence,
     candles,
     distribution,
     find_divergence,
+    heatmap,
     load_ipython_extension,
     rect,
     set_theme,
+    table,
     timeseries,
 )
 from tam.registry import Registry
@@ -308,6 +312,81 @@ def test_rect_composed_via_pipe_uses_a_domain_relative_yref_not_a_data_coordinat
     pipeline = timeseries(_series("a", start_value=500.0)) | rect([(date(2024, 1, 1), date(2024, 1, 5))])
     fig = pipeline.render()
     assert fig.layout.shapes[0].yref.endswith(" domain")
+
+
+def _leaderboard_df() -> pd.DataFrame:
+    return pd.DataFrame({"feature": ["rsi_14", "macd"], "mean_ic": [0.0521, -0.0113], "hit_rate": [0.55, 0.48]})
+
+
+def test_table_returns_a_chart_call():
+    result = table(_leaderboard_df())
+    assert isinstance(result, ChartCall)
+
+
+def test_table_renders_a_go_table_trace_with_a_column_per_header():
+    fig = table(_leaderboard_df()).render()
+    assert len(fig.data) == 1
+    assert isinstance(fig.data[0], go.Table)
+    assert list(fig.data[0].header.values) == ["feature", "mean_ic", "hit_rate"]
+
+
+def test_table_formats_float_columns_but_leaves_other_dtypes_as_plain_str():
+    fig = table(_leaderboard_df()).render()
+    mean_ic_cells, feature_cells = fig.data[0].cells.values[1], fig.data[0].cells.values[0]
+    assert mean_ic_cells[0] == "0.0521"  # float64 -> float_format
+    assert feature_cells[0] == "rsi_14"  # object dtype -> plain str()
+
+
+def test_table_registered_under_the_chart_registry():
+    resolved = Registry.get(Chart, "table")
+    assert isinstance(resolved, TableChart)
+
+
+def test_table_composes_with_timeseries_via_pipe():
+    pipeline = timeseries(_series("a")) | table(_leaderboard_df())
+    fig = pipeline.render()
+    assert len(fig.data) == 2
+    assert isinstance(fig.data[-1], go.Table)
+
+
+def _corr_df() -> pd.DataFrame:
+    return pd.DataFrame([[1.0, 0.3], [0.3, 1.0]], index=["ret_5d", "rsi_14"], columns=["ret_5d", "rsi_14"])
+
+
+def test_heatmap_returns_a_chart_call():
+    result = heatmap(_corr_df())
+    assert isinstance(result, ChartCall)
+
+
+def test_heatmap_renders_a_go_heatmap_trace_with_matrix_values():
+    fig = heatmap(_corr_df()).render()
+    assert len(fig.data) == 1
+    assert isinstance(fig.data[0], go.Heatmap)
+    assert list(fig.data[0].x) == ["ret_5d", "rsi_14"]
+    assert list(fig.data[0].y) == ["ret_5d", "rsi_14"]
+    assert fig.data[0].z[0][1] == pytest.approx(0.3)
+
+
+def test_heatmap_defaults_to_a_zero_centered_color_scale():
+    fig = heatmap(_corr_df()).render()
+    assert fig.data[0].zmid == 0.0
+
+
+def test_heatmap_zmid_can_be_disabled():
+    fig = heatmap(_corr_df(), zmid=None).render()
+    assert fig.data[0].zmid is None
+
+
+def test_heatmap_registered_under_the_chart_registry():
+    resolved = Registry.get(Chart, "heatmap")
+    assert isinstance(resolved, HeatmapChart)
+
+
+def test_heatmap_composes_with_timeseries_via_pipe():
+    pipeline = timeseries(_series("a")) | heatmap(_corr_df())
+    fig = pipeline.render()
+    assert len(fig.data) == 2
+    assert isinstance(fig.data[-1], go.Heatmap)
 
 
 def _ohlc_df(date_column: str | None = "date", periods: int = 5) -> pd.DataFrame:

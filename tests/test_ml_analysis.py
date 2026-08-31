@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tam.ml.analysis import hit_rate, information_coefficient, quantile_spread
+from tam.ml.analysis import feature_ic_summary, hit_rate, information_coefficient, quantile_spread
 
 
 def _frame(rows):
@@ -110,3 +110,46 @@ def test_hit_rate_is_one_when_every_sign_matches():
     frame = _frame([(date(2024, 1, 1), "A", 1.0, 0.01), (date(2024, 1, 1), "B", -1.0, -0.02)])
 
     assert hit_rate(frame, "score", "label") == pytest.approx(1.0)
+
+
+def _multi_feature_frame(rows):
+    """rows: list of (date, ticker, good, bad, label) -- `good` moves WITH
+    `label`, `bad` moves AGAINST it, both indexed the same way `_frame()`
+    builds for the single-column functions above."""
+    df = pd.DataFrame(rows, columns=["date", "ticker", "good", "bad", "label"])
+    return df.set_index(["date", "ticker"])
+
+
+def test_feature_ic_summary_ranks_features_by_mean_ic_descending():
+    frame = _multi_feature_frame(
+        [
+            (date(2024, 1, 1), "A", 1.0, 3.0, 0.01),
+            (date(2024, 1, 1), "B", 2.0, 2.0, 0.02),
+            (date(2024, 1, 1), "C", 3.0, 1.0, 0.03),
+        ]
+    )
+
+    result = feature_ic_summary(frame, ["good", "bad"], "label")
+
+    assert list(result["feature"]) == ["good", "bad"]
+    assert result.loc[0, "mean_ic"] == pytest.approx(1.0)
+    assert result.loc[1, "mean_ic"] == pytest.approx(-1.0)
+
+
+def test_feature_ic_summary_includes_spread_and_hit_rate_columns():
+    frame = _multi_feature_frame(
+        [
+            (date(2024, 1, 1), "A", -1.0, 1.0, -0.05),
+            (date(2024, 1, 1), "B", 0.5, -0.5, 0.01),
+            (date(2024, 1, 1), "C", 3.0, -3.0, 0.05),
+        ]
+    )
+
+    result = feature_ic_summary(frame, ["good", "bad"], "label", n_quantiles=3)
+
+    assert list(result.columns) == ["feature", "mean_ic", "mean_spread", "hit_rate"]
+    good = result[result["feature"] == "good"].iloc[0]
+    bad = result[result["feature"] == "bad"].iloc[0]
+    assert good["mean_spread"] == pytest.approx(0.05 - (-0.05))  # top bucket's label minus bottom bucket's
+    assert good["hit_rate"] == pytest.approx(1.0)  # good's sign matches label's sign on every row
+    assert bad["hit_rate"] == pytest.approx(0.0)  # bad is good's exact negation -- every sign mismatches

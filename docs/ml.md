@@ -191,17 +191,21 @@ this — zero `FeatureStore`/harness changes needed.
 ## Analysis
 
 ```python
-from tam.ml.analysis import hit_rate, information_coefficient, quantile_spread
+from tam.ml.analysis import feature_ic_summary, hit_rate, information_coefficient, quantile_spread
 
 information_coefficient(test, "score", "fwd_return_3d")  # per-date Spearman rank correlation
 quantile_spread(test, "score", "fwd_return_3d", n_quantiles=5)  # top-quantile minus bottom-quantile mean return, per date
 hit_rate(test, "score", "fwd_return_3d")  # fraction of matching-sign rows
+feature_ic_summary(test, ["ret_5d", "rsi_14", "score"], "fwd_return_3d")  # one row per column, ranked by mean IC
 ```
 
 Pure functions over a `(date, ticker)`-indexed frame with a score column
 and a realized-return label column — no model/strategy coupling, so they
 work identically for a trained `Model`'s output and for a naive baseline
-(any raw `Factor`'s own value) compared against it.
+(any raw `Factor`'s own value) compared against it. `feature_ic_summary()`
+runs the same three metrics over EVERY column given, independently — the
+leaderboard answering "which of these already carries signal alone," not
+just "does the model beat one chosen baseline."
 
 ## `run_experiment()` / `run_sweep()`
 
@@ -211,7 +215,8 @@ from tam.ml.experiment import run_experiment, run_sweep
 result = run_experiment(store, tickers, start, end, horizon=3, model="mlp", model_kwargs={"hidden": 32})
 result.model_ic, result.model_spread, result.model_hit_rate  # vs. result.baseline_ic/baseline_spread/baseline_hit_rate
 result.passed_gate  # model beats baseline on BOTH mean IC and mean quantile spread
-result.report()  # prints the comparison; returns an IC-over-time + score-distribution ChartCall
+result.feature_cols  # every registered feature's own column name in `result.test`
+result.report()  # prints the full comparison + per-feature leaderboard; returns a 5-panel report
 
 leaderboard = run_sweep(
     dict(store=store, start=start, end=end, model="mlp"),
