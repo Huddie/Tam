@@ -1,0 +1,19 @@
+tam.ml package
+==============
+
+.. automodule:: tam.ml
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 2
+
+   tam.ml.analysis
+   tam.ml.dataset
+   tam.ml.experiment
+   tam.ml.feature_store
+   tam.ml.model

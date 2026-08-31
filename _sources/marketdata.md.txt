@@ -109,6 +109,60 @@ Dataset names: `"splits"`, `"dividends"`, `"ipos"`, `"short_volume"`,
 [Data storage layout](storage-layout.md#equity-market-data) for exact
 columns and on-disk paths per dataset.
 
+## Self-service `DataProvider`/`MinuteBarSource` — feeding this lake into `tam.data`/`Factor`
+
+`tam.data`'s own `DataRepository`/`Strategy`/backtest machinery (see
+[Data](data.md)) is built around `DataProvider`, not `Symbol`/DuckDB
+directly. `tam.marketdata.eod_provider.MarketDataEodProvider` bridges the
+two — a `Registry(DataProvider, "marketdata_eod")` that wraps
+`Symbol(...).eod_bars()`, so a config-driven backtest (or `tam.basket`
+research code, or [`tam.ml`](ml.md)'s `FeatureStore`) can select this
+self-service, `TAM_PAT`-authenticated lake exactly the way it already
+selects `"yfinance"`/`"fmp"`:
+
+```python
+from tam.data.providers import DataProvider
+from tam.data.repository import DataRepository
+from tam.data.storage import DataStore
+from tam.marketdata.eod_provider import MarketDataEodProvider  # noqa: F401 -- import registers "marketdata_eod"
+from tam.registry import Registry
+
+repository = DataRepository(
+    Registry.get(DataProvider, "marketdata_eod"),
+    Registry.create(DataStore, "parquet", "data/eod"),  # local cache -- ingest() only re-fetches actual gaps
+)
+```
+
+```yaml
+data:
+  provider: marketdata_eod
+  store: parquet
+  root: data/eod
+```
+
+`tam.marketdata.minute_source.MinuteBarSource` is the same idea for minute
+bars — a `Registry(MinuteBarSource, "marketdata")` wrapping
+`Symbol(...).minute_bars()`, for a `Factor`/feature that needs intraday
+data instead of (or alongside) daily EOD bars (see
+`tam.basket.factors.IntradayVolatilityFactor` for a worked example):
+
+```python
+from tam.marketdata.minute_source import MinuteBarSource
+from tam.registry import Registry
+
+source = Registry.get(MinuteBarSource, "marketdata")
+source.fetch_minute_bars("AAPL", start, end)
+```
+
+Both call `tam.marketdata.connection.thread_local_connection()` internally
+rather than the process-shared `default_connection()` `Symbol` falls back
+to by default — `DataRepository.ingest()` fans fetches out across its own
+thread pool (`tam/data/repository.py`, `max_workers=8` by default), and a
+single DuckDB connection isn't safe to call concurrently from multiple
+threads. Each worker thread gets its own connection instead (built once per
+thread, then reused), so this is safe to use from either provider without
+the caller needing to know or care.
+
 ## R2 credentials
 
 Read-only credentials are enough to query either lake — see

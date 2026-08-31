@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="FRED" href="research-fred.html"><link rel="prev" title="Basket research" href="basket.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="FRED" href="research-fred.html"><link rel="prev" title="ML" href="ml.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>Market data - tam</title>
@@ -205,6 +205,7 @@
 <li class="toctree-l1"><a class="reference internal" href="reporting.html">Reporting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="charting.html">Charting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basket.html">Basket research</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ml.html">ML</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Market data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="research-fred.html">FRED</a></li>
 <li class="toctree-l1"><a class="reference internal" href="research-sec.html">SEC</a></li>
@@ -268,9 +269,11 @@
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.credentials.html">tam.marketdata.credentials module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.datasets.html">tam.marketdata.datasets module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.duckdb_query.html">tam.marketdata.duckdb_query module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.eod_provider.html">tam.marketdata.eod_provider module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.explorer_client.html">tam.marketdata.explorer_client module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.filesystem.html">tam.marketdata.filesystem module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.ingest.html">tam.marketdata.ingest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.minute_source.html">tam.marketdata.minute_source module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.providers.html">tam.marketdata.providers module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.reference_ingest.html">tam.marketdata.reference_ingest module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.reference_provider.html">tam.marketdata.reference_provider module</a></li>
@@ -281,20 +284,28 @@
 <li class="toctree-l4"><a class="reference internal" href="api/tam.marketdata.validate.html">tam.marketdata.validate module</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.notebook.html">tam.notebook package</a><input aria-label="Toggle navigation of tam.notebook package" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.ml.html">tam.ml package</a><input aria-label="Toggle navigation of tam.ml package" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/tam.ml.analysis.html">tam.ml.analysis module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/tam.ml.dataset.html">tam.ml.dataset module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/tam.ml.experiment.html">tam.ml.experiment module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/tam.ml.feature_store.html">tam.ml.feature_store module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/tam.ml.model.html">tam.ml.model module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.notebook.html">tam.notebook package</a><input aria-label="Toggle navigation of tam.notebook package" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.notebook.magic.html">tam.notebook.magic module</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.portfolio.html">tam.portfolio package</a><input aria-label="Toggle navigation of tam.portfolio package" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.portfolio.html">tam.portfolio package</a><input aria-label="Toggle navigation of tam.portfolio package" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.portfolio.costs.html">tam.portfolio.costs module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.portfolio.orders.html">tam.portfolio.orders module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.portfolio.portfolio.html">tam.portfolio.portfolio module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.portfolio.registry.html">tam.portfolio.registry module</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.research.html">tam.research package</a><input aria-label="Toggle navigation of tam.research package" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4 has-children"><a class="reference internal" href="api/tam.research.data.html">tam.research.data package</a><input aria-label="Toggle navigation of tam.research.data package" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l5 has-children"><a class="reference internal" href="api/tam.research.data.sec.html">tam.research.data.sec package</a><input aria-label="Toggle navigation of tam.research.data.sec package" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.research.html">tam.research package</a><input aria-label="Toggle navigation of tam.research package" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="api/tam.research.data.html">tam.research.data package</a><input aria-label="Toggle navigation of tam.research.data package" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5 has-children"><a class="reference internal" href="api/tam.research.data.sec.html">tam.research.data.sec package</a><input aria-label="Toggle navigation of tam.research.data.sec package" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l6"><a class="reference internal" href="api/tam.research.data.sec.manifest.html">tam.research.data.sec.manifest module</a></li>
 <li class="toctree-l6"><a class="reference internal" href="api/tam.research.data.sec.normalize.html">tam.research.data.sec.normalize module</a></li>
 <li class="toctree-l6"><a class="reference internal" href="api/tam.research.data.sec.provider.html">tam.research.data.sec.provider module</a></li>
@@ -307,7 +318,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.strategy.html">tam.strategy package</a><input aria-label="Toggle navigation of tam.strategy package" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.strategy.html">tam.strategy package</a><input aria-label="Toggle navigation of tam.strategy package" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.strategy.base.html">tam.strategy.base module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.strategy.basket_overnight.html">tam.strategy.basket_overnight module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.strategy.buy_and_hold.html">tam.strategy.buy_and_hold module</a></li>
@@ -323,7 +334,7 @@
 <li class="toctree-l4"><a class="reference internal" href="api/tam.strategy.trend_rotation.html">tam.strategy.trend_rotation module</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.trading.html">tam.trading package</a><input aria-label="Toggle navigation of tam.trading package" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/tam.trading.html">tam.trading package</a><input aria-label="Toggle navigation of tam.trading package" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.trading.gateway.html">tam.trading.gateway module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/tam.trading.trader.html">tam.trading.trader module</a></li>
 </ul>
@@ -493,6 +504,55 @@ company.</p>
 columns and on-disk paths per dataset.</p>
 </section>
 </section>
+<section id="self-service-dataprovider-minutebarsource-feeding-this-lake-into-tam-data-factor">
+<h2>Self-service <code class="docutils literal notranslate"><span class="pre">DataProvider</span></code>/<code class="docutils literal notranslate"><span class="pre">MinuteBarSource</span></code> — feeding this lake into <code class="docutils literal notranslate"><span class="pre">tam.data</span></code>/<code class="docutils literal notranslate"><span class="pre">Factor</span></code><a class="headerlink" href="#self-service-dataprovider-minutebarsource-feeding-this-lake-into-tam-data-factor" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">tam.data</span></code>’s own <code class="docutils literal notranslate"><span class="pre">DataRepository</span></code>/<code class="docutils literal notranslate"><span class="pre">Strategy</span></code>/backtest machinery (see
+<a class="reference internal" href="data.html"><span class="std std-doc">Data</span></a>) is built around <code class="docutils literal notranslate"><span class="pre">DataProvider</span></code>, not <code class="docutils literal notranslate"><span class="pre">Symbol</span></code>/DuckDB
+directly. <code class="docutils literal notranslate"><span class="pre">tam.marketdata.eod_provider.MarketDataEodProvider</span></code> bridges the
+two — a <code class="docutils literal notranslate"><span class="pre">Registry(DataProvider,</span> <span class="pre">&quot;marketdata_eod&quot;)</span></code> that wraps
+<code class="docutils literal notranslate"><span class="pre">Symbol(...).eod_bars()</span></code>, so a config-driven backtest (or <code class="docutils literal notranslate"><span class="pre">tam.basket</span></code>
+research code, or <a class="reference internal" href="ml.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">tam.ml</span></code></span></a>’s <code class="docutils literal notranslate"><span class="pre">FeatureStore</span></code>) can select this
+self-service, <code class="docutils literal notranslate"><span class="pre">TAM_PAT</span></code>-authenticated lake exactly the way it already
+selects <code class="docutils literal notranslate"><span class="pre">&quot;yfinance&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;fmp&quot;</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.data.providers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataProvider</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.data.repository</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataRepository</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.data.storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataStore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.eod_provider</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketDataEodProvider</span>  <span class="c1"># noqa: F401 -- import registers "marketdata_eod"</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
+
+<span class="n">repository</span> <span class="o">=</span> <span class="n">DataRepository</span><span class="p">(</span>
+    <span class="n">Registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">DataProvider</span><span class="p">,</span> <span class="s2">"marketdata_eod"</span><span class="p">),</span>
+    <span class="n">Registry</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">DataStore</span><span class="p">,</span> <span class="s2">"parquet"</span><span class="p">,</span> <span class="s2">"data/eod"</span><span class="p">),</span>  <span class="c1"># local cache -- ingest() only re-fetches actual gaps</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">data</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">marketdata_eod</span>
+<span class="w">  </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parquet</span>
+<span class="w">  </span><span class="nt">root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/eod</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">tam.marketdata.minute_source.MinuteBarSource</span></code> is the same idea for minute
+bars — a <code class="docutils literal notranslate"><span class="pre">Registry(MinuteBarSource,</span> <span class="pre">&quot;marketdata&quot;)</span></code> wrapping
+<code class="docutils literal notranslate"><span class="pre">Symbol(...).minute_bars()</span></code>, for a <code class="docutils literal notranslate"><span class="pre">Factor</span></code>/feature that needs intraday
+data instead of (or alongside) daily EOD bars (see
+<code class="docutils literal notranslate"><span class="pre">tam.basket.factors.IntradayVolatilityFactor</span></code> for a worked example):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.marketdata.minute_source</span><span class="w"> </span><span class="kn">import</span> <span class="n">MinuteBarSource</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tam.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
+
+<span class="n">source</span> <span class="o">=</span> <span class="n">Registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">MinuteBarSource</span><span class="p">,</span> <span class="s2">"marketdata"</span><span class="p">)</span>
+<span class="n">source</span><span class="o">.</span><span class="n">fetch_minute_bars</span><span class="p">(</span><span class="s2">"AAPL"</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Both call <code class="docutils literal notranslate"><span class="pre">tam.marketdata.connection.thread_local_connection()</span></code> internally
+rather than the process-shared <code class="docutils literal notranslate"><span class="pre">default_connection()</span></code> <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> falls back
+to by default — <code class="docutils literal notranslate"><span class="pre">DataRepository.ingest()</span></code> fans fetches out across its own
+thread pool (<code class="docutils literal notranslate"><span class="pre">tam/data/repository.py</span></code>, <code class="docutils literal notranslate"><span class="pre">max_workers=8</span></code> by default), and a
+single DuckDB connection isn’t safe to call concurrently from multiple
+threads. Each worker thread gets its own connection instead (built once per
+thread, then reused), so this is safe to use from either provider without
+the caller needing to know or care.</p>
+</section>
 <section id="r2-credentials">
 <h2>R2 credentials<a class="headerlink" href="#r2-credentials" title="Link to this heading">¶</a></h2>
 <p>Read-only credentials are enough to query either lake — see
@@ -517,14 +577,14 @@ Actions).</p>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="basket.html">
+          <a class="prev-page" href="ml.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Basket research</div>
+                <div class="title">ML</div>
                 
               </div>
             </a>
@@ -568,6 +628,7 @@ Actions).</p>
 <li><a class="reference internal" href="#referencestore-the-python-api-not-raw-sql"><code class="docutils literal notranslate"><span class="pre">ReferenceStore</span></code> — the Python API, not raw SQL</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#self-service-dataprovider-minutebarsource-feeding-this-lake-into-tam-data-factor">Self-service <code class="docutils literal notranslate"><span class="pre">DataProvider</span></code>/<code class="docutils literal notranslate"><span class="pre">MinuteBarSource</span></code> — feeding this lake into <code class="docutils literal notranslate"><span class="pre">tam.data</span></code>/<code class="docutils literal notranslate"><span class="pre">Factor</span></code></a></li>
 <li><a class="reference internal" href="#r2-credentials">R2 credentials</a></li>
 </ul>
 </li>

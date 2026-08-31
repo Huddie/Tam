@@ -1,0 +1,7 @@
+tam.ml.dataset module
+=====================
+
+.. automodule:: tam.ml.dataset
+   :members:
+   :show-inheritance:
+   :undoc-members:

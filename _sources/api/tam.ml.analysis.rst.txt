@@ -1,0 +1,7 @@
+tam.ml.analysis module
+======================
+
+.. automodule:: tam.ml.analysis
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,7 @@
+tam.ml.model module
+===================
+
+.. automodule:: tam.ml.model
+   :members:
+   :show-inheritance:
+   :undoc-members:

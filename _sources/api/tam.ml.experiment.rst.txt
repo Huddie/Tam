@@ -1,0 +1,7 @@
+tam.ml.experiment module
+========================
+
+.. automodule:: tam.ml.experiment
+   :members:
+   :show-inheritance:
+   :undoc-members:

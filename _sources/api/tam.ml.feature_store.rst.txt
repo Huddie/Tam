@@ -1,0 +1,7 @@
+tam.ml.feature\_store module
+============================
+
+.. automodule:: tam.ml.feature_store
+   :members:
+   :show-inheritance:
+   :undoc-members:

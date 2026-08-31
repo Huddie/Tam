@@ -1,0 +1,7 @@
+tam.marketdata.minute\_source module
+====================================
+
+.. automodule:: tam.marketdata.minute_source
+   :members:
+   :show-inheritance:
+   :undoc-members:

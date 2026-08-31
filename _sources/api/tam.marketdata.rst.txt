@@ -17,9 +17,11 @@ Submodules
    tam.marketdata.credentials
    tam.marketdata.datasets
    tam.marketdata.duckdb_query
+   tam.marketdata.eod_provider
    tam.marketdata.explorer_client
    tam.marketdata.filesystem
    tam.marketdata.ingest
+   tam.marketdata.minute_source
    tam.marketdata.providers
    tam.marketdata.reference_ingest
    tam.marketdata.reference_provider

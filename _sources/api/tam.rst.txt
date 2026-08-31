@@ -18,6 +18,7 @@ Subpackages
    tam.discovery
    tam.events
    tam.marketdata
+   tam.ml
    tam.notebook
    tam.portfolio
    tam.research

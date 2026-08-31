@@ -1,0 +1,7 @@
+tam.marketdata.eod\_provider module
+===================================
+
+.. automodule:: tam.marketdata.eod_provider
+   :members:
+   :show-inheritance:
+   :undoc-members:
