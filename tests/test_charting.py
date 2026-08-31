@@ -389,6 +389,46 @@ def test_heatmap_composes_with_timeseries_via_pipe():
     assert isinstance(fig.data[-1], go.Heatmap)
 
 
+def test_heatmap_colorbar_is_off_by_default():
+    """Regression: go.Heatmap's default colorbar sits at the figure's right
+    edge -- the exact same place ChartPipeline's shared legend defaults to.
+    Composed via | (e.g. ExperimentResult.report()), an on-by-default
+    colorbar visually collided with the legend text, both unreadable.
+    Each cell already annotates its own value directly, so the colorbar is
+    redundant here anyway."""
+    fig = heatmap(_corr_df()).render()
+    assert fig.data[0].showscale is False
+
+
+def test_heatmap_colorbar_can_be_enabled():
+    fig = heatmap(_corr_df(), show_colorbar=True).render()
+    assert fig.data[0].showscale is True
+
+
+def test_pipeline_gives_table_rows_a_smaller_row_heights_share_than_chart_rows():
+    """Regression: go.Table's header/cell heights are fixed pixel values,
+    not stretched to fill an arbitrary subplot domain -- giving a table the
+    SAME row share as an xy/heatmap row left it top-anchored with a large
+    blank gap below it (confirmed live in ExperimentResult.report()'s
+    composite, two ~100px tables each stranded inside a ~350px-tall row)."""
+    pipeline = table(_leaderboard_df()) | timeseries(_series("a"))
+    fig = pipeline.render()
+
+    table_trace = next(t for t in fig.data if isinstance(t, go.Table))
+    table_span = table_trace.domain.y[1] - table_trace.domain.y[0]
+    chart_span = fig.layout.yaxis.domain[1] - fig.layout.yaxis.domain[0]
+    assert table_span < chart_span
+
+
+def test_pipeline_height_accounts_for_table_rows_taking_less_space():
+    """height = 350px per chart-equivalent row, where a table row counts as
+    a fraction of one -- two tables alone should total noticeably less than
+    the old flat 350px-per-row assumption (700px for n=2)."""
+    pipeline = table(_leaderboard_df()) | table(_leaderboard_df())
+    fig = pipeline.render()
+    assert fig.layout.height < 700
+
+
 def _ohlc_df(date_column: str | None = "date", periods: int = 5) -> pd.DataFrame:
     """A tiny OHLC frame -- `date_column=None` puts the dates on the index
     instead (the shape `Symbol(...).eod_bars()` isn't in, but a plain

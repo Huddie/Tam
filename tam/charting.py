@@ -482,6 +482,19 @@ class ChartPipeline:
             specs.append([spec])
         has_any_secondary = any(spec[0].get("secondary_y") for spec in specs)
 
+        # A go.Table's header/cell heights are fixed pixel values (set via
+        # header.height/cells.height, ~20-30px each), NOT stretched to fill
+        # whatever domain it's given -- giving a 3-row table the same full
+        # share as an xy/heatmap row left it top-anchored in mostly blank
+        # space, confirmed live in ExperimentResult.report()'s composite
+        # (two ~100px tables each stranded inside a ~350px row). Weighting
+        # table rows down keeps the SAME 350px-per-chart-row budget for
+        # everything else while giving a table only as much of the total
+        # height as it actually needs.
+        _TABLE_ROW_WEIGHT = 0.35
+        row_weights = [_TABLE_ROW_WEIGHT if spec[0]["type"] == "table" else 1.0 for spec in specs]
+        row_heights = [w / sum(row_weights) for w in row_weights]
+
         # A fixed 0.06 left each row's own subplot_title sitting close enough
         # to the row above's x-axis tick labels to look like visual overlap,
         # confirmed live at the common n=2/3 case (e.g. ExperimentResult.
@@ -499,6 +512,7 @@ class ChartPipeline:
             subplot_titles=titles,
             specs=specs,
             vertical_spacing=vertical_spacing,
+            row_heights=row_heights,
         )
 
         for row_idx, sub in enumerate(sub_figs, start=1):
@@ -562,7 +576,7 @@ class ChartPipeline:
                     excluded = ("domain", "anchor", "overlaying")
                     secondary_subplot.yaxis.update({k: v for k, v in src_axis.items() if k not in excluded})
 
-        layout_kwargs: dict[str, Any] = {"height": max(350 * n, 600), "showlegend": True}
+        layout_kwargs: dict[str, Any] = {"height": max(350 * sum(row_weights), 600), "showlegend": True}
         if has_any_secondary:
             # Same reasoning as ChartOverlay.render()'s own version of this --
             # a right-hand axis in any row collides with Plotly's default
@@ -959,11 +973,13 @@ class HeatmapChart(Chart):
         colorscale: str = "RdBu",
         zmid: float | None = 0.0,
         value_format: str = ".2f",
+        show_colorbar: bool = False,
     ):
         self.title = title
         self._colorscale = colorscale
         self._zmid = zmid
         self._value_format = value_format
+        self._show_colorbar = show_colorbar
 
     def render(self, data: pd.DataFrame) -> go.Figure:
         fig = go.Figure(
@@ -976,6 +992,7 @@ class HeatmapChart(Chart):
                 text=data.values,
                 texttemplate=f"%{{text:{self._value_format}}}",
                 textfont=dict(size=10),
+                showscale=self._show_colorbar,
             )
         )
         fig.update_layout(title=self.title)
@@ -989,6 +1006,7 @@ def heatmap(
     colorscale: str = "RdBu",
     zmid: float | None = 0.0,
     value_format: str = ".2f",
+    show_colorbar: bool = False,
     axis: str = "left",
     layer: int | None = None,
 ) -> ChartCall:
@@ -1003,11 +1021,17 @@ def heatmap(
     a strong positive correlation should look equally saturated but
     opposite-colored. Pass `zmid=None` for a plain min-to-max scale instead,
     e.g. for a matrix that isn't correlation-shaped (raw counts, a distance
-    matrix, ...). Composes with `|`/`&` exactly like every other chart
-    here."""
-    return HeatmapChart(title=title, colorscale=colorscale, zmid=zmid, value_format=value_format)(
-        data, axis=axis, layer=layer
-    )
+    matrix, ...). `show_colorbar=False` (the default) omits the color-scale
+    legend strip -- each cell's own value is already annotated directly on
+    it, so the colorbar is mostly redundant, and composed alongside other
+    charts via `|` it defaults to the same right-edge position a figure-wide
+    legend uses, colliding with it. Pass `show_colorbar=True` for a
+    standalone heatmap over a large matrix where the color itself (not the
+    exact per-cell number) is the point. Composes with `|`/`&` exactly like
+    every other chart here."""
+    return HeatmapChart(
+        title=title, colorscale=colorscale, zmid=zmid, value_format=value_format, show_colorbar=show_colorbar
+    )(data, axis=axis, layer=layer)
 
 
 def _contiguous_ranges(flags: pd.Series) -> list[_Region]:
