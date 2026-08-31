@@ -183,6 +183,160 @@ class OvernightBeta(Factor):
         return _regress(returns, as_of, self._window_days, self._benchmark)["beta"]
 
 
+@Registry.register(Factor, "trailing_return")
+class TrailingReturnFactor(Factor):
+    """Cumulative return over the trailing `window_days` -- takes a PRICE
+    matrix (e.g. from price_matrix()), not a returns matrix, unlike every
+    Factor above: nothing about Factor.compute()'s signature requires
+    `returns` to actually BE returns, just a date x ticker frame, and this
+    one needs price levels to compute a cumulative move."""
+
+    def __init__(self, window_days: int):
+        self._window_days = window_days
+
+    def compute(self, returns: pd.DataFrame, as_of: date) -> pd.Series:
+        window = _window(returns, as_of, self._window_days + 1)
+        if len(window) < self._window_days + 1:
+            return pd.Series(0.0, index=returns.columns)
+        return (window.iloc[-1] / window.iloc[0] - 1).fillna(0.0)
+
+
+@Registry.register(Factor, "rsi")
+class RsiFactor(Factor):
+    """Relative Strength Index, 0-100 -- also takes a PRICE matrix, same
+    reasoning as TrailingReturnFactor above."""
+
+    def __init__(self, period: int = 14):
+        self._period = period
+
+    def compute(self, returns: pd.DataFrame, as_of: date) -> pd.Series:
+        # Bounded lookback (period * 5), NOT the full history -- feeding RSI's
+        # exponential smoothing more than a few multiples of its own period
+        # changes nothing numerically (the influence of older data decays
+        # away), but computing over an ever-growing full history is O(n^2)
+        # across a loop over many as_of dates (confirmed live: this exact
+        # unbounded version stalled/crashed a Colab kernel).
+        from ..strategy.indicators import rsi
+
+        window = _window(returns, as_of, self._period * 5)
+        out = {}
+        for ticker in window.columns:
+            series = window[ticker].dropna()
+            out[ticker] = float(rsi(series, self._period).iloc[-1]) if len(series) >= self._period + 1 else 50.0
+        return pd.Series(out)
+
+
+@Registry.register(Factor, "macd")
+class MacdFactor(Factor):
+    """MACD histogram normalized by price -- same normalization
+    tam.strategy.signals.Macd uses, so the value is comparable across
+    tickers. Takes a PRICE matrix, same reasoning as TrailingReturnFactor."""
+
+    def __init__(self, short_period: int = 12, long_period: int = 26, signal_period: int = 9):
+        self._short = short_period
+        self._long = long_period
+        self._signal = signal_period
+
+    def compute(self, returns: pd.DataFrame, as_of: date) -> pd.Series:
+        from ..strategy.indicators import macd_histogram
+
+        # Same bounded-window reasoning as RsiFactor above.
+        window = _window(returns, as_of, (self._long + self._signal) * 2)
+        min_len = self._long + self._signal
+        out = {}
+        for ticker in window.columns:
+            series = window[ticker].dropna()
+            if len(series) < min_len:
+                out[ticker] = 0.0
+                continue
+            histogram = macd_histogram(series, self._short, self._long, self._signal)
+            out[ticker] = float(histogram.iloc[-1] / series.iloc[-1])
+        return pd.Series(out)
+
+
+@Registry.register(Factor, "realized_vol")
+class RealizedVolFactor(Factor):
+    """Annualized realized volatility over a trailing window -- takes a
+    PRICE matrix, same reasoning as TrailingReturnFactor above."""
+
+    def __init__(self, window_days: int = 10):
+        self._window_days = window_days
+
+    def compute(self, returns: pd.DataFrame, as_of: date) -> pd.Series:
+        window = _window(returns, as_of, self._window_days + 1)
+        if len(window) < self._window_days + 1:
+            return pd.Series(0.0, index=returns.columns)
+        return (window.pct_change().std() * (_TRADING_DAYS_PER_YEAR**0.5)).fillna(0.0)
+
+
+@Registry.register(Factor, "sma_distance")
+class SmaDistanceFactor(Factor):
+    """% distance of price from its own trailing SMA -- takes a PRICE
+    matrix, same reasoning as TrailingReturnFactor above."""
+
+    def __init__(self, window_days: int = 20):
+        self._window_days = window_days
+
+    def compute(self, returns: pd.DataFrame, as_of: date) -> pd.Series:
+        from ..strategy.indicators import sma
+
+        window = _window(returns, as_of, self._window_days)
+        if len(window) < self._window_days:
+            return pd.Series(0.0, index=returns.columns)
+        out = {}
+        for ticker in window.columns:
+            series = window[ticker].dropna()
+            if len(series) < self._window_days:
+                out[ticker] = 0.0
+                continue
+            out[ticker] = float(series.iloc[-1] / sma(series, self._window_days).iloc[-1] - 1)
+        return pd.Series(out)
+
+
+@Registry.register(Factor, "cross_sectional_rank")
+class CrossSectionalRank(Factor):
+    """Wraps another Factor and re-ranks ITS output across tickers for the
+    same as_of -- centered percentile rank, same convention RankScoreFn
+    (below) already uses for combining factors. Useful as a feature in its
+    own right (e.g. "this ticker's RSI relative to the rest of today's
+    universe," not just its raw RSI value)."""
+
+    def __init__(self, factor: Factor):
+        self._factor = factor
+
+    def compute(self, returns: pd.DataFrame, as_of: date) -> pd.Series:
+        raw = self._factor.compute(returns, as_of)
+        return raw.rank(pct=True) - 0.5
+
+
+@Registry.register(Factor, "intraday_volatility")
+class IntradayVolatilityFactor(Factor):
+    """Realized volatility from `as_of`'s own 1-minute bars -- demonstrates
+    building a Factor on top of `tam.marketdata.minute_source.MinuteBarSource`
+    instead of the daily price matrix every other Factor here uses (daily
+    EOD bars are the right grain for a multi-day hold, but not necessarily
+    for every feature -- this one needs the finer-grained minute lake).
+    Ignores `returns` entirely (its own ticker list comes from `returns.columns`,
+    everything else it needs it fetches itself) -- `compute_factors()`'s
+    contract (one value per ticker as of `as_of`) doesn't care what
+    granularity a given Factor reads internally. Needs the `marketdata`
+    extra installed and a TAM_PAT token configured
+    (see `tam.marketdata.connection`'s own docstring)."""
+
+    def compute(self, returns: pd.DataFrame, as_of: date) -> pd.Series:
+        from ..marketdata.minute_source import MinuteBarSource
+
+        source = Registry.get(MinuteBarSource, "marketdata")
+        out = {}
+        for ticker in returns.columns:
+            bars = source.fetch_minute_bars(ticker, as_of, as_of)
+            if bars.empty or len(bars) < 2:
+                out[ticker] = 0.0
+                continue
+            out[ticker] = float(bars["close"].pct_change().std() * (len(bars) ** 0.5))
+        return pd.Series(out)
+
+
 def compute_factors(returns: pd.DataFrame, as_of: date, factors: dict[str, Factor]) -> pd.DataFrame:
     """{factor_name: Factor} -> one date's factor table, index=ticker,
     columns=factor name."""

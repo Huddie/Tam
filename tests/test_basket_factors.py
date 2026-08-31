@@ -5,16 +5,27 @@ import pandas as pd
 import pytest
 
 from tam.basket.factors import (
+    CrossSectionalRank,
     ExpectedShortfall,
+    MacdFactor,
     MaxDrawdown,
     MeanReturn,
     OvernightAlpha,
     OvernightBeta,
     Persistence,
+    RealizedVolFactor,
     RollingSharpe,
+    RsiFactor,
+    SmaDistanceFactor,
+    TrailingReturnFactor,
     compute_factors,
     score,
 )
+
+
+def _prices(values, start=date(2024, 1, 1)):
+    idx = pd.to_datetime([start + timedelta(days=i) for i in range(len(values))])
+    return pd.Series(values, index=idx)
 
 
 def _returns(values, start=date(2024, 1, 1)):
@@ -213,3 +224,172 @@ def test_score_raises_a_clear_error_for_an_unregistered_method():
 
     with pytest.raises(KeyError, match="not_a_real_method"):
         score(table, {"x": 1.0}, method="not_a_real_method")
+
+
+def test_trailing_return_factor_matches_hand_computed_cumulative_return():
+    p = _prices([100.0, 101.0, 99.0, 102.0, 105.0, 110.0])
+    prices = pd.DataFrame({"A": p})
+
+    result = TrailingReturnFactor(window_days=5).compute(prices, p.index[-1].date())
+
+    assert result["A"] == pytest.approx(110.0 / 100.0 - 1)
+
+
+def test_trailing_return_factor_is_zero_with_insufficient_history():
+    p = _prices([100.0, 101.0])
+    prices = pd.DataFrame({"A": p})
+
+    result = TrailingReturnFactor(window_days=5).compute(prices, p.index[-1].date())
+
+    assert result["A"] == 0.0
+
+
+def test_rsi_factor_never_sees_data_after_as_of():
+    rng = np.random.default_rng(3)
+    p = _prices(100 * np.cumprod(1 + rng.normal(0, 0.01, 60)))
+    prices = pd.DataFrame({"A": p})
+    as_of = p.index[40].date()
+
+    before = RsiFactor(14).compute(prices, as_of)
+    corrupted = prices.copy()
+    corrupted.loc[corrupted.index > pd.Timestamp(as_of)] = 999.0
+    after = RsiFactor(14).compute(corrupted, as_of)
+
+    assert before.equals(after)
+
+
+def test_rsi_factor_is_neutral_with_insufficient_history():
+    p = _prices([100.0, 101.0])
+    prices = pd.DataFrame({"A": p})
+
+    result = RsiFactor(14).compute(prices, p.index[-1].date())
+
+    assert result["A"] == 50.0
+
+
+def test_rsi_factor_bounded_window_is_close_to_unbounded_full_history():
+    # The bounded-window optimization (period * 5) is a deliberate
+    # approximation, not an exact match -- Wilder's smoothing technically
+    # depends on where the series starts, so a shorter window converges to
+    # a very close but not bit-identical value. That's the whole point
+    # (bounding trades a negligible accuracy difference for avoiding the
+    # O(n^2) blowup confirmed live against the full-history version).
+    rng = np.random.default_rng(4)
+    p = _prices(100 * np.cumprod(1 + rng.normal(0, 0.01, 300)))
+    prices = pd.DataFrame({"A": p})
+    as_of = p.index[-1].date()
+
+    from tam.strategy.indicators import rsi
+
+    bounded = RsiFactor(14).compute(prices, as_of)
+    full_history = rsi(prices["A"], 14).iloc[-1]
+
+    assert bounded["A"] == pytest.approx(full_history, abs=2.0)
+
+
+def test_macd_factor_is_zero_with_insufficient_history():
+    p = _prices([100.0, 101.0, 99.0])
+    prices = pd.DataFrame({"A": p})
+
+    result = MacdFactor().compute(prices, p.index[-1].date())
+
+    assert result["A"] == 0.0
+
+
+def test_macd_factor_matches_indicators_module_normalized_by_price():
+    rng = np.random.default_rng(5)
+    p = _prices(100 * np.cumprod(1 + rng.normal(0, 0.01, 60)))
+    prices = pd.DataFrame({"A": p})
+    as_of = p.index[-1].date()
+
+    from tam.strategy.indicators import macd_histogram
+
+    result = MacdFactor().compute(prices, as_of)
+    expected = macd_histogram(p, 12, 26, 9).iloc[-1] / p.iloc[-1]
+
+    assert result["A"] == pytest.approx(expected)
+
+
+def test_realized_vol_factor_matches_hand_computed_annualized_std():
+    p = _prices([100.0, 101.0, 99.0, 102.0, 98.0])
+    prices = pd.DataFrame({"A": p})
+
+    result = RealizedVolFactor(window_days=4).compute(prices, p.index[-1].date())
+
+    expected = p.pct_change().std() * (252**0.5)
+    assert result["A"] == pytest.approx(expected)
+
+
+def test_sma_distance_factor_matches_hand_computed_value():
+    from tam.strategy.indicators import sma
+
+    p = _prices([100.0, 101.0, 99.0, 102.0, 105.0])
+    prices = pd.DataFrame({"A": p})
+    as_of = p.index[-1].date()
+
+    result = SmaDistanceFactor(window_days=5).compute(prices, as_of)
+
+    expected = p.iloc[-1] / sma(p, 5).iloc[-1] - 1
+    assert result["A"] == pytest.approx(expected)
+
+
+def test_cross_sectional_rank_reranks_the_wrapped_factors_output():
+    idx = pd.to_datetime([date(2024, 1, 1) + timedelta(days=i) for i in range(6)])
+    prices = pd.DataFrame(
+        {
+            "low": [100.0, 100.0, 100.0, 100.0, 100.0, 101.0],  # +1%
+            "mid": [100.0, 100.0, 100.0, 100.0, 100.0, 105.0],  # +5%
+            "high": [100.0, 100.0, 100.0, 100.0, 100.0, 110.0],  # +10%
+        },
+        index=idx,
+    )
+
+    result = CrossSectionalRank(TrailingReturnFactor(window_days=5)).compute(prices, idx[-1].date())
+
+    assert result["low"] < result["mid"] < result["high"]
+    assert result.max() <= 0.5
+    assert result.min() > -0.5
+
+
+def test_price_based_factors_are_usable_together_via_compute_factors():
+    rng = np.random.default_rng(6)
+    p_a = _prices(100 * np.cumprod(1 + rng.normal(0, 0.01, 60)))
+    p_b = _prices(50 * np.cumprod(1 + rng.normal(0, 0.02, 60)))
+    prices = pd.DataFrame({"A": p_a, "B": p_b})
+
+    table = compute_factors(
+        prices,
+        p_a.index[-1].date(),
+        {
+            "ret_5d": TrailingReturnFactor(5),
+            "rsi_14": RsiFactor(14),
+            "macd": MacdFactor(),
+            "vol_10d": RealizedVolFactor(10),
+            "sma_dist_20": SmaDistanceFactor(20),
+            "rsi_14_xrank": CrossSectionalRank(RsiFactor(14)),
+        },
+    )
+
+    assert list(table.columns) == ["ret_5d", "rsi_14", "macd", "vol_10d", "sma_dist_20", "rsi_14_xrank"]
+    assert list(table.index) == ["A", "B"]
+    assert not table.isna().any().any()
+
+
+def test_intraday_volatility_factor_reads_from_the_registered_minute_bar_source(monkeypatch):
+    from tam.basket.factors import IntradayVolatilityFactor
+    from tam.marketdata.minute_source import MinuteBarSource
+    from tam.registry import Registry
+
+    class _FakeMinuteBarSource:
+        def fetch_minute_bars(self, symbol, start, end, engine="pandas"):
+            idx = pd.date_range("2024-01-02 14:30", periods=5, freq="1min", tz="UTC")
+            scale = {"A": 0.001, "B": 0.05}[symbol]
+            closes = 100 * (1 + np.array([0, 1, -1, 1, -1]) * scale)
+            return pd.DataFrame({"close": closes}, index=idx)
+
+    monkeypatch.setitem(Registry._singletons, (MinuteBarSource, "marketdata"), _FakeMinuteBarSource())
+
+    prices = pd.DataFrame({"A": [0.0], "B": [0.0]})  # only .columns matters here
+    result = IntradayVolatilityFactor().compute(prices, date(2024, 1, 2))
+
+    assert result["A"] < result["B"]

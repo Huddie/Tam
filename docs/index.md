@@ -29,6 +29,7 @@ backtest
 reporting
 charting
 basket
+ml
 marketdata
 research-fred
 research-sec

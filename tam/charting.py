@@ -598,6 +598,80 @@ class TimeSeriesChart(Chart):
         return _apply_theme(fig)
 
 
+@Registry.register(Chart, "distribution")
+class DistributionChart(Chart):
+    """Plots each named series' VALUES as a histogram -- not a value-over-
+    time line like TimeSeriesChart. `distribution()` below is the ergonomic
+    entry point most callers should use instead of constructing this
+    directly."""
+
+    def __init__(
+        self,
+        title: str = "Distribution",
+        bins: int = 30,
+        color: str | None = None,
+        axis_title: str | None = None,
+        histnorm: str | None = None,
+    ):
+        self.title = title
+        self._bins = bins
+        self._color = color
+        self._axis_title = axis_title
+        self._histnorm = histnorm
+
+    def render(self, series: _SeriesInput) -> go.Figure:
+        curves = _to_curves(series)
+        fig = go.Figure()
+        for name, curve in curves.items():
+            marker = dict(color=self._color) if self._color else None
+            fig.add_trace(
+                go.Histogram(
+                    x=curve.dropna().values,
+                    name=name,
+                    nbinsx=self._bins,
+                    histnorm=self._histnorm,
+                    marker=marker,
+                    opacity=0.75 if len(curves) > 1 else 1.0,
+                )
+            )
+        if len(curves) > 1:
+            fig.update_layout(barmode="overlay")  # multiple series overlap semi-transparently, not stacked
+        fig.update_layout(title=self.title)
+        if self._axis_title:
+            fig.update_layout(yaxis=dict(title=self._axis_title))
+        return _apply_theme(fig)
+
+
+def distribution(
+    series: _SeriesInput,
+    title: str = "Distribution",
+    bins: int = 30,
+    *,
+    axis: str = "left",
+    layer: int | None = None,
+    color: str | None = None,
+    axis_title: str | None = None,
+    histnorm: str | None = None,
+) -> ChartCall:
+    """Same call/compose contract `timeseries()` documents above, but plots
+    a histogram of each series' VALUES instead of a value-over-time line --
+    for questions like "what does the distribution of daily IC readings
+    look like" or "how are this model's predicted scores distributed,"
+    where `timeseries()` would just draw an indecipherable spike-train:
+
+        distribution(model_ic)                                      # one histogram
+        distribution({"model": model_ic, "baseline": baseline_ic})   # overlaid, semi-transparent
+        distribution(scores, bins=50, histnorm="probability")        # normalized, finer bins
+        distribution(model_ic) | timeseries(model_ic)                # composed, two rows
+
+    `histnorm` passes straight through to Plotly's own `Histogram` trace
+    (`None` for raw counts, or `"percent"`/`"probability"`/`"density"`/
+    `"probability density"`)."""
+    return DistributionChart(title=title, bins=bins, color=color, axis_title=axis_title, histnorm=histnorm)(
+        series, axis=axis, layer=layer
+    )
+
+
 def timeseries(
     series: _SeriesInput,
     title: str = "Time Series",

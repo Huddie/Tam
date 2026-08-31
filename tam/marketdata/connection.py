@@ -17,6 +17,7 @@ explicit override nor a token resolves to anything.
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Optional
 
 
@@ -65,6 +66,30 @@ def resolve_connection(
 
 
 _shared_connection = None
+_thread_local = threading.local()
+
+
+def thread_local_connection():
+    """One connection PER CALLING THREAD, built lazily on first use and
+    reused after that -- the safe alternative to default_connection() for
+    any caller that might run from a thread pool.
+
+    default_connection() hands every default-configured caller in the
+    process the SAME connection object, which is exactly right for a
+    single-threaded notebook cell (see that function's own docstring) but
+    unsafe the moment more than one thread calls it concurrently: a DuckDB
+    connection isn't safe to use from multiple threads at once. Confirmed
+    live -- tam.marketdata.eod_provider.MarketDataEodProvider originally
+    used default_connection() and crashed the whole Python process with no
+    catchable exception (a native crash, not a Python one) as soon as
+    DataRepository.ingest()'s own ThreadPoolExecutor(max_workers=8)
+    (tam/data/repository.py) fanned concurrent fetches out across real
+    threads. Each thread minting its own connection here (and its own
+    short-lived R2 credential the first time it's used) costs a little
+    more than sharing one, but avoids that failure mode entirely."""
+    if not hasattr(_thread_local, "connection"):
+        _thread_local.connection = resolve_connection()
+    return _thread_local.connection
 
 
 def default_connection():

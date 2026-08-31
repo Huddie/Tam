@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 
 from tam.marketdata import connection
@@ -9,6 +11,7 @@ def _reset_shared_connection(monkeypatch):
     # around every test in this file so default_connection() tests don't
     # leak a cached object into (or out of) each other.
     monkeypatch.setattr(connection, "_shared_connection", None)
+    monkeypatch.setattr(connection, "_thread_local", threading.local())
 
 
 def test_resolve_connection_with_local_root_calls_open_duckdb(monkeypatch, tmp_path):
@@ -81,3 +84,31 @@ def test_is_missing_glob_error_matches_duckdbs_own_wording():
 
 def test_is_missing_glob_error_is_false_for_an_unrelated_exception():
     assert not connection.is_missing_glob_error(Exception("connection refused"))
+
+
+def test_thread_local_connection_gives_each_thread_its_own_object(monkeypatch):
+    calls = []
+
+    def fake_resolve(**kwargs):
+        calls.append(threading.current_thread().name)
+        return object()
+
+    monkeypatch.setattr(connection, "resolve_connection", fake_resolve)
+
+    results = {}
+
+    def worker(name):
+        results[name] = connection.thread_local_connection()
+        results[f"{name}_again"] = connection.thread_local_connection()
+
+    threads = [threading.Thread(target=worker, args=(f"t{i}",), name=f"t{i}") for i in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(calls) == 5  # exactly one resolve_connection() call per thread
+    for i in range(5):
+        assert results[f"t{i}"] is results[f"t{i}_again"]  # same thread reuses its own connection
+    distinct = {id(results[f"t{i}"]) for i in range(5)}
+    assert len(distinct) == 5  # every thread got a DIFFERENT connection object

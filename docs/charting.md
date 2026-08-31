@@ -25,6 +25,26 @@ Accepts a single `pd.Series`, a plain `list` of them (each one's own
 named `"sma_20"`/`"rsi_14"`, so no manual renaming needed), a
 `{name: series}` dict, or a wide `pd.DataFrame` (one column per name).
 
+## `distribution()` — histogram of a series' VALUES, not a line
+
+```python
+from tam.charting import distribution
+
+distribution(model_ic)  # one histogram
+distribution({"model": model_ic, "baseline": baseline_ic})  # overlaid, semi-transparent
+distribution(scores, bins=50, histnorm="probability")  # normalized, finer bins
+```
+
+For "what does the distribution of daily IC readings look like" — where
+`timeseries()` on the same series would just draw an indecipherable
+spike-train. Same call/compose contract as `timeseries()` (same four
+accepted series shapes, same `|`/`&` composition, same theming); multiple
+series overlay as semi-transparent histograms in one panel rather than
+stacking. `histnorm` passes straight through to Plotly's own `Histogram`
+trace (`None` for raw counts, or `"percent"`/`"probability"`/`"density"`/
+`"probability density"`). See [ML](ml.md) for a worked example — an
+`ExperimentResult.report()` uses this for the score-distribution panel.
+
 ## `candles()` — OHLC, native candlesticks
 
 ```python

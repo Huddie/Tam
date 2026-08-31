@@ -103,6 +103,20 @@ fred = [
 sec = [
     "edgartools>=5.0",
 ]
+# tam.ml's Model/SkorchModel + the "mlp" default architecture. CPU-only wheel
+# is still ~200MB -- kept optional (not a hard dependency of the whole
+# package) same reasoning as every other heavy/specialty extra here: torch/
+# skorch are only imported lazily inside tam/ml/model.py's own functions, so
+# `import tam.ml`/anything that imports it works fine without either
+# installed; only actually building/training a model needs them. skorch
+# wraps a plain nn.Module in an sklearn-compatible fit/predict/save/load
+# API (see tam/ml/model.py's own docstring for why this is used instead of
+# a hand-rolled training loop) and pulls in `tabulate`/`tqdm` transitively
+# -- both tiny, already-common packages, confirmed via dry-run resolution.
+ml = [
+    "torch>=2.2",
+    "skorch>=1.4",
+]
 docs = [
     "sphinx>=7.0",
     "myst-parser>=2.0",

@@ -18,11 +18,13 @@ from tam.charting import (
     ChartCall,
     ChartOverlay,
     ChartPipeline,
+    DistributionChart,
     DivergenceAlg,
     RectChart,
     TimeSeriesChart,
     ZScoreDivergence,
     candles,
+    distribution,
     find_divergence,
     load_ipython_extension,
     rect,
@@ -188,6 +190,69 @@ def test_custom_chart_subclass_is_directly_usable():
     series = _series(start_value=10.0)
     fig = DoubledChart()(series).render()
     assert list(fig.data[0].y) == [v * 2 for v in series.values]
+
+
+def test_distribution_returns_a_chart_call():
+    result = distribution(_series())
+    assert isinstance(result, ChartCall)
+
+
+def test_distribution_renders_a_single_histogram_trace():
+    fig = distribution(_series()).render()
+    assert len(fig.data) == 1
+    assert fig.data[0].type == "histogram"
+
+
+def test_distribution_uses_series_name_as_trace_name():
+    fig = distribution(_series(name="my_scores")).render()
+    assert fig.data[0].name == "my_scores"
+
+
+def test_distribution_accepts_a_dict_of_series_and_overlays_them():
+    fig = distribution(
+        {"model": _series(name="model"), "baseline": _series(name="baseline", start_value=50.0)}
+    ).render()
+    assert len(fig.data) == 2
+    assert {trace.name for trace in fig.data} == {"model", "baseline"}
+    assert fig.layout.barmode == "overlay"
+
+
+def test_distribution_single_series_has_no_overlay_barmode():
+    fig = distribution(_series()).render()
+    assert fig.layout.barmode is None
+
+
+def test_distribution_bins_param_sets_nbinsx():
+    fig = distribution(_series(), bins=42).render()
+    assert fig.data[0].nbinsx == 42
+
+
+def test_distribution_histnorm_passes_through_to_plotly():
+    fig = distribution(_series(), histnorm="probability").render()
+    assert fig.data[0].histnorm == "probability"
+
+
+def test_distribution_title_is_applied():
+    fig = distribution(_series(), title="Custom Title").render()
+    assert fig.layout.title.text == "Custom Title"
+
+
+def test_distribution_drops_nan_values():
+    series = _series()
+    series.iloc[3] = float("nan")
+    fig = distribution(series).render()
+    assert len(fig.data[0].x) == len(series) - 1
+
+
+def test_distribution_composes_with_timeseries_via_pipe():
+    pipeline = distribution(_series()) | timeseries(_series())
+    fig = pipeline.render()
+    assert len(fig.data) == 2
+
+
+def test_distribution_registered_under_the_chart_registry():
+    resolved = Registry.get(Chart, "distribution")
+    assert isinstance(resolved, DistributionChart)
 
 
 def test_rect_returns_a_chart_call():
