@@ -604,14 +604,24 @@ class ChartPipeline:
                     excluded = ("domain", "anchor", "overlaying")
                     secondary_subplot.yaxis.update({k: v for k, v in src_axis.items() if k not in excluded})
 
-        layout_kwargs: dict[str, Any] = {"height": total_height, "showlegend": True}
+        layout_kwargs: dict[str, Any] = {
+            "height": total_height,
+            "showlegend": True,
+            # Plotly's own default legend anchors to a fixed top-right corner
+            # of the WHOLE figure, sized to fit only its own content -- fine
+            # for one chart, but for a multi-row composite (this method only
+            # runs for n>1) it strands itself in a tiny box next to the
+            # FIRST row while every row below it has empty margin on the
+            # right with no legend at all (confirmed live on a 5-row, 2600px
+            # report()). A horizontal legend under the title reads naturally
+            # regardless of how tall the composite ends up -- unconditional
+            # now, not just for the secondary-axis case that originally
+            # motivated it.
+            "legend": dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        }
         if has_any_secondary:
-            # Same reasoning as ChartOverlay.render()'s own version of this --
-            # a right-hand axis in any row collides with Plotly's default
-            # (floating-right) legend and gets clipped; a horizontal legend
-            # inside the top of the composite, plus extra right margin, fixes
-            # every row at once rather than needing a per-row workaround.
-            layout_kwargs["legend"] = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+            # A secondary y-axis needs its own tick-label room on the right
+            # regardless of the legend above.
             layout_kwargs["margin"] = dict(r=60)
         composite.update_layout(**layout_kwargs)
         return _apply_theme(composite)

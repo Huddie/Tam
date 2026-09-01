@@ -665,10 +665,21 @@ def test_pipeline_with_a_secondary_axis_row_moves_legend_inside_to_avoid_clippin
     assert fig.layout.margin.r == 60
 
 
-def test_pipeline_without_any_secondary_axis_leaves_the_default_legend_alone():
+def test_pipeline_always_uses_a_horizontal_legend_regardless_of_secondary_axis():
+    """Regression: a plain vertical legend defaults to a fixed top-right
+    corner of the WHOLE figure, sized to fit only its own content -- for a
+    tall multi-row ChartPipeline composite (confirmed live on a 5-row,
+    ~2600px ExperimentResult.report()) that strands it in a tiny box next
+    to the first row while every row below has empty margin on the right
+    with no legend at all. Unlike ChartOverlay (a single panel, where the
+    plain default legend is genuinely fine with no secondary axis),
+    ChartPipeline always has multiple rows once it renders at all, so the
+    horizontal top legend is unconditional here, not just for the
+    secondary-axis case."""
     pipeline = timeseries(_series("a")) | timeseries(_series("b"))
     fig = pipeline.render()
-    assert fig.layout.legend.orientation is None
+    assert fig.layout.legend.orientation == "h"
+    assert fig.layout.legend.y == pytest.approx(1.02)
 
 
 def test_overlay_does_not_let_a_shape_only_members_axis_styling_leak_onto_a_shared_real_axis():
