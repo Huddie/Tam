@@ -430,6 +430,23 @@ class ChartOverlay:
         return self.render()._repr_mimebundle_(**kwargs)  # type: ignore[attr-defined]
 
 
+def _table_row_height_px(sub: go.Figure) -> float:
+    """A go.Table sub-figure's own natural pixel height: header + one row
+    per data row, at `header.height`/`cells.height` (Plotly's own
+    documented defaults, 28px/20px, when TableChart hasn't set them
+    explicitly) plus a little padding. Used by `render()` below to give a
+    table row exactly as much of the composite as it needs instead of the
+    same fixed budget every xy/heatmap row gets -- confirmed live via
+    `full_figure_for_development()` and a direct render that a flat
+    fraction failed in both directions (blank space under a short table,
+    clipped rows on a longer one)."""
+    table = next(t for t in sub.data if isinstance(t, go.Table))
+    header_height = table.header.height or 28
+    cell_height = table.cells.height or 20
+    n_rows = len(table.cells.values[0]) if table.cells.values else 0
+    return header_height + n_rows * cell_height + 30
+
+
 class ChartPipeline:
     """An ordered sequence of ChartCalls rendered as one composite Plotly
     figure (one subplot row per chart). Created by chaining ChartCalls with |:
@@ -482,19 +499,6 @@ class ChartPipeline:
             specs.append([spec])
         has_any_secondary = any(spec[0].get("secondary_y") for spec in specs)
 
-        # A go.Table's header/cell heights are fixed pixel values (set via
-        # header.height/cells.height, ~20-30px each), NOT stretched to fill
-        # whatever domain it's given -- giving a 3-row table the same full
-        # share as an xy/heatmap row left it top-anchored in mostly blank
-        # space, confirmed live in ExperimentResult.report()'s composite
-        # (two ~100px tables each stranded inside a ~350px row). Weighting
-        # table rows down keeps the SAME 350px-per-chart-row budget for
-        # everything else while giving a table only as much of the total
-        # height as it actually needs.
-        _TABLE_ROW_WEIGHT = 0.35
-        row_weights = [_TABLE_ROW_WEIGHT if spec[0]["type"] == "table" else 1.0 for spec in specs]
-        row_heights = [w / sum(row_weights) for w in row_weights]
-
         # A fixed 0.06 left each row's own subplot_title sitting close enough
         # to the row above's x-axis tick labels to look like visual overlap,
         # confirmed live at the common n=2/3 case (e.g. ExperimentResult.
@@ -505,6 +509,30 @@ class ChartPipeline:
         # it at any row count while giving small compositions real breathing
         # room.
         vertical_spacing = min(0.12, 0.9 / (n - 1))
+
+        # A go.Table's header/cell heights are fixed pixel values, NOT
+        # stretched to fill whatever domain it's given -- giving it the same
+        # 350px share as an xy/heatmap row either strands it in mostly blank
+        # space (a short table) or clips its last rows outside the domain
+        # (a long one), both confirmed live. Solving for an EXACT pixel
+        # target per row instead of a guessed fraction: make_subplots()
+        # scales normalized `row_heights` (summing to 1) by
+        # (1 - vertical_spacing * (n - 1)) before mapping them onto the
+        # plot area, and the plot area itself is the figure's own `height`
+        # minus Plotly's fixed default top/bottom margins (100 + 80 = 180px)
+        # -- both confirmed directly via `full_figure_for_development()`.
+        # Inverting that relationship (target_px -> row_heights -> a total
+        # figure height that makes those row_heights actually equal
+        # target_px on screen) is what makes each row land at the size it
+        # actually asked for, not an approximation of it.
+        _MARGIN_PX = 180  # Plotly's fixed default top (100) + bottom (80) margin
+        _CHART_ROW_PX = 350
+        target_px = [
+            _table_row_height_px(sub) if spec[0]["type"] == "table" else _CHART_ROW_PX
+            for spec, sub in zip(specs, sub_figs)
+        ]
+        row_heights = [px / sum(target_px) for px in target_px]
+        total_height = max(sum(target_px) / (1 - vertical_spacing * (n - 1)) + _MARGIN_PX, 600)
 
         composite = make_subplots(
             rows=n,
@@ -576,7 +604,7 @@ class ChartPipeline:
                     excluded = ("domain", "anchor", "overlaying")
                     secondary_subplot.yaxis.update({k: v for k, v in src_axis.items() if k not in excluded})
 
-        layout_kwargs: dict[str, Any] = {"height": max(350 * sum(row_weights), 600), "showlegend": True}
+        layout_kwargs: dict[str, Any] = {"height": total_height, "showlegend": True}
         if has_any_secondary:
             # Same reasoning as ChartOverlay.render()'s own version of this --
             # a right-hand axis in any row collides with Plotly's default

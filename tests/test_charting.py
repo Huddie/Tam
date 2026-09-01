@@ -420,13 +420,50 @@ def test_pipeline_gives_table_rows_a_smaller_row_heights_share_than_chart_rows()
     assert table_span < chart_span
 
 
-def test_pipeline_height_accounts_for_table_rows_taking_less_space():
-    """height = 350px per chart-equivalent row, where a table row counts as
-    a fraction of one -- two tables alone should total noticeably less than
-    the old flat 350px-per-row assumption (700px for n=2)."""
-    pipeline = table(_leaderboard_df()) | table(_leaderboard_df())
+def _rendered_row_height_px(
+    fig: go.Figure, row_domain_y: tuple[float, float], n: int, vertical_spacing: float
+) -> float:
+    """The ACTUAL on-screen pixel height of a row given its own normalized
+    `row_heights` fraction -- mirrors make_subplots()'s own documented
+    behavior (confirmed directly via full_figure_for_development() while
+    fixing this: row_heights are scaled by (1 - vertical_spacing*(n-1))
+    before mapping onto the plot area, and the plot area itself is
+    `fig.layout.height` minus Plotly's fixed default top+bottom margin,
+    100 + 80 = 180px)."""
+    normalized_span = row_domain_y[1] - row_domain_y[0]
+    row_heights_fraction = normalized_span / (1 - vertical_spacing * (n - 1))
+    return row_heights_fraction * (fig.layout.height - 180)
+
+
+def test_pipeline_gives_a_short_table_only_the_space_it_needs_not_a_full_chart_row():
+    """Regression: the first fix here gave every table a flat fraction of a
+    350px chart row regardless of its real row count -- too much for a
+    short table (confirmed live: a big blank gap below a 2-row table)."""
+    pipeline = table(_leaderboard_df()) | timeseries(_series("a"))  # _leaderboard_df() has 2 data rows
     fig = pipeline.render()
-    assert fig.layout.height < 700
+    vertical_spacing = min(0.12, 0.9 / 1)
+
+    table_trace = next(t for t in fig.data if isinstance(t, go.Table))
+    px = _rendered_row_height_px(fig, table_trace.domain.y, n=2, vertical_spacing=vertical_spacing)
+    content_px = 28 + 2 * 20 + 30  # header + 2 rows + padding, the same formula render() itself uses
+    assert px < 250  # nowhere near the old flat 350px-per-row share
+    assert px >= content_px - 1  # but still enough to render every row, not clipped
+
+
+def test_pipeline_does_not_clip_a_longer_tables_rows():
+    """Regression: the same flat-fraction fix that fixed short tables
+    UNDER-sized a longer one -- confirmed live, a 4-row leaderboard's last
+    row got pushed outside its allotted domain slice entirely (clipped, not
+    just cramped)."""
+    long_df = pd.concat([_leaderboard_df()] * 4, ignore_index=True)  # 8 data rows
+    pipeline = table(long_df) | timeseries(_series("a"))
+    fig = pipeline.render()
+    vertical_spacing = min(0.12, 0.9 / 1)
+
+    table_trace = next(t for t in fig.data if isinstance(t, go.Table))
+    px = _rendered_row_height_px(fig, table_trace.domain.y, n=2, vertical_spacing=vertical_spacing)
+    content_px = 28 + 8 * 20 + 30
+    assert px >= content_px - 1  # every one of the 8 rows fits, none pushed outside the domain
 
 
 def _ohlc_df(date_column: str | None = "date", periods: int = 5) -> pd.DataFrame:
