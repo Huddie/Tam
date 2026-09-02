@@ -405,9 +405,28 @@
         <article role="main" id="furo-main-content">
           <section id="module-tam.strategy.indicators">
 <span id="tam-strategy-indicators-module"></span><h1>tam.strategy.indicators module<a class="headerlink" href="#module-tam.strategy.indicators" title="Link to this heading">¶</a></h1>
-<p>Thin pandas-friendly wrappers around tulipy indicator functions.</p>
+<p>Thin pandas-friendly wrappers around TA-Lib indicator functions.</p>
 <p>Isolates the third-party indicator library behind a Series-in/Series-out contract,
-so strategies depend on this module’s shape, not tulipy’s raw-array API directly.</p>
+so strategies depend on this module’s shape, not the underlying library’s raw-array
+API directly – this is also why swapping libraries (as happened once already, from
+<cite>tulipy</cite>) only ever touches this one file.</p>
+<p>TA-Lib (PyPI package <cite>TA-Lib</cite>, imported as <cite>talib</cite>), not <cite>tulipy</cite>: <cite>tulipy</cite>’s only
+prebuilt Windows wheel targets Python 3.7 (<cite>cp37</cite>), below this project’s own floor
+(Python &gt;=3.10, see pyproject.toml) – every Windows install on a supported Python
+version was silently falling back to building from source, which needs the
+Microsoft Visual C++ Build Tools (a real C compiler toolchain, not something
+<cite>pip install</cite> can provide, and not something a locked-down corporate laptop
+typically has). Confirmed live: this broke <cite>pip install tam-quant</cite> outright for a
+Windows user. TA-Lib’s own Python wrapper now ships prebuilt wheels bundling the
+underlying C library for Windows/macOS/Linux across Python 3.9-3.13 (confirmed via
+its PyPI file listing), so no separate compiler or C library install is needed on
+any of those. It’s also the long-standing industry-standard technical-analysis
+library, not a newer/less-vetted alternative.</p>
+<p>TA-Lib’s functions return an array the SAME LENGTH as the input, with a leading run
+of NaN for whatever warmup period that indicator needs (unlike tulipy, which
+returned an already-shorter, NaN-free array) – <cite>.dropna()</cite> below restores the
+exact same “shorter Series, no NaN, indexed on the tail” contract every caller
+already depends on, so nothing outside this module needed to change.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="tam.strategy.indicators.bbands">
 <span class="sig-prename descclassname"><span class="pre">tam.strategy.indicators.</span></span><span class="sig-name descname"><span class="pre">bbands</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stddev</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Series</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Series</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Series</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#tam.strategy.indicators.bbands" title="Link to this definition">¶</a></dt>
