@@ -90,7 +90,13 @@ export function DetailPage() {
               </div>
             ) : (
               <p className="muted">
-                <strong>Type:</strong> {discovery.type} &nbsp; <strong>Created by:</strong> {discovery.created_by}
+                <strong>Type:</strong> {discovery.type} &nbsp; <strong>Project:</strong>{" "}
+                {discovery.project ? (
+                  <Link to={`/?project=${encodeURIComponent(discovery.project.slug)}`}>{discovery.project.name}</Link>
+                ) : (
+                  "General"
+                )}{" "}
+                &nbsp; <strong>Created by:</strong> {discovery.created_by}
               </p>
             )}
 

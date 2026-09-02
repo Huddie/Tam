@@ -70,10 +70,12 @@ class DiscoveryClient:
     def whoami(self) -> dict:
         return self._request("GET", "/api/publish/whoami").json()
 
-    def create_discovery(self, *, title: str, type: str, name: str | None) -> dict:
+    def create_discovery(self, *, title: str, type: str, name: str | None, project: str | None = None) -> dict:
         body = {"title": title, "type": type}
         if name:
             body["name"] = name
+        if project:
+            body["project"] = project
         return self._request("POST", "/api/publish/discoveries", json=body).json()
 
     def create_version(self, discovery_id: str, **fields) -> dict:

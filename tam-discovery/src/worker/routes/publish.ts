@@ -1,6 +1,7 @@
 import { ApiError } from "../lib/errors";
 import {
   findDiscoveryBySlugOrId,
+  findProjectBySlugOrId,
   linkVersionTags,
   newId,
   nowIso,
@@ -19,13 +20,35 @@ export async function whoami(user: string): Promise<Response> {
 /** POST /api/publish/discoveries -- resolve-or-create by `name` (the stable
  * slug), or create a brand-new unaliased discovery if `name` is omitted.
  * Doesn't create a version yet -- that's the next call -- so this alone
- * never appears in the catalog with nothing to show. */
+ * never appears in the catalog with nothing to show.
+ *
+ * `project` (a project's slug or id) is resolved and stored as
+ * `project_id` on FIRST creation only -- same as `type`, it's ignored on
+ * the "resolve an existing discovery by name" branch below (a discovery's
+ * project is fixed at creation, not re-assignable via publish; use
+ * `POST /api/discoveries/:id/project` from the UI/API to move it later).
+ * Must already exist and not be archived -- unlike `name` (which
+ * resolve-or-creates), an unknown/typo'd `project` is a 400, not a silent
+ * new project -- projects are created in the UI, not implicitly from a
+ * publish call. */
 export async function createDiscovery(request: Request, env: Env, user: string): Promise<Response> {
-  const body = await request.json<{ title?: string; type?: string; name?: string }>();
+  const body = await request.json<{ title?: string; type?: string; name?: string; project?: string }>();
   if (!body.title) throw new ApiError(400, "title is required");
 
   const type = normalizeTag(body.type || "dashboard");
   if (!type) throw new ApiError(400, "type is empty after normalization");
+
+  let projectId: string | null = null;
+  if (body.project) {
+    const project = await findProjectBySlugOrId(env, body.project);
+    if (!project || project.archived_at) {
+      throw new ApiError(
+        400,
+        `project ${JSON.stringify(body.project)} not found -- create it first at /settings/projects`
+      );
+    }
+    projectId = project.id;
+  }
 
   if (body.name) {
     const slug = normalizeTag(body.name);
@@ -43,9 +66,9 @@ export async function createDiscovery(request: Request, env: Env, user: string):
     // create_version()/finalize() always overwrite it before any reader
     // (catalog list, /d/:id) can observe this row.
     await env.DB.prepare(
-      "INSERT INTO discoveries (id, slug, type, title, created_by, created_at, updated_at, latest_version_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO discoveries (id, slug, type, title, created_by, created_at, updated_at, latest_version_id, project_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
-      .bind(id, slug, type, body.title, user, now, now, id)
+      .bind(id, slug, type, body.title, user, now, now, id, projectId)
       .run();
     return Response.json({ discovery_id: id, slug, type, title: body.title });
   }
@@ -53,9 +76,9 @@ export async function createDiscovery(request: Request, env: Env, user: string):
   const id = newId();
   const now = nowIso();
   await env.DB.prepare(
-    "INSERT INTO discoveries (id, slug, type, title, created_by, created_at, updated_at, latest_version_id) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO discoveries (id, slug, type, title, created_by, created_at, updated_at, latest_version_id, project_id) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)"
   )
-    .bind(id, type, body.title, user, now, now, id)
+    .bind(id, type, body.title, user, now, now, id, projectId)
     .run();
   return Response.json({ discovery_id: id, slug: null, type, title: body.title });
 }
@@ -238,6 +261,7 @@ export async function listPublishedDiscoveries(request: Request, env: Env): Prom
   const type = url.searchParams.get("type");
   const tag = url.searchParams.get("tag");
   const q = url.searchParams.get("q");
+  const project = url.searchParams.get("project");
   const sort = url.searchParams.get("sort") === "newest" ? "created_at" : "updated_at";
 
   const conditions: string[] = [];
@@ -260,14 +284,21 @@ export async function listPublishedDiscoveries(request: Request, env: Env): Prom
     conditions.push("d.title LIKE ? COLLATE NOCASE");
     bindings.push(`%${q}%`);
   }
+  if (project === "general") {
+    conditions.push("d.project_id IS NULL");
+  } else if (project) {
+    const projectRow = await findProjectBySlugOrId(env, project);
+    conditions.push("d.project_id = ?");
+    bindings.push(projectRow?.id ?? "__no_such_project__");
+  }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const { results } = await env.DB.prepare(
-    `SELECT d.id, d.slug, d.type, d.title, d.created_by, d.created_at, d.updated_at
-     FROM discoveries d ${where} ORDER BY d.${sort} DESC LIMIT 200`
+    `SELECT d.id, d.slug, d.type, d.title, d.created_by, d.created_at, d.updated_at, p.slug AS project_slug
+     FROM discoveries d LEFT JOIN projects p ON p.id = d.project_id ${where} ORDER BY d.${sort} DESC LIMIT 200`
   )
     .bind(...bindings)
-    .all<DiscoveryRow>();
+    .all<DiscoveryRow & { project_slug: string | null }>();
 
   return Response.json({
     discoveries: results.map((row) => ({
@@ -276,6 +307,7 @@ export async function listPublishedDiscoveries(request: Request, env: Env): Prom
       title: row.title,
       created_by: row.created_by,
       updated_at: row.updated_at,
+      project: row.project_slug ?? "general",
     })),
   });
 }

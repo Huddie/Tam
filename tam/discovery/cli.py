@@ -46,6 +46,11 @@ def _add_publish_arguments(parser: argparse.ArgumentParser) -> None:
         "--name",
         help="Stable slug -- publishing again with the same --name adds a new version instead of a new discovery",
     )
+    parser.add_argument(
+        "--project",
+        help="Assign to an existing project (slug or id, managed at /settings/projects) -- only takes effect on first "
+        "publish; omit to leave ungrouped (shows under General)",
+    )
     parser.add_argument("--description", help="Longer free-text description")
     parser.add_argument(
         "--tag", dest="tags", action="append", default=[], help="Repeatable, e.g. --tag earnings --tag q3"
@@ -88,6 +93,7 @@ def _build_parser() -> argparse.ArgumentParser:
     list_parser.add_argument("--tag", help="Filter by tag")
     list_parser.add_argument("--type", help="Filter by type")
     list_parser.add_argument("--creator", help="Filter by uploader")
+    list_parser.add_argument("--project", help="Filter by project (slug), or 'general' for ungrouped discoveries")
     list_parser.add_argument("--sort", choices=["newest", "updated"], default="updated")
     list_parser.add_argument("--token", help="Overrides the usual token resolution")
     list_parser.add_argument("--api-url", help=f"Overrides {os_env_hint()}")
@@ -114,6 +120,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
         title=args.title,
         type=args.type,
         name=args.name,
+        project=args.project,
         description=args.description,
         tags=args.tags,
         metadata=_parse_metadata(args.metadata_json),
@@ -172,12 +179,13 @@ def cmd_list(args: argparse.Namespace) -> int:
             "tag": args.tag,
             "type": args.type,
             "creator": args.creator,
+            "project": args.project,
             "sort": args.sort,
         }.items()
         if v
     }
     result = client.list_discoveries(**params)
-    _print_table(result.get("discoveries", []), ["name", "type", "title", "created_by", "updated_at"])
+    _print_table(result.get("discoveries", []), ["name", "type", "project", "title", "created_by", "updated_at"])
     return 0
 
 

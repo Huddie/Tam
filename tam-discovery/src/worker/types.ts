@@ -25,6 +25,18 @@ export interface DiscoveryRow {
   updated_at: string;
   latest_version_id: string;
   hidden_at: string | null;
+  project_id: string | null;
+}
+
+export interface ProjectRow {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
 }
 
 export interface VersionRow {

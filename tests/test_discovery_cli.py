@@ -16,6 +16,8 @@ def test_publish_subcommand_parses_all_flags():
             "report",
             "--name",
             "n",
+            "--project",
+            "q3-earnings",
             "--description",
             "d",
             "--tag",
@@ -39,6 +41,7 @@ def test_publish_subcommand_parses_all_flags():
     assert args.title == "T"
     assert args.type == "report"
     assert args.name == "n"
+    assert args.project == "q3-earnings"
     assert args.description == "d"
     assert args.tags == ["a", "b"]
     assert args.source_file == "src.py"
@@ -46,6 +49,14 @@ def test_publish_subcommand_parses_all_flags():
     assert args.no_git is True
     assert args.token == "tok"
     assert args.api_url == "https://x"
+
+
+def test_publish_defaults_project_to_none():
+    parser = _build_parser()
+
+    args = parser.parse_args(["publish", "report.html", "--title", "T"])
+
+    assert args.project is None
 
 
 def test_publish_defaults_type_to_dashboard_and_no_git_to_false():
@@ -78,13 +89,16 @@ def test_login_subcommand_parses():
 def test_list_subcommand_parses_filters():
     parser = _build_parser()
 
-    args = parser.parse_args(["list", "-q", "term", "--tag", "t", "--type", "ty", "--creator", "c", "--sort", "newest"])
+    args = parser.parse_args(
+        ["list", "-q", "term", "--tag", "t", "--type", "ty", "--creator", "c", "--project", "p", "--sort", "newest"]
+    )
 
     assert args.command == "list"
     assert args.q == "term"
     assert args.tag == "t"
     assert args.type == "ty"
     assert args.creator == "c"
+    assert args.project == "p"
     assert args.sort == "newest"
 
 

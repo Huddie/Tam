@@ -1,3 +1,9 @@
+export interface ProjectRef {
+  id: string;
+  slug: string;
+  name: string;
+}
+
 export interface Discovery {
   id: string;
   name: string;
@@ -7,11 +13,24 @@ export interface Discovery {
   created_at: string;
   updated_at: string;
   tags: string[];
+  project: ProjectRef | null;
   can_manage: boolean;
 }
 
 export interface DiscoveryDetail extends Discovery {
   latest_version_id: string;
+}
+
+export interface Project {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  discovery_count: number;
+  can_manage: boolean;
 }
 
 export interface VersionSummary {
@@ -68,6 +87,38 @@ export function renameDiscovery(idOrSlug: string, title: string): Promise<{ id: 
 
 export function hideDiscovery(idOrSlug: string): Promise<{ id: string; hidden: boolean }> {
   return api(`/api/discoveries/${encodeURIComponent(idOrSlug)}/hide`, { method: "POST" });
+}
+
+export function assignProject(idOrSlug: string, project: string | null): Promise<{ id: string; project_id: string | null }> {
+  return api(`/api/discoveries/${encodeURIComponent(idOrSlug)}/project`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ project }),
+  });
+}
+
+export function listProjects(): Promise<{ projects: Project[] }> {
+  return api("/api/projects");
+}
+
+export function createProject(name: string, description?: string): Promise<Project> {
+  return api("/api/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description }),
+  });
+}
+
+export function updateProject(id: string, fields: { name?: string; description?: string }): Promise<Project> {
+  return api(`/api/projects/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+}
+
+export function archiveProject(id: string): Promise<{ id: string; archived: boolean }> {
+  return api(`/api/projects/${encodeURIComponent(id)}/archive`, { method: "POST" });
 }
 
 export function listTags(): Promise<{ tags: string[] }> {

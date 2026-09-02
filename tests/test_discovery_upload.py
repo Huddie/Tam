@@ -50,8 +50,8 @@ class _FakeClient:
         self.api_url = api_url
         self.calls = []
 
-    def create_discovery(self, *, title, type, name):
-        self.calls.append(("create_discovery", {"title": title, "type": type, "name": name}))
+    def create_discovery(self, *, title, type, name, project=None):
+        self.calls.append(("create_discovery", {"title": title, "type": type, "name": name, "project": project}))
         return {"discovery_id": "disc-1", "type": type}
 
     def create_version(self, discovery_id, **fields):
@@ -101,7 +101,7 @@ def test_upload_happy_path_with_a_non_default_type(tmp_path, fake_client):
     ]
 
     _, create_discovery_body = client.calls[0]
-    assert create_discovery_body == {"title": "Q3 Report", "type": "report", "name": None}
+    assert create_discovery_body == {"title": "Q3 Report", "type": "report", "name": None, "project": None}
 
     _, discovery_id, version_fields = client.calls[1]
     assert discovery_id == "disc-1"
@@ -121,6 +121,26 @@ def test_upload_defaults_type_to_dashboard(tmp_path, fake_client):
 
     _, create_discovery_body = fake_client["client"].calls[0]
     assert create_discovery_body["type"] == "dashboard"
+
+
+def test_upload_forwards_project_to_create_discovery(tmp_path, fake_client):
+    html_path = tmp_path / "report.html"
+    html_path.write_text("<html></html>")
+
+    upload(html_path, title="Grouped report", project="q3-earnings")
+
+    _, create_discovery_body = fake_client["client"].calls[0]
+    assert create_discovery_body["project"] == "q3-earnings"
+
+
+def test_upload_defaults_project_to_none(tmp_path, fake_client):
+    html_path = tmp_path / "report.html"
+    html_path.write_text("<html></html>")
+
+    upload(html_path, title="Ungrouped report")
+
+    _, create_discovery_body = fake_client["client"].calls[0]
+    assert create_discovery_body["project"] is None
 
 
 def test_upload_merges_captured_git_info_into_the_version_fields(tmp_path, fake_client, monkeypatch):

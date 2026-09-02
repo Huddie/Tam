@@ -45,7 +45,13 @@ llm = ["mlx-lm>=0.31.3"]
 # an already-running Colab kernel, which reliably crashes or hangs the
 # runtime (Colab's own warning: "Upgrading ipython, ipykernel, tornado,
 # prompt-toolkit ... can cause your runtime to repeatedly crash").
-notebook = ["ipython"]
+# ipywidgets: DuckDB's own Jupyter-kernel detection requires it to be
+# installed to change `enable_progress_bar` at all inside a real kernel
+# (even to turn it off) -- tam.marketdata.duckdb_query._configure_connection
+# catches the resulting InvalidInputException without it, but installing
+# this keeps the progress-bar-disable (see that function's own docstring
+# for why that matters) actually working rather than silently skipped.
+notebook = ["ipython", "ipywidgets"]
 quantstats = [
     "quantstats>=0.0.81",
 ]

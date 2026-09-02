@@ -10,7 +10,8 @@ import {
   listPublishedDiscoveries,
   whoami,
 } from "./routes/publish";
-import { getDiscovery, getVersions, hideDiscovery, listDiscoveries, renameDiscovery } from "./routes/discoveries";
+import { getDiscovery, getVersions, hideDiscovery, listDiscoveries, renameDiscovery, assignProject } from "./routes/discoveries";
+import { archiveProject, createProject, listProjects, updateProject } from "./routes/projects";
 import { listTags, listTypes } from "./routes/tags";
 import { createToken, listTokens, revokeToken } from "./routes/tokens";
 import { viewArtifact } from "./routes/view";
@@ -63,8 +64,18 @@ async function handleCatalogApi(request: Request, env: Env, path: string[]): Pro
   if (path.length === 3 && path[0] === "discoveries" && path[2] === "hide" && method === "POST") {
     return hideDiscovery(env, user, path[1]);
   }
+  if (path.length === 3 && path[0] === "discoveries" && path[2] === "project" && method === "POST") {
+    return assignProject(request, env, user, path[1]);
+  }
   if (path.length === 1 && path[0] === "tags" && method === "GET") return listTags(env);
   if (path.length === 1 && path[0] === "types" && method === "GET") return listTypes(env);
+
+  if (path[0] === "projects") {
+    if (path.length === 1 && method === "GET") return listProjects(env, user);
+    if (path.length === 1 && method === "POST") return createProject(request, env, user);
+    if (path.length === 2 && method === "PATCH") return updateProject(request, env, user, path[1]);
+    if (path.length === 3 && path[2] === "archive" && method === "POST") return archiveProject(env, user, path[1]);
+  }
 
   if (path[0] === "tokens") {
     if (path.length === 1 && method === "POST") return createToken(request, env, user);

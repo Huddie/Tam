@@ -1,4 +1,4 @@
-import type { DiscoveryRow, Env, VersionRow } from "../types";
+import type { DiscoveryRow, Env, ProjectRow, VersionRow } from "../types";
 import { ApiError } from "./errors";
 import { normalizeTag } from "./tags";
 
@@ -14,6 +14,13 @@ export async function findDiscoveryBySlugOrId(env: Env, slugOrId: string): Promi
   const row = await env.DB.prepare("SELECT * FROM discoveries WHERE id = ? OR slug = ?")
     .bind(slugOrId, slugOrId)
     .first<DiscoveryRow>();
+  return row ?? null;
+}
+
+export async function findProjectBySlugOrId(env: Env, slugOrId: string): Promise<ProjectRow | null> {
+  const row = await env.DB.prepare("SELECT * FROM projects WHERE id = ? OR slug = ?")
+    .bind(slugOrId, slugOrId)
+    .first<ProjectRow>();
   return row ?? null;
 }
 

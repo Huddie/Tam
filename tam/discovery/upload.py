@@ -79,6 +79,7 @@ def upload(
     title: str,
     type: str = "dashboard",
     name: str | None = None,
+    project: str | None = None,
     description: str | None = None,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
@@ -97,6 +98,18 @@ def upload(
     default "dashboard" -- not a fixed enum, matches how tags work). `tags`
     and `metadata` are stored verbatim (tags get server-side normalized and
     deduped, e.g. "After Hours"/"after-hours" collapse to one tag).
+
+    `project`, if given, assigns this discovery to an existing project (a
+    folder-like grouping managed at `/settings/projects` -- slug or id,
+    e.g. `project="q3-earnings"`). Only takes effect the FIRST time this
+    discovery is created (same as `type`) -- publishing again under the
+    same `name` ignores a changed `project`; move it afterward from the
+    catalog UI instead. The project must already exist and not be
+    archived -- this raises (a 400 from the server, surfaced as
+    `requests.HTTPError`) rather than silently creating one, since projects
+    are meant to be created deliberately in the UI, not typo'd into
+    existence from a script. Omit it (the default) to leave this discovery
+    ungrouped -- it shows up under "General" in the catalog.
 
     Git provenance (commit/branch/repo/dirty-tree flag) is captured
     automatically from the CURRENT process's working directory unless
@@ -124,7 +137,7 @@ def upload(
     resolved_token = resolve_token(token)
     client = DiscoveryClient(resolved_token, api_url=api_url, timeout=timeout)
 
-    discovery = client.create_discovery(title=title, type=type, name=name)
+    discovery = client.create_discovery(title=title, type=type, name=name, project=project)
     discovery_id = discovery["discovery_id"]
 
     version_fields: dict[str, Any] = {

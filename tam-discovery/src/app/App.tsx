@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { NavBar } from "./NavBar";
 import { CatalogPage } from "./pages/CatalogPage";
 import { DetailPage } from "./pages/DetailPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
 import { TokensPage } from "./pages/TokensPage";
 
 export function App() {
@@ -12,6 +13,7 @@ export function App() {
         <Route path="/" element={<CatalogPage />} />
         <Route path="/d/:id" element={<DetailPage />} />
         <Route path="/settings/tokens" element={<TokensPage />} />
+        <Route path="/settings/projects" element={<ProjectsPage />} />
       </Routes>
     </>
   );

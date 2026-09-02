@@ -158,6 +158,13 @@ button.primary:hover {
   overflow-x: auto;
 }
 
+.project-section {
+  margin-top: 1.75rem;
+}
+.project-section h2 {
+  margin-bottom: 0.5rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

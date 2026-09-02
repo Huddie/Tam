@@ -1,23 +1,46 @@
-import { findDiscoveryBySlugOrId, nowIso, tagNamesForDiscovery } from "../lib/d1";
+import { findDiscoveryBySlugOrId, findProjectBySlugOrId, nowIso, tagNamesForDiscovery } from "../lib/d1";
 import { ApiError } from "../lib/errors";
 import { normalizeTag } from "../lib/tags";
-import type { DiscoveryRow, Env } from "../types";
+import type { DiscoveryRow, Env, ProjectRow } from "../types";
 
 const PAGE_SIZE = 50;
 
-/** GET /api/discoveries?q=&tag=&type=&creator=&sort=newest|updated&page= --
- * every filter is optional and combinable (AND'd together); `q` is a plain
- * `LIKE ... COLLATE NOCASE` substring match on title, not FTS5 -- fine at
- * internal-catalog scale. Hidden (soft-deleted) discoveries never appear
+/** `discoveries.project_id` -> `{id, slug, name}` (or `null`, meaning
+ * "General") for every row in one batch -- avoids an N+1 project lookup per
+ * listing page. Archived projects are looked up too (not filtered out): a
+ * discovery pointing at one still shows its name, per projects.ts's own
+ * "archiving doesn't touch project_id" comment. */
+async function projectsForDiscoveries(
+  env: Env,
+  rows: DiscoveryRow[]
+): Promise<Map<string, { id: string; slug: string; name: string }>> {
+  const ids = [...new Set(rows.map((row) => row.project_id).filter((id): id is string => id !== null))];
+  if (!ids.length) return new Map();
+
+  const { results } = await env.DB.prepare(
+    `SELECT id, slug, name FROM projects WHERE id IN (${ids.map(() => "?").join(",")})`
+  )
+    .bind(...ids)
+    .all<Pick<ProjectRow, "id" | "slug" | "name">>();
+  return new Map(results.map((row) => [row.id, row]));
+}
+
+/** GET /api/discoveries?q=&tag=&type=&creator=&project=&sort=newest|updated&page=
+ * -- every filter is optional and combinable (AND'd together); `q` is a
+ * plain `LIKE ... COLLATE NOCASE` substring match on title, not FTS5 -- fine
+ * at internal-catalog scale. Hidden (soft-deleted) discoveries never appear
  * here, regardless of other filters -- see hideDiscovery() below; their
  * permalink/version URLs still resolve directly, just not through the
- * catalog listing. */
+ * catalog listing. `project=general` explicitly lists ungrouped discoveries
+ * (`project_id IS NULL`); any other `project` value is resolved as a
+ * slug/id via findProjectBySlugOrId(). */
 export async function listDiscoveries(request: Request, env: Env, user: string): Promise<Response> {
   const url = new URL(request.url);
   const q = url.searchParams.get("q");
   const tag = url.searchParams.get("tag");
   const type = url.searchParams.get("type");
   const creator = url.searchParams.get("creator");
+  const project = url.searchParams.get("project");
   const sort = url.searchParams.get("sort") === "newest" ? "created_at" : "updated_at";
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1);
 
@@ -41,6 +64,13 @@ export async function listDiscoveries(request: Request, env: Env, user: string):
     );
     bindings.push(normalizeTag(tag));
   }
+  if (project === "general") {
+    conditions.push("d.project_id IS NULL");
+  } else if (project) {
+    const projectRow = await findProjectBySlugOrId(env, project);
+    conditions.push("d.project_id = ?");
+    bindings.push(projectRow?.id ?? "__no_such_project__");
+  }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const { results } = await env.DB.prepare(
@@ -54,6 +84,7 @@ export async function listDiscoveries(request: Request, env: Env, user: string):
 
   const hasMore = results.length > PAGE_SIZE;
   const pageRows = hasMore ? results.slice(0, PAGE_SIZE) : results;
+  const projectsById = await projectsForDiscoveries(env, pageRows);
 
   const discoveries = await Promise.all(
     pageRows.map(async (row) => ({
@@ -65,6 +96,7 @@ export async function listDiscoveries(request: Request, env: Env, user: string):
       created_at: row.created_at,
       updated_at: row.updated_at,
       tags: await tagNamesForDiscovery(env, row.id),
+      project: row.project_id ? (projectsById.get(row.project_id) ?? null) : null,
       can_manage: row.created_by === user,
     }))
   );
@@ -77,6 +109,7 @@ export async function getDiscovery(env: Env, slugOrId: string, user: string): Pr
   if (!discovery) throw new ApiError(404, `no discovery ${slugOrId}`);
 
   const tags = await tagNamesForDiscovery(env, discovery.id);
+  const projectsById = await projectsForDiscoveries(env, [discovery]);
   return Response.json({
     id: discovery.id,
     name: discovery.slug ?? discovery.id,
@@ -87,6 +120,7 @@ export async function getDiscovery(env: Env, slugOrId: string, user: string): Pr
     updated_at: discovery.updated_at,
     latest_version_id: discovery.latest_version_id,
     tags,
+    project: discovery.project_id ? (projectsById.get(discovery.project_id) ?? null) : null,
     // Lets the catalog/detail UI decide whether to show the rename/delete
     // menu at all, without the client needing to know or trust its own
     // idea of "who am I" -- this reflects the server's own Access-verified
@@ -136,6 +170,35 @@ export async function renameDiscovery(request: Request, env: Env, user: string, 
     .run();
 
   return Response.json({ id: discovery.id, title });
+}
+
+/** POST /api/discoveries/:id/project -- move a discovery to a different
+ * project, or back to "General" with `project: null`/omitted, creator
+ * only. `project` is a slug/id resolved the same way publish-time
+ * `project=` is (see routes/publish.ts's createDiscovery()) -- must already
+ * exist and not be archived, same "error, don't silently create/attach to
+ * a typo'd slug" rule. */
+export async function assignProject(request: Request, env: Env, user: string, slugOrId: string): Promise<Response> {
+  const discovery = await requireOwnedDiscovery(env, user, slugOrId);
+  const body = await request.json<{ project?: string | null }>().catch(() => ({}) as { project?: string | null });
+
+  let projectId: string | null = null;
+  if (body.project) {
+    const project = await findProjectBySlugOrId(env, body.project);
+    if (!project || project.archived_at) {
+      throw new ApiError(
+        400,
+        `project ${JSON.stringify(body.project)} not found -- create it first at /settings/projects`
+      );
+    }
+    projectId = project.id;
+  }
+
+  await env.DB.prepare("UPDATE discoveries SET project_id = ?, updated_at = ? WHERE id = ?")
+    .bind(projectId, nowIso(), discovery.id)
+    .run();
+
+  return Response.json({ id: discovery.id, project_id: projectId });
 }
 
 /** POST /api/discoveries/:id/hide -- soft-delete, creator only. Removes it

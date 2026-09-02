@@ -244,8 +244,20 @@ def _configure_connection(con: duckdb.DuckDBPyConnection) -> None:
     chart. Disabling it here means every open_duckdb()/explorer_client
     connection is safe by default -- nobody querying
     tam.research.data.sec or tam.marketdata from a notebook should have
-    to discover this themselves."""
-    con.sql("SET enable_progress_bar = false; SET enable_progress_bar_print = false;")
+    to discover this themselves.
+
+    DuckDB's Jupyter-kernel detection requires `ipywidgets` to be
+    installed to change this setting AT ALL (even to turn it off) --
+    confirmed live: `SET enable_progress_bar = false` itself raises
+    `InvalidInputException` inside a real Jupyter kernel without it. Caught
+    here rather than propagated so a missing `ipywidgets` degrades to "the
+    progress bar might render" instead of "no connection at all."""
+    import duckdb
+
+    try:
+        con.sql("SET enable_progress_bar = false; SET enable_progress_bar_print = false;")
+    except duckdb.InvalidInputException:
+        pass
     _register_macros(con)
 
 

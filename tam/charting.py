@@ -499,17 +499,6 @@ class ChartPipeline:
             specs.append([spec])
         has_any_secondary = any(spec[0].get("secondary_y") for spec in specs)
 
-        # A fixed 0.06 left each row's own subplot_title sitting close enough
-        # to the row above's x-axis tick labels to look like visual overlap,
-        # confirmed live at the common n=2/3 case (e.g. ExperimentResult.
-        # report()'s ic_chart | score_chart). Plotly hard-caps vertical_spacing
-        # at 1/(rows-1) (raises ValueError above it), so a fixed larger value
-        # would break once enough charts are piped together -- scaling it down
-        # as n grows, capped at 90% of that limit, stays comfortably clear of
-        # it at any row count while giving small compositions real breathing
-        # room.
-        vertical_spacing = min(0.12, 0.9 / (n - 1))
-
         # A go.Table's header/cell heights are fixed pixel values, NOT
         # stretched to fill whatever domain it's given -- giving it the same
         # 350px share as an xy/heatmap row either strands it in mostly blank
@@ -532,7 +521,32 @@ class ChartPipeline:
             for spec, sub in zip(specs, sub_figs)
         ]
         row_heights = [px / sum(target_px) for px in target_px]
-        total_height = max(sum(target_px) / (1 - vertical_spacing * (n - 1)) + _MARGIN_PX, 600)
+
+        # _GAP_PX is an ABSOLUTE pixel target between adjacent rows, solved
+        # for the same way target_px is -- NOT a flat fraction of the whole
+        # plot area (the previous approach). vertical_spacing is defined by
+        # Plotly as a fraction of the plot area, applied identically between
+        # every row pair regardless of that pair's own height, so a flat
+        # fraction (e.g. 0.12) of a plot area dominated by tall 350px chart
+        # rows produced a hundreds-of-pixels gap even between two short
+        # ~100px table rows (confirmed live: ExperimentResult.report()'s
+        # summary/leaderboard tables sitting far apart despite both being
+        # short). Solving `plot_area_px = sum(target_px) + _GAP_PX * (n - 1)`
+        # for vertical_spacing keeps the gap the same fixed, reasonable size
+        # no matter how tall the OTHER rows in the pipeline are. Still capped
+        # at Plotly's hard 1/(rows-1) ceiling (raises ValueError above it) for
+        # the pathological case of many rows each shorter than _GAP_PX itself.
+        # 95px -- the ORIGINAL two-350px-chart-row case this file already
+        # validated a gap size against: 0.12 fraction on two 350px rows (the
+        # rejected 0.06 fraction landed at ~45px and visibly overlapped a
+        # subplot title with the row above's x-axis tick labels; 0.12 -> ~95px
+        # was the fix). Reusing that same validated pixel target here, instead
+        # of the fraction it came from, is what stops it from ballooning on a
+        # plot area most of whose rows are much taller than 350px.
+        _GAP_PX = 95
+        plot_area_px = sum(target_px) + _GAP_PX * (n - 1)
+        vertical_spacing = min(_GAP_PX / plot_area_px, 0.9 / (n - 1))
+        total_height = max(plot_area_px + _MARGIN_PX, 600)
 
         composite = make_subplots(
             rows=n,
