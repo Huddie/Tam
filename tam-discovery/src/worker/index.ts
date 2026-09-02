@@ -10,7 +10,15 @@ import {
   listPublishedDiscoveries,
   whoami,
 } from "./routes/publish";
-import { getDiscovery, getVersions, hideDiscovery, listDiscoveries, renameDiscovery, assignProject } from "./routes/discoveries";
+import {
+  assignProject,
+  getDiscovery,
+  getVersions,
+  hideDiscovery,
+  listDiscoveries,
+  renameDiscovery,
+  updateTags,
+} from "./routes/discoveries";
 import { archiveProject, createProject, listProjects, updateProject } from "./routes/projects";
 import { listTags, listTypes } from "./routes/tags";
 import { createToken, listTokens, revokeToken } from "./routes/tokens";
@@ -66,6 +74,9 @@ async function handleCatalogApi(request: Request, env: Env, path: string[]): Pro
   }
   if (path.length === 3 && path[0] === "discoveries" && path[2] === "project" && method === "POST") {
     return assignProject(request, env, user, path[1]);
+  }
+  if (path.length === 3 && path[0] === "discoveries" && path[2] === "tags" && method === "POST") {
+    return updateTags(request, env, user, path[1]);
   }
   if (path.length === 1 && path[0] === "tags" && method === "GET") return listTags(env);
   if (path.length === 1 && path[0] === "types" && method === "GET") return listTypes(env);

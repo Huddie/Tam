@@ -97,6 +97,14 @@ export function assignProject(idOrSlug: string, project: string | null): Promise
   });
 }
 
+export function updateTags(idOrSlug: string, tags: string[]): Promise<{ id: string; tags: string[] }> {
+  return api(`/api/discoveries/${encodeURIComponent(idOrSlug)}/tags`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tags }),
+  });
+}
+
 export function listProjects(): Promise<{ projects: Project[] }> {
   return api("/api/projects");
 }

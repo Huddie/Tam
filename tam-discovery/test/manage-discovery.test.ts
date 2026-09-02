@@ -1,6 +1,6 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { getDiscovery, hideDiscovery, listDiscoveries, renameDiscovery } from "../src/worker/routes/discoveries";
+import { getDiscovery, hideDiscovery, listDiscoveries, renameDiscovery, updateTags } from "../src/worker/routes/discoveries";
 import { ApiError } from "../src/worker/lib/errors";
 
 async function seedDiscovery(opts: { id: string; title: string; createdBy: string; createdAt: string }) {
@@ -64,5 +64,37 @@ describe("renaming and soft-deleting a discovery", () => {
 
     expect(asCreator.can_manage).toBe(true);
     expect(asOther.can_manage).toBe(false);
+  });
+});
+
+function tagsRequest(tags: string[]) {
+  return new Request("https://discovery.example.com/api/discoveries/d-1/tags", { method: "POST", body: JSON.stringify({ tags }) });
+}
+
+describe("editing a discovery's tags from the catalog", () => {
+  it("lets the creator set the tag list, normalized and deduped", async () => {
+    await seedDiscovery({ id: "d-tags-1", title: "Taggable", createdBy: "alice@example.com", createdAt: "2026-01-01T00:00:00.000Z" });
+
+    const result = await (await updateTags(tagsRequest(["After Hours", "after-hours", "Q3"]), env, "alice@example.com", "d-tags-1")).json<{
+      tags: string[];
+    }>();
+    expect(result.tags).toEqual(["after-hours", "q3"]);
+
+    const detail = await (await getDiscovery(env, "d-tags-1", "alice@example.com")).json<{ tags: string[] }>();
+    expect(detail.tags).toEqual(["after-hours", "q3"]);
+  });
+
+  it("removing all tags clears them", async () => {
+    await seedDiscovery({ id: "d-tags-2", title: "Taggable", createdBy: "alice@example.com", createdAt: "2026-01-01T00:00:00.000Z" });
+    await updateTags(tagsRequest(["demo"]), env, "alice@example.com", "d-tags-2");
+
+    const result = await (await updateTags(tagsRequest([]), env, "alice@example.com", "d-tags-2")).json<{ tags: string[] }>();
+    expect(result.tags).toEqual([]);
+  });
+
+  it("refuses to edit tags on someone else's discovery", async () => {
+    await seedDiscovery({ id: "d-tags-3", title: "Not yours", createdBy: "alice@example.com", createdAt: "2026-01-01T00:00:00.000Z" });
+
+    await expect(updateTags(tagsRequest(["demo"]), env, "bob@example.com", "d-tags-3")).rejects.toThrow(ApiError);
   });
 });

@@ -169,6 +169,15 @@ def test_main_does_not_expand_a_real_subcommand_name():
 def test_main_reports_a_clean_error_instead_of_a_traceback_on_failure(monkeypatch, tmp_path):
     monkeypatch.delenv("TAM_PAT", raising=False)
     monkeypatch.setattr("tam.discovery.auth.token_file_path", lambda: tmp_path / "does-not-exist")
+    # resolve_token() -> Secrets.get() also falls back to a .env file found by
+    # walking UP from the current directory (see tam/secrets.py's own
+    # _from_dotenv) -- without chdir-ing away from the repo, this test would
+    # pick up ITS real .env file if it defines TAM_PAT (confirmed live: it
+    # does, and this test made a REAL publish call to production Discovery
+    # with the real token before this fix). tmp_path is always outside the
+    # repo, so walking up from there finds nothing. Same fix as
+    # test_discovery_auth.py's own _isolate_from_the_real_dotenv_file fixture.
+    monkeypatch.chdir(tmp_path)
     html_path = tmp_path / "r.html"
     html_path.write_text("<html></html>")
 

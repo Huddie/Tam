@@ -1,4 +1,11 @@
-import { findDiscoveryBySlugOrId, findProjectBySlugOrId, nowIso, tagNamesForDiscovery } from "../lib/d1";
+import {
+  findDiscoveryBySlugOrId,
+  findProjectBySlugOrId,
+  nowIso,
+  replaceDiscoveryTagsCache,
+  tagNamesForDiscovery,
+  upsertTagIds,
+} from "../lib/d1";
 import { ApiError } from "../lib/errors";
 import { normalizeTag } from "../lib/tags";
 import type { DiscoveryRow, Env, ProjectRow } from "../types";
@@ -199,6 +206,28 @@ export async function assignProject(request: Request, env: Env, user: string, sl
     .run();
 
   return Response.json({ id: discovery.id, project_id: projectId });
+}
+
+/** POST /api/discoveries/:id/tags -- replace a discovery's current tag set,
+ * creator only. This edits `discovery_tags` (the fast-lookup CACHE
+ * lib/d1.ts's replaceDiscoveryTagsCache() describes) directly, from the
+ * catalog UI rather than through a publish -- it does NOT touch any
+ * already-finalized version's own immutable `version_tags`. Same
+ * "denormalized copy, not the permanent record" caveat renameDiscovery()'s
+ * title update already has: the NEXT `upload()`/`upload-discovery` publish
+ * with its own `tags=` overwrites this again (finalize always rebuilds
+ * `discovery_tags` wholesale from that new version's tags, same as it
+ * always has -- this route doesn't change that). Empty `tags` clears them
+ * all. */
+export async function updateTags(request: Request, env: Env, user: string, slugOrId: string): Promise<Response> {
+  const discovery = await requireOwnedDiscovery(env, user, slugOrId);
+  const body = await request.json<{ tags?: string[] }>().catch(() => ({}) as { tags?: string[] });
+
+  const tagIds = await upsertTagIds(env, body.tags ?? []);
+  await replaceDiscoveryTagsCache(env, discovery.id, tagIds);
+  await env.DB.prepare("UPDATE discoveries SET updated_at = ? WHERE id = ?").bind(nowIso(), discovery.id).run();
+
+  return Response.json({ id: discovery.id, tags: await tagNamesForDiscovery(env, discovery.id) });
 }
 
 /** POST /api/discoveries/:id/hide -- soft-delete, creator only. Removes it

@@ -148,6 +148,15 @@ button.primary:hover {
   background: var(--accent-dark);
   border-color: var(--accent-dark);
 }
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+button.danger:hover {
+  background: #fdf1f0;
+  color: var(--danger);
+  border-color: var(--danger);
+}
 
 /* Wraps every <table> -- on a narrow (phone-width) screen a multi-column
    table is often wider than the viewport; this lets IT scroll
@@ -156,13 +165,6 @@ button.primary:hover {
    table). */
 .table-wrap {
   overflow-x: auto;
-}
-
-.project-section {
-  margin-top: 1.75rem;
-}
-.project-section h2 {
-  margin-bottom: 0.5rem;
 }
 
 table {
@@ -296,6 +298,75 @@ tbody tr:hover td {
   font-family: var(--mono);
   color: var(--accent-dark);
   margin: 0 0.25rem 0.25rem 0;
+}
+
+.modal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.tag.tag-removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-right: 0.35rem;
+}
+.tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.tag-remove:hover {
+  background: none;
+  color: var(--danger);
+}
+
+.tag-combobox {
+  position: relative;
+  margin-top: 0.5rem;
+}
+.tag-combobox input {
+  display: block;
+  width: 100%;
+}
+.tag-suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+}
+.tag-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.75rem;
+  border: none;
+  border-radius: 0;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.tag-suggestions button:hover {
+  background: var(--bg-subtle);
+  border-color: transparent;
+  color: var(--text);
+}
+.tag-suggestions button.tag-suggestion-create {
+  color: var(--accent-dark);
+  border-top: 1px solid var(--border);
 }
 
 .muted {
@@ -442,11 +513,6 @@ tbody tr:hover td {
   flex-shrink: 0;
   background: var(--bg);
   border: 1px solid var(--border);
-  /* No overflow:hidden here -- it doesn't clip anything meaningful (no
-     rounded corners in this design), but it WOULD clip the ManageMenu's
-     absolutely-positioned dropdown popup whenever this container is short
-     (i.e. collapsed, with no .detail-overlay-body adding height), making
-     the menu invisible right when someone actually wants to open it. */
 }
 
 .detail-overlay-header {
@@ -481,11 +547,12 @@ tbody tr:hover td {
   font-family: var(--mono);
   flex-shrink: 0;
 }
-.detail-overlay-header .menu-dropdown {
+.detail-overlay-kebab {
   display: flex;
   align-items: center;
-  padding: 0 0.5rem;
+  margin: 0 0.5rem;
   border-left: 1px solid var(--border);
+  padding-left: 0.5rem;
 }
 
 .detail-overlay-body {
@@ -526,14 +593,10 @@ tbody tr:hover td {
   color: var(--muted);
 }
 
-/* A small "..." action menu -- same look as tam-data-explorer's own
-   ExportDropdown, generalized under a name that isn't export-specific
-   since this one holds Rename/Delete instead. */
-.menu-dropdown {
-  position: relative;
-  display: inline-block;
-}
-.menu-dropdown-toggle {
+/* The kebab button that opens a DiscoveryManageModal -- just a plain
+   icon button now (the modal itself, not a dropdown, holds the actual
+   Rename/Move/Delete actions). */
+.kebab-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -542,36 +605,151 @@ tbody tr:hover td {
   border: none;
   color: var(--muted);
 }
-.menu-dropdown-toggle:hover {
+.kebab-btn:hover {
   background: var(--bg-subtle);
   border-color: transparent;
   color: var(--text);
 }
-.menu-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 2px);
-  right: 0;
-  z-index: 10;
-  min-width: 160px;
+
+/* DiscoveryManageModal -- info + move-to-project + rename + delete for one
+   discovery, opened from its kebab button (catalog row or detail page
+   header). A plain centered overlay, not a popover anchored to the
+   trigger -- unlike the old dropdown menu it replaced, its content
+   (info/select/danger zone) is too much to cram into a small anchored
+   popup without it feeling cramped or getting clipped by a scrolling
+   ancestor. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 21, 32, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+.modal {
   background: var(--bg);
   border: 1px solid var(--border);
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 460px;
+  padding: 1.25rem;
 }
-.menu-dropdown-menu button {
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.modal-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: inherit;
+  font-size: 1.1rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+}
+.modal-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.modal-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+.modal-info dt {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-top: 0.15rem;
+}
+.modal-info dd {
+  margin: 0;
+}
+.modal-field {
+  display: block;
+  margin-bottom: 1rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+.modal-field select {
   display: block;
   width: 100%;
+  margin-top: 0.35rem;
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+/* "By project" folder tree -- one collapsible node per project (plus
+   General), expanded on click to reveal its own discoveries table
+   underneath. */
+.project-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.project-node {
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.project-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
   text-align: left;
-  padding: 0.5rem 0.85rem;
+  background: var(--bg);
   border: none;
   border-radius: 0;
-  font-family: var(--mono);
-  font-size: 0.85rem;
+  padding: 0.65rem 0.9rem;
+  font-weight: 600;
 }
-.menu-dropdown-menu button:hover {
+.project-node-header:hover {
   background: var(--bg-subtle);
 }
-.menu-dropdown-menu button.danger {
-  color: var(--danger);
+.project-node-header .chevron {
+  color: var(--muted);
+  font-family: var(--mono);
+  width: 0.9rem;
+  flex-shrink: 0;
+}
+.project-node-body {
+  border-top: 1px solid var(--border);
+}
+.project-node-body table {
+  width: 100%;
 }
 
 /* Phone-width layout tweaks. Nothing structural changes here -- flex-wrap

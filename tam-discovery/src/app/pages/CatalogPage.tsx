@@ -1,17 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import {
-  type Discovery,
-  type Project,
-  assignProject,
-  hideDiscovery,
-  listDiscoveries,
-  listProjects,
-  listTags,
-  listTypes,
-  renameDiscovery,
-} from "../api";
-import { ManageMenu } from "../ManageMenu";
+import { type Discovery, type Project, listDiscoveries, listProjects, listTags, listTypes } from "../api";
+import { DiscoveryManageModal } from "../DiscoveryManageModal";
+import { KebabIcon } from "../Icons";
 import { useSort } from "../useSort";
 
 export function CatalogPage() {
@@ -22,8 +13,8 @@ export function CatalogPage() {
   const [types, setTypes] = useState<string[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
+  const [managingId, setManagingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const filters = useMemo(
     () => ({
@@ -45,7 +36,6 @@ export function CatalogPage() {
     listTypes().then((r) => setTypes(r.types)).catch(() => {});
     listProjects().then((r) => setProjects(r.projects)).catch(() => {});
   }, []);
-
 
   useEffect(() => {
     const { view: _view, ...queryFilters } = filters;
@@ -69,37 +59,13 @@ export function CatalogPage() {
     setParams(next);
   }
 
-  function startRename(discovery: Discovery) {
-    setRenamingId(discovery.id);
-    setRenameValue(discovery.title);
-  }
-
-  function saveRename() {
-    if (!renamingId || !renameValue.trim()) return;
-    const title = renameValue.trim();
-    renameDiscovery(renamingId, title)
-      .then(() => {
-        setDiscoveries((prev) => prev.map((d) => (d.id === renamingId ? { ...d, title } : d)));
-        setRenamingId(null);
-      })
-      .catch((e) => setError(String(e)));
-  }
-
-  function deleteRow(id: string) {
-    hideDiscovery(id)
-      .then(() => setDiscoveries((prev) => prev.filter((d) => d.id !== id)))
-      .catch((e) => setError(String(e)));
-  }
-
-  function moveToProject(id: string, projectSlug: string) {
-    assignProject(id, projectSlug || null)
-      .then(() => {
-        const project = projectSlug ? (projects.find((p) => p.slug === projectSlug) ?? null) : null;
-        setDiscoveries((prev) =>
-          prev.map((d) => (d.id === id ? { ...d, project: project ? { id: project.id, slug: project.slug, name: project.name } : null } : d))
-        );
-      })
-      .catch((e) => setError(String(e)));
+  function toggleExpanded(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   const { sorted, toggleSort, indicator } = useSort<Discovery>(discoveries, (discovery, key) => {
@@ -118,12 +84,12 @@ export function CatalogPage() {
   });
 
   // "By project" groups the already-sorted, already-fetched (one page's
-  // worth of) rows client-side -- one section per project that actually has
-  // a visible row here, in the same order as the Projects page, "General"
-  // (project: null) always last. Purely a display reorganization: it does
-  // NOT re-query with a different page size, so a project whose rows are
-  // split across two catalog pages still shows split across two groupings,
-  // same caveat sorting already has today.
+  // worth of) rows client-side into a collapsible folder per project that
+  // actually has a visible row here, in the same order as the Projects
+  // page, "General" (project: null) always last. Purely a display
+  // reorganization: it does NOT re-query with a different page size, so a
+  // project whose rows are split across two catalog pages still shows
+  // split across two groupings, same caveat sorting already has today.
   const groupedSections = useMemo(() => {
     if (filters.view !== "grouped") return null;
     const byKey = new Map<string, Discovery[]>();
@@ -140,41 +106,17 @@ export function CatalogPage() {
     return sections;
   }, [filters.view, sorted, projects]);
 
+  const managingDiscovery = discoveries.find((d) => d.id === managingId) ?? null;
+
   function renderRow(discovery: Discovery) {
     return (
       <tr key={discovery.id}>
         <td>
-          {renamingId === discovery.id ? (
-            <div className="toolbar" style={{ margin: 0 }}>
-              <input
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && saveRename()}
-                autoFocus
-              />
-              <button className="primary" disabled={!renameValue.trim()} onClick={saveRename}>
-                Save
-              </button>
-              <button className="secondary" onClick={() => setRenamingId(null)}>
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <Link to={`/d/${discovery.name}`}>{discovery.title}</Link>
-          )}
+          <Link to={`/d/${discovery.name}`}>{discovery.title}</Link>
         </td>
         <td>{discovery.type}</td>
         <td>
-          {discovery.can_manage ? (
-            <select value={discovery.project?.slug ?? ""} onChange={(e) => moveToProject(discovery.id, e.target.value)}>
-              <option value="">General</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.slug}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          ) : discovery.project ? (
+          {discovery.project ? (
             <Link to={`/?project=${encodeURIComponent(discovery.project.slug)}`}>{discovery.project.name}</Link>
           ) : (
             <span className="muted">General</span>
@@ -192,7 +134,11 @@ export function CatalogPage() {
           {new Date(discovery.updated_at).toLocaleDateString()}
         </td>
         <td>
-          {discovery.can_manage && <ManageMenu onRename={() => startRename(discovery)} onDelete={() => deleteRow(discovery.id)} />}
+          {discovery.can_manage && (
+            <button className="kebab-btn" aria-label="Manage this discovery" onClick={() => setManagingId(discovery.id)}>
+              <KebabIcon />
+            </button>
+          )}
         </td>
       </tr>
     );
@@ -284,19 +230,25 @@ export function CatalogPage() {
       {error && <p className="error">{error}</p>}
 
       {groupedSections ? (
-        groupedSections.map((section) => (
-          <div key={section.key} className="project-section">
-            <h2>
-              {section.name} <span className="muted">({section.rows.length})</span>
-            </h2>
-            <div className="table-wrap">
-              <table>
-                {tableHead()}
-                <tbody>{section.rows.map(renderRow)}</tbody>
-              </table>
+        <div className="project-tree">
+          {groupedSections.map((section) => (
+            <div key={section.key} className="project-node">
+              <button className="project-node-header" onClick={() => toggleExpanded(section.key)}>
+                <span className="chevron">{expanded.has(section.key) ? "▾" : "▸"}</span>
+                <span>{section.name}</span>
+                <span className="muted">({section.rows.length})</span>
+              </button>
+              {expanded.has(section.key) && (
+                <div className="table-wrap project-node-body">
+                  <table>
+                    {tableHead()}
+                    <tbody>{section.rows.map(renderRow)}</tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       ) : (
         <div className="table-wrap">
           <table>
@@ -316,6 +268,22 @@ export function CatalogPage() {
             Next &rarr;
           </button>
         </div>
+      )}
+
+      {managingDiscovery && (
+        <DiscoveryManageModal
+          discovery={managingDiscovery}
+          projects={projects}
+          allTags={tags}
+          onClose={() => setManagingId(null)}
+          onRenamed={(title) => setDiscoveries((prev) => prev.map((d) => (d.id === managingDiscovery.id ? { ...d, title } : d)))}
+          onMoved={(project) => setDiscoveries((prev) => prev.map((d) => (d.id === managingDiscovery.id ? { ...d, project } : d)))}
+          onTagsChanged={(newTags) => {
+            setDiscoveries((prev) => prev.map((d) => (d.id === managingDiscovery.id ? { ...d, tags: newTags } : d)));
+            listTags().then((r) => setTags(r.tags)).catch(() => {});
+          }}
+          onDeleted={() => setDiscoveries((prev) => prev.filter((d) => d.id !== managingDiscovery.id))}
+        />
       )}
     </div>
   );
