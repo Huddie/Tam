@@ -17,7 +17,7 @@ def test_sma_matches_manual_rolling_mean():
     assert np.allclose(result.to_numpy(), expected.to_numpy())
 
 
-def test_sma_output_length_matches_tulipy_convention():
+def test_sma_output_is_trimmed_to_only_valid_rows_no_leading_nan():
     values = pd.Series(range(5), index=pd.date_range("2024-01-01", periods=5))
     result = sma(values, period=3)
     assert len(result) == len(values) - 3 + 1

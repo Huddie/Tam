@@ -46,10 +46,12 @@ class Signal(ABC):
         valid (non-NaN) value."""
 
     def compute(self, close: pd.Series) -> pd.Series:
-        # Guarded once here rather than in every subclass: several underlying
-        # tulipy calls raise (rather than returning empty/NaN) when handed
-        # fewer rows than their period, so subclasses' _compute() must never
-        # be called under-provisioned.
+        # Guarded once here rather than in every subclass: this method's own
+        # contract promises an empty Series (not an error) when there isn't
+        # even required_history() worth of data yet, regardless of what the
+        # underlying indicator library itself would do (raise, return all-NaN,
+        # ...) if handed fewer rows than its own period -- so subclasses'
+        # _compute() must never be called under-provisioned either way.
         if len(close) < self.required_history():
             return pd.Series(dtype=float)
         return self._compute(close)
