@@ -440,6 +440,7 @@ Full signature:</p>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"dashboard"</span><span class="p">,</span>    <span class="c1"># groups this with other discoveries of the same kind, free-form</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>    <span class="c1"># a stable slug -- publishing again with the same name adds a version, not a new discovery</span>
+    <span class="n">project</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1"># assigns to an existing project (slug or id) -- see "Projects" below</span>
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -456,6 +457,47 @@ it’s already seen those exact bytes — either a pure no-op (same discovery,
 same content) or a new version row pointed at an already-existing R2
 object (different discovery, same content) — never re-uploading the same
 bytes twice.</p>
+</section>
+<section id="projects">
+<h2>Projects<a class="headerlink" href="#projects" title="Link to this heading">¶</a></h2>
+<p>An optional, folder-like grouping for discoveries, managed entirely in the
+UI at <code class="docutils literal notranslate"><span class="pre">/settings/projects</span></code> — create, rename/edit description, or delete
+(soft — see below) a project, each with a <code class="docutils literal notranslate"><span class="pre">created_by</span></code>/<code class="docutils literal notranslate"><span class="pre">can_manage</span></code>
+ownership model identical to discoveries themselves. Not everything needs
+one: a discovery published without <code class="docutils literal notranslate"><span class="pre">project=</span></code>/<code class="docutils literal notranslate"><span class="pre">--project</span></code> shows up under
+an implicit <strong>“General”</strong> bucket in the catalog, filterable the same as
+any real project (<code class="docutils literal notranslate"><span class="pre">project=general</span></code>).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tam.discovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">upload</span>
+
+<span class="n">upload</span><span class="p">(</span><span class="s2">"report.html"</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Earnings Reaction"</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="s2">"q3-earnings"</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>upload-discovery<span class="w"> </span>report.html<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Earnings Reaction"</span><span class="w"> </span>--project<span class="w"> </span>q3-earnings
+upload-discovery<span class="w"> </span>list<span class="w"> </span>--project<span class="w"> </span>q3-earnings
+upload-discovery<span class="w"> </span>list<span class="w"> </span>--project<span class="w"> </span>general<span class="w">   </span><span class="c1"># ungrouped discoveries only</span>
+</pre></div>
+</div>
+<p>A few things worth knowing:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">project</span></code> must already exist (create it at <code class="docutils literal notranslate"><span class="pre">/settings/projects</span></code> first) —
+an unknown/typo’d slug is a clear error, not a silently-created stray
+project.</p></li>
+<li><p>It only takes effect the <strong>first</strong> time a discovery is created (same as
+<code class="docutils literal notranslate"><span class="pre">type</span></code>) — publishing again under an existing <code class="docutils literal notranslate"><span class="pre">--name</span></code> ignores a changed
+<code class="docutils literal notranslate"><span class="pre">project</span></code>. Move an existing discovery to a different project from the
+catalog’s own per-row picker (or the “By project” grouped view) instead.</p></li>
+<li><p>The catalog (<code class="docutils literal notranslate"><span class="pre">/</span></code>) has an “All discoveries” / “By project” toggle — the
+latter groups the current page’s results into one section per project,
+“General” last.</p></li>
+<li><p>Deleting a project in the UI <strong>archives</strong> it (reversible in principle,
+same convention as a discovery’s own soft-delete): it disappears from
+the active project picker/list, but any discovery already assigned to it
+keeps pointing at it and keeps showing its name.</p></li>
+<li><p>Storage is unaffected either way — R2 objects are content-addressed and
+deduped globally (<code class="docutils literal notranslate"><span class="pre">artifacts/{sha256}.html</span></code>) regardless of which
+project(s) reference them; a project is purely a catalog/D1-level
+grouping, not a storage location.</p></li>
+</ul>
 </section>
 <section id="publishing-from-the-cli">
 <h2>Publishing from the CLI<a class="headerlink" href="#publishing-from-the-cli" title="Link to this heading">¶</a></h2>
@@ -556,6 +598,7 @@ npm<span class="w"> </span><span class="nb">test</span><span class="w">        <
             <ul>
 <li><a class="reference internal" href="#">Discovery</a><ul>
 <li><a class="reference internal" href="#publishing-from-python">Publishing from Python</a></li>
+<li><a class="reference internal" href="#projects">Projects</a></li>
 <li><a class="reference internal" href="#publishing-from-the-cli">Publishing from the CLI</a></li>
 <li><a class="reference internal" href="#authentication">Authentication</a></li>
 <li><a class="reference internal" href="#local-development-the-worker-itself">Local development (the Worker itself)</a></li>
